@@ -1,4 +1,4 @@
-dist/
-src/bin/
-src/obj/
+手牌上限解除/dist/
+手牌上限解除/src/bin/
+手牌上限解除/src/obj/
 .DS_Store
