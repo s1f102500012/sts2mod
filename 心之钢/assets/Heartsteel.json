@@ -1,0 +1,10 @@
+{
+  "id": "Heartsteel",
+  "name": "心之钢",
+  "author": "Natsuki",
+  "description": "添加共享稀有遗物“心之钢”，为敌人施加庞然吞食并通过攻击汲取最大生命值。",
+  "version": "0.1.0",
+  "has_pck": true,
+  "has_dll": true,
+  "affects_gameplay": true
+}

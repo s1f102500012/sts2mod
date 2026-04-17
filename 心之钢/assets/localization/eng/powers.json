@@ -1,0 +1,8 @@
+{
+  "HEARTSTEEL_DEVOUR_POWER.title": "Devour",
+  "HEARTSTEEL_DEVOUR_POWER.description": "The next Attack card that hits this enemy deals X extra damage and grants the attacker max HP.",
+  "HEARTSTEEL_DEVOUR_POWER.smartDescription": "The next Attack card that hits this enemy deals [blue]{Amount}[/blue] extra damage and grants the attacker max HP.",
+  "heartsteelDevourPower.title": "Devour",
+  "heartsteelDevourPower.description": "The next Attack card that hits this enemy deals X extra damage and grants the attacker max HP.",
+  "heartsteelDevourPower.smartDescription": "The next Attack card that hits this enemy deals [blue]{Amount}[/blue] extra damage and grants the attacker max HP."
+}

@@ -1,0 +1,8 @@
+{
+  "HEARTSTEEL_RELIC.title": "Heartsteel",
+  "HEARTSTEEL_RELIC.description": "Every [blue]3[/blue] turns, each enemy gains [gold]Devour[/gold]. When you hit an enemy with [gold]Devour[/gold] using an Attack card, deal an extra [blue]5 + 10%[/blue] of your max HP as damage, then gain max HP equal to [blue]10%[/blue] of that bonus damage.",
+  "HEARTSTEEL_RELIC.flavor": "The louder it beats, the harder it is to stop.",
+  "heartsteelRelic.title": "Heartsteel",
+  "heartsteelRelic.description": "Every [blue]3[/blue] turns, each enemy gains [gold]Devour[/gold]. When you hit an enemy with [gold]Devour[/gold] using an Attack card, deal an extra [blue]5 + 10%[/blue] of your max HP as damage, then gain max HP equal to [blue]10%[/blue] of that bonus damage.",
+  "heartsteelRelic.flavor": "The louder it beats, the harder it is to stop."
+}

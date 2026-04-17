@@ -1,0 +1,8 @@
+{
+  "HEARTSTEEL_DEVOUR_POWER.title": "庞然吞食",
+  "HEARTSTEEL_DEVOUR_POWER.description": "下一张命中该敌人的攻击牌会造成X额外伤害，并让攻击者获得最大生命值。",
+  "HEARTSTEEL_DEVOUR_POWER.smartDescription": "下一张命中该敌人的攻击牌会造成[blue]{Amount}[/blue]额外伤害，并让攻击者获得最大生命值。",
+  "heartsteelDevourPower.title": "庞然吞食",
+  "heartsteelDevourPower.description": "下一张命中该敌人的攻击牌会造成X额外伤害，并让攻击者获得最大生命值。",
+  "heartsteelDevourPower.smartDescription": "下一张命中该敌人的攻击牌会造成[blue]{Amount}[/blue]额外伤害，并让攻击者获得最大生命值。"
+}
