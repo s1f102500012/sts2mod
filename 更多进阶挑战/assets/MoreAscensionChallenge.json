@@ -1,0 +1,10 @@
+{
+  "id": "MoreAscensionChallenge",
+  "name": "更多进阶挑战",
+  "author": "Natsuki",
+  "description": "为杀戮尖塔2添加从 11 到 15 的更多进阶难度。",
+  "version": "0.1.1",
+  "has_pck": false,
+  "has_dll": true,
+  "affects_gameplay": true
+}
