@@ -1,0 +1,17 @@
+{
+  "ORNNS_FORGE.title": "Ornn's Forge",
+  "ORNNS_FORGE.pages.INITIAL.description": "Sparks fall like rain. A massive smith stands by the forge, hammer in hand. Ornn glances at you once, then taps the anvil as if to say: pay properly, or bleed for what you take.",
+  "ORNNS_FORGE.pages.INITIAL.options.GREET.title": "Say hello",
+  "ORNNS_FORGE.pages.INITIAL.options.GREET.description": "Gain [blue]60[/blue] [gold]Gold[/gold].",
+  "ORNNS_FORGE.pages.INITIAL.options.FAIR_TRADE.title": "Fair trade",
+  "ORNNS_FORGE.pages.INITIAL.options.FAIR_TRADE.description": "Pay [red]250[/red] [gold]Gold[/gold]. Gain [gold]Heartsteel[/gold] and [blue]6[/blue] Max HP.",
+  "ORNNS_FORGE.pages.INITIAL.options.FAIR_TRADE_LOCKED.title": "Fair trade",
+  "ORNNS_FORGE.pages.INITIAL.options.FAIR_TRADE_LOCKED.description": "Requires at least [gold]250[/gold] Gold.",
+  "ORNNS_FORGE.pages.INITIAL.options.GRAB_AND_RUN.title": "Take it and run",
+  "ORNNS_FORGE.pages.INITIAL.options.GRAB_AND_RUN.description": "Lose [red]28[/red] HP. Gain [gold]Heartsteel[/gold].",
+  "ORNNS_FORGE.pages.INITIAL.options.GRAB_AND_RUN_LOCKED.title": "Take it and run",
+  "ORNNS_FORGE.pages.INITIAL.options.GRAB_AND_RUN_LOCKED.description": "Requires at least [red]29[/red] HP.",
+  "ORNNS_FORGE.pages.GREET.description": "Ornn grunts and tosses you a pouch of gold that looks like spare change from a god. Best leave before he changes his mind.",
+  "ORNNS_FORGE.pages.FAIR_TRADE.description": "Ornn accepts your payment and places a blazing relic into your hands. It beats with the weight of a forged heart.",
+  "ORNNS_FORGE.pages.GRAB_AND_RUN.description": "You burst out of the forge in a shower of sparks, clutching your prize while your chest burns from the punishment. Behind you, Ornn's snort rattles the floor."
+}

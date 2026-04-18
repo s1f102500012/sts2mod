@@ -1,0 +1,17 @@
+{
+  "ORNNS_FORGE.title": "奥恩的铁匠铺",
+  "ORNNS_FORGE.pages.INITIAL.description": "火星像雨点一样落下，一位巨大而沉默的铁匠正站在熔炉旁。奥恩只是抬眼看了你一下，随后用铁钳敲了敲炉台，像是在说：要么开价，要么拿命来换。",
+  "ORNNS_FORGE.pages.INITIAL.options.GREET.title": "打个招呼",
+  "ORNNS_FORGE.pages.INITIAL.options.GREET.description": "获得[blue]60[/blue][gold]金币[/gold]。",
+  "ORNNS_FORGE.pages.INITIAL.options.FAIR_TRADE.title": "公平交易",
+  "ORNNS_FORGE.pages.INITIAL.options.FAIR_TRADE.description": "支付[red]250[/red][gold]金币[/gold]。获得[gold]心之钢[/gold]和[blue]6[/blue]点最大生命值。",
+  "ORNNS_FORGE.pages.INITIAL.options.FAIR_TRADE_LOCKED.title": "公平交易",
+  "ORNNS_FORGE.pages.INITIAL.options.FAIR_TRADE_LOCKED.description": "需要至少[gold]250[/gold]金币。",
+  "ORNNS_FORGE.pages.INITIAL.options.GRAB_AND_RUN.title": "拿上就跑",
+  "ORNNS_FORGE.pages.INITIAL.options.GRAB_AND_RUN.description": "失去[red]28[/red]点生命。获得[gold]心之钢[/gold]。",
+  "ORNNS_FORGE.pages.INITIAL.options.GRAB_AND_RUN_LOCKED.title": "拿上就跑",
+  "ORNNS_FORGE.pages.INITIAL.options.GRAB_AND_RUN_LOCKED.description": "需要至少[red]29[/red]点生命。",
+  "ORNNS_FORGE.pages.GREET.description": "奥恩低哼一声，把一袋边角料似的金币丢给你，随后重新专注于炉火。你最好趁他没改主意之前离开。",
+  "ORNNS_FORGE.pages.FAIR_TRADE.description": "奥恩收下金币，把一件沉重而炽热的遗物放到你手中。它在你掌心里跳动，像一颗刚被锻出来的心脏。",
+  "ORNNS_FORGE.pages.GRAB_AND_RUN.description": "你在一片怒吼和火星中冲出铁匠铺，胸口被炽热的铁片划开，却仍死死抱住那件战利品。身后传来一声让大地都发颤的冷哼。"
+}

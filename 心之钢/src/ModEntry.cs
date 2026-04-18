@@ -3,6 +3,7 @@ using System.Runtime.Loader;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models.RelicPools;
+using MegaCrit.Sts2.Core.Saves.Runs;
 
 namespace Heartsteel;
 
@@ -12,8 +13,10 @@ public static class ModEntry
 	public static void Initialize()
 	{
 		PreloadDependencyAssemblies();
+		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HeartsteelRelic));
 		ModHelper.AddModelToPool<SharedRelicPool, HeartsteelRelic>();
 		AssetHooks.Install();
+		OrnnsForgeRegistration.Install();
 		Log.Info($"[{ModInfo.Id}] Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}.");
 	}
 

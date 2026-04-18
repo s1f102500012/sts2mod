@@ -12,6 +12,7 @@ using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Saves.Runs;
 using MegaCrit.Sts2.Core.ValueProps;
 
 namespace Heartsteel;
@@ -41,6 +42,8 @@ public sealed class HeartsteelRelic : RelicModel
 
 	private HashSet<Creature>? _markedEnemies;
 
+	private int _maxHpGainedFromHeartsteel;
+
 	public override RelicRarity Rarity => RelicRarity.Rare;
 
 	public override string PackedIconPath => ModInfo.RelicIconPath;
@@ -48,6 +51,21 @@ public sealed class HeartsteelRelic : RelicModel
 	protected override string PackedIconOutlinePath => PackedIconPath;
 
 	protected override string BigIconPath => PackedIconPath;
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public int SavedMaxHpGainedFromHeartsteel
+	{
+		get => _maxHpGainedFromHeartsteel;
+		set
+		{
+			_maxHpGainedFromHeartsteel = Math.Max(0, value);
+			InvokeDisplayAmountChanged();
+		}
+	}
+
+	public override bool ShowCounter => true;
+
+	public override int DisplayAmount => !base.IsCanonical ? _maxHpGainedFromHeartsteel : 0;
 
 	private Dictionary<Creature, int> EnemyCooldowns => _enemyCooldowns ??= new Dictionary<Creature, int>();
 
@@ -139,6 +157,8 @@ public sealed class HeartsteelRelic : RelicModel
 		if (maxHpGain > 0)
 		{
 			await CreatureCmd.GainMaxHp(Owner.Creature, maxHpGain);
+			_maxHpGainedFromHeartsteel += maxHpGain;
+			InvokeDisplayAmountChanged();
 			await RefreshMarkedEnemyPowerAmounts();
 		}
 	}
