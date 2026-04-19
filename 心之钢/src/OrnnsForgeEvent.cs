@@ -1,7 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.Loader;
 using System.Threading.Tasks;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Gold;
@@ -9,12 +7,10 @@ using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
-using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.ValueProps;
-using MonoMod.RuntimeDetour;
 
 namespace Heartsteel;
 
@@ -76,54 +72,5 @@ public sealed class OrnnsForge : EventModel
 		await CreatureCmd.Damage(new ThrowingPlayerChoiceContext(), Owner.Creature, StealHpLoss, ValueProp.Unblockable | ValueProp.Unpowered, null, null);
 		await RelicCmd.Obtain<HeartsteelRelic>(Owner);
 		SetEventFinished(L10NLookup("ORNNS_FORGE.pages.GRAB_AND_RUN.description"));
-	}
-}
-
-public static class OrnnsForgeRegistration
-{
-	private static Hook? _allSharedEventsHook;
-
-	private delegate IEnumerable<EventModel> OrigGetAllSharedEvents();
-
-	public static void Install()
-	{
-		PreloadDependencyAssemblies();
-		InstallHooks();
-		Log.Info("[Heartsteel] Registered Ornn's Forge shared event.");
-	}
-
-	private static void PreloadDependencyAssemblies()
-	{
-		Assembly assembly = Assembly.GetExecutingAssembly();
-		string? modDirectory = Path.GetDirectoryName(assembly.Location);
-		if (string.IsNullOrEmpty(modDirectory) || !Directory.Exists(modDirectory))
-		{
-			return;
-		}
-
-		string selfPath = assembly.Location;
-		AssemblyLoadContext loadContext = AssemblyLoadContext.GetLoadContext(assembly) ?? AssemblyLoadContext.Default;
-		foreach (string dllPath in Directory.GetFiles(modDirectory, "*.dll"))
-		{
-			if (string.Equals(dllPath, selfPath, StringComparison.OrdinalIgnoreCase))
-			{
-				continue;
-			}
-
-			loadContext.LoadFromAssemblyPath(dllPath);
-		}
-	}
-
-	private static void InstallHooks()
-	{
-		MethodInfo allSharedEventsGetter = typeof(ModelDb).GetProperty(nameof(ModelDb.AllSharedEvents), BindingFlags.Static | BindingFlags.Public)?.GetMethod
-			?? throw new InvalidOperationException("Could not find ModelDb.AllSharedEvents getter.");
-
-		_allSharedEventsHook = new Hook(allSharedEventsGetter, AllSharedEventsDetour);
-	}
-
-	private static IEnumerable<EventModel> AllSharedEventsDetour(OrigGetAllSharedEvents orig)
-	{
-		return orig().Concat([ModelDb.Event<OrnnsForge>()]).Distinct();
 	}
 }
