@@ -1,0 +1,10 @@
+{
+  "id": "KeystoneRunes",
+  "name": "基石符文",
+  "author": "Natsuki",
+  "description": "在每局开始时从四个 LOL 基石符文遗物中选择一个，并将它们加入“基石遗物”图鉴栏。",
+  "version": "0.1.0",
+  "has_pck": true,
+  "has_dll": true,
+  "affects_gameplay": true
+}
