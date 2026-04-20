@@ -50,6 +50,16 @@ public abstract class KeystoneRelicBase : RelicModel
 	{
 		return Math.Max(1, (Owner?.RunState.CurrentActIndex ?? 0) + 1);
 	}
+
+	protected bool TryGetOwnedEnemyDebuffTarget(PowerModel power, decimal amount, Creature? applier, out Creature? target)
+	{
+		target = power.Owner;
+		return amount != 0m
+			&& power.GetTypeForAmount(amount) == PowerType.Debuff
+			&& target?.Side == CombatSide.Enemy
+			&& applier == Owner?.Creature
+			&& power is not ITemporaryPower;
+	}
 }
 
 public sealed class ElectrocuteRune : KeystoneRelicBase
@@ -1013,7 +1023,7 @@ public sealed class HailOfBladesRune : KeystoneRelicBase
 		}
 
 		_buffedAttacksThisTurn++;
-		cardPlay.Card.SetToFreeThisCombat();
+		cardPlay.Card.EnergyCost.AddThisCombat(-1, reduceOnly: true);
 		Flash(Array.Empty<Creature>());
 		return Task.CompletedTask;
 	}
@@ -1213,6 +1223,239 @@ public sealed class ArcaneCometRune : KeystoneRelicBase
 	private void ResetTurnTracking()
 	{
 		_triggeredThisTurn = false;
+	}
+}
+
+public sealed class TemporarySlowPower : PowerModel, ITemporaryPower
+{
+	private bool _shouldIgnoreNextInstance;
+
+	public override PowerType Type => PowerType.Debuff;
+
+	public override PowerStackType StackType => PowerStackType.Counter;
+
+	protected override bool IsVisibleInternal => false;
+
+	public AbstractModel OriginModel => ModelDb.Relic<GlacialAugmentRune>();
+
+	public PowerModel InternallyAppliedPower => ModelDb.Power<SlowPower>();
+
+	public override LocString Title => ModelDb.Power<SlowPower>().Title;
+
+	public override LocString Description => ModelDb.Power<SlowPower>().Description;
+
+	public void IgnoreNextInstance()
+	{
+		_shouldIgnoreNextInstance = true;
+	}
+
+	public override async Task BeforeApplied(Creature target, decimal amount, Creature? applier, CardModel? cardSource)
+	{
+		if (_shouldIgnoreNextInstance)
+		{
+			_shouldIgnoreNextInstance = false;
+		}
+		else
+		{
+			await PowerCmd.Apply<SlowPower>(target, amount, applier, cardSource, silent: true);
+		}
+	}
+
+	public override async Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
+	{
+		if (power == this && amount != Amount)
+		{
+			if (_shouldIgnoreNextInstance)
+			{
+				_shouldIgnoreNextInstance = false;
+			}
+			else
+			{
+				await PowerCmd.Apply<SlowPower>(Owner, amount, applier, cardSource, silent: true);
+			}
+		}
+	}
+
+	public override async Task AfterSideTurnStart(CombatSide side, CombatState combatState)
+	{
+		if (side != Owner.Side)
+		{
+			return;
+		}
+
+		await PowerCmd.Remove(this);
+		await PowerCmd.Apply<SlowPower>(Owner, -Amount, Owner, null, silent: true);
+	}
+}
+
+public sealed class GlacialAugmentRune : KeystoneRelicBase
+{
+	private bool _triggeredThisTurn;
+
+	private bool _isApplyingBonusDebuff;
+
+	protected override string GetIconPath() => ModInfo.GlacialAugmentIconPath;
+
+	public override Task BeforeCombatStart()
+	{
+		ResetTurnTracking();
+		return Task.CompletedTask;
+	}
+
+	public override Task AfterCombatEnd(CombatRoom room)
+	{
+		ResetTurnTracking();
+		return Task.CompletedTask;
+	}
+
+	public override Task AfterSideTurnStart(CombatSide side, CombatState combatState)
+	{
+		if (side == CombatSide.Player)
+		{
+			ResetTurnTracking();
+		}
+
+		return Task.CompletedTask;
+	}
+
+	public override async Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
+	{
+		if (_isApplyingBonusDebuff
+			|| _triggeredThisTurn
+			|| !TryGetOwnedEnemyDebuffTarget(power, amount, applier, out Creature? target))
+		{
+			return;
+		}
+
+		_triggeredThisTurn = true;
+		_isApplyingBonusDebuff = true;
+		try
+		{
+			Flash([target!]);
+			await PowerCmd.Apply<WeakPower>(target!, 1m, Owner!.Creature, cardSource);
+			await PowerCmd.Apply<TemporarySlowPower>(target!, 1m, Owner!.Creature, cardSource);
+		}
+		finally
+		{
+			_isApplyingBonusDebuff = false;
+		}
+	}
+
+	private void ResetTurnTracking()
+	{
+		_triggeredThisTurn = false;
+	}
+}
+
+public sealed class AftershockRune : KeystoneRelicBase
+{
+	private const int BlockMultiplier = 4;
+
+	private bool _triggeredThisTurn;
+
+	private int _dexterityGrantedThisTurn;
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public bool SavedTriggeredThisTurn
+	{
+		get => _triggeredThisTurn;
+		set
+		{
+			_triggeredThisTurn = value;
+			RefreshVisualState();
+		}
+	}
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public int SavedDexterityGrantedThisTurn
+	{
+		get => _dexterityGrantedThisTurn;
+		set => _dexterityGrantedThisTurn = Math.Max(0, value);
+	}
+
+	protected override IEnumerable<DynamicVar> CanonicalVars =>
+	[
+		new DynamicVar("ActBonus", 1m),
+		new DynamicVar("BlockMultiplier", BlockMultiplier)
+	];
+
+	protected override string GetIconPath() => ModInfo.AftershockIconPath;
+
+	public override bool ShowCounter => CombatManager.Instance?.IsInProgress == true;
+
+	public override int DisplayAmount => !IsCanonical ? GetCurrentActBonus() : 0;
+
+	public override Task BeforeCombatStart()
+	{
+		ResetTracking();
+		return Task.CompletedTask;
+	}
+
+	public override Task AfterCombatEnd(CombatRoom room)
+	{
+		ResetTracking();
+		return Task.CompletedTask;
+	}
+
+	public override Task AfterSideTurnStart(CombatSide side, CombatState combatState)
+	{
+		if (side == CombatSide.Player)
+		{
+			_triggeredThisTurn = false;
+			RefreshVisualState();
+		}
+
+		return Task.CompletedTask;
+	}
+
+	public override async Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
+	{
+		if (_triggeredThisTurn
+			|| !TryGetOwnedEnemyDebuffTarget(power, amount, applier, out Creature? target))
+		{
+			return;
+		}
+
+		_triggeredThisTurn = true;
+		RefreshVisualState();
+
+		Player owner = Owner!;
+		int bonus = GetCurrentActBonus();
+		if (bonus <= 0)
+		{
+			return;
+		}
+
+		Flash([target!]);
+		await CreatureCmd.GainBlock(owner.Creature, bonus * BlockMultiplier, ValueProp.Unpowered, cardPlay: null, fast: false);
+		await PowerCmd.Apply<DexterityPower>(owner.Creature, bonus, owner.Creature, cardSource);
+		_dexterityGrantedThisTurn += bonus;
+	}
+
+	public override async Task AfterTurnEnd(PlayerChoiceContext choiceContext, CombatSide side)
+	{
+		if (side != CombatSide.Player || Owner?.Creature == null || _dexterityGrantedThisTurn <= 0)
+		{
+			return;
+		}
+
+		int currentDexterity = Owner.Creature.GetPowerAmount<DexterityPower>();
+		int updatedDexterity = Math.Max(0, currentDexterity - _dexterityGrantedThisTurn);
+		await PowerCmd.SetAmount<DexterityPower>(Owner.Creature, updatedDexterity, Owner.Creature, null);
+		_dexterityGrantedThisTurn = 0;
+	}
+
+	private void ResetTracking()
+	{
+		_triggeredThisTurn = false;
+		_dexterityGrantedThisTurn = 0;
+		RefreshVisualState();
+	}
+
+	private void RefreshVisualState()
+	{
+		Status = !_triggeredThisTurn ? RelicStatus.Active : RelicStatus.Normal;
+		InvokeDisplayAmountChanged();
 	}
 }
 

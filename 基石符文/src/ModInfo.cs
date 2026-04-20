@@ -38,6 +38,10 @@ internal static class ModInfo
 
 	public const string DarkHarvestIconPath = "res://KeystoneRunes/images/relics/dark_harvest.png";
 
+	public const string GlacialAugmentIconPath = "res://KeystoneRunes/images/relics/glacial_augment.png";
+
+	public const string AftershockIconPath = "res://KeystoneRunes/images/relics/aftershock.png";
+
 	public static IReadOnlyList<RelicModel> GetCanonicalRunes()
 	{
 		return
@@ -53,7 +57,9 @@ internal static class ModInfo
 			ModelDb.Relic<HailOfBladesRune>(),
 			ModelDb.Relic<FleetFootworkRune>(),
 			ModelDb.Relic<ArcaneCometRune>(),
-			ModelDb.Relic<DarkHarvestRune>()
+			ModelDb.Relic<DarkHarvestRune>(),
+			ModelDb.Relic<GlacialAugmentRune>(),
+			ModelDb.Relic<AftershockRune>()
 		];
 	}
 
@@ -76,7 +82,9 @@ internal static class ModInfo
 			|| id == ModelDb.GetId<HailOfBladesRune>()
 			|| id == ModelDb.GetId<FleetFootworkRune>()
 			|| id == ModelDb.GetId<ArcaneCometRune>()
-			|| id == ModelDb.GetId<DarkHarvestRune>();
+			|| id == ModelDb.GetId<DarkHarvestRune>()
+			|| id == ModelDb.GetId<GlacialAugmentRune>()
+			|| id == ModelDb.GetId<AftershockRune>();
 	}
 
 	public static string? TryGetRelicIconPath(RelicModel relic)
@@ -142,6 +150,16 @@ internal static class ModInfo
 			return DarkHarvestIconPath;
 		}
 
+		if (id == ModelDb.GetId<GlacialAugmentRune>())
+		{
+			return GlacialAugmentIconPath;
+		}
+
+		if (id == ModelDb.GetId<AftershockRune>())
+		{
+			return AftershockIconPath;
+		}
+
 		return null;
 	}
 
@@ -169,8 +187,8 @@ internal static class ModInfo
 			new RuneSeriesGroup("PRECISION", BuildGroup(typeof(ConquerorRune), typeof(PressTheAttackRune), typeof(FleetFootworkRune))),
 			new RuneSeriesGroup("DOMINATION", BuildGroup(typeof(ElectrocuteRune), typeof(HailOfBladesRune), typeof(DarkHarvestRune))),
 			new RuneSeriesGroup("SORCERY", BuildGroup(typeof(SummonAeryRune), typeof(ArcaneCometRune), typeof(PhaseRushRune))),
-			new RuneSeriesGroup("RESOLVE", BuildGroup(typeof(UndyingGraspRune))),
-			new RuneSeriesGroup("INSPIRATION", BuildGroup(typeof(FirstStrikeRune), typeof(UnsealedSpellbookRune)))
+			new RuneSeriesGroup("RESOLVE", BuildGroup(typeof(UndyingGraspRune), typeof(AftershockRune))),
+			new RuneSeriesGroup("INSPIRATION", BuildGroup(typeof(FirstStrikeRune), typeof(UnsealedSpellbookRune), typeof(GlacialAugmentRune)))
 		];
 	}
 }

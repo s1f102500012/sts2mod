@@ -24,6 +24,8 @@ namespace KeystoneRunes;
 [ModInitializer(nameof(Initialize))]
 public static class ModEntry
 {
+	private readonly record struct PendingRuneSelection(Player Player, List<RelicModel> Options, uint ChoiceId, bool IsLocal);
+
 	private static Hook? _finalizeStartingRelicsHook;
 
 	private static Hook? _startRunHook;
@@ -57,6 +59,8 @@ public static class ModEntry
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(FleetFootworkRune));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(ArcaneCometRune));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(DarkHarvestRune));
+		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(GlacialAugmentRune));
+		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(AftershockRune));
 	}
 
 	private static void RegisterModels()
@@ -73,6 +77,8 @@ public static class ModEntry
 		ModHelper.AddModelToPool<SharedRelicPool, FleetFootworkRune>();
 		ModHelper.AddModelToPool<SharedRelicPool, ArcaneCometRune>();
 		ModHelper.AddModelToPool<SharedRelicPool, DarkHarvestRune>();
+		ModHelper.AddModelToPool<SharedRelicPool, GlacialAugmentRune>();
+		ModHelper.AddModelToPool<SharedRelicPool, AftershockRune>();
 	}
 
 	private static void InstallHooks()
@@ -105,9 +111,65 @@ public static class ModEntry
 	{
 		await orig(self, runState);
 
-		foreach (Player player in runState.Players)
+		NetGameType gameType = RunManager.Instance.NetService.Type;
+		if (gameType is NetGameType.Singleplayer or NetGameType.None)
 		{
-			await EnsureKeystoneRuneSelected(player);
+			foreach (Player player in runState.Players)
+			{
+				await EnsureKeystoneRuneSelected(player);
+			}
+
+			return;
+		}
+
+		await EnsureKeystoneRunesSelectedMultiplayer(runState.Players.ToList());
+	}
+
+	private static async Task EnsureKeystoneRunesSelectedMultiplayer(IReadOnlyList<Player> players)
+	{
+		RunManager runManager = RunManager.Instance;
+		PlayerChoiceSynchronizer? synchronizer = await WaitForPlayerChoiceSynchronizerAsync(runManager);
+		if (synchronizer == null)
+		{
+			foreach (Player player in players)
+			{
+				await EnsureKeystoneRuneSelected(player);
+			}
+
+			return;
+		}
+
+		List<PendingRuneSelection> pendingSelections = new();
+		foreach (Player player in players)
+		{
+			RemoveRunesFromGrabBags(player);
+			if (player.Relics.Any(ModInfo.IsKeystoneRelic))
+			{
+				continue;
+			}
+
+			List<RelicModel> options = ModInfo.GetCanonicalRunes()
+				.Select(static relic => relic.ToMutable())
+				.ToList();
+			foreach (RelicModel relic in options)
+			{
+				SaveManager.Instance.MarkRelicAsSeen(relic);
+			}
+
+			uint choiceId = synchronizer.ReserveChoiceId(player);
+			pendingSelections.Add(new PendingRuneSelection(player, options, choiceId, IsLocalPlayer(runManager, player)));
+		}
+
+		Task<RelicModel?>[] selectionTasks = pendingSelections
+			.Select(selection => SelectRuneMultiplayer(selection, synchronizer))
+			.ToArray();
+
+		RelicModel?[] selectedRelics = await Task.WhenAll(selectionTasks);
+		for (int i = 0; i < pendingSelections.Count; i++)
+		{
+			PendingRuneSelection selection = pendingSelections[i];
+			RelicModel selectedRelic = selectedRelics[i] ?? selection.Options[0];
+			await RelicCmd.Obtain(selectedRelic, selection.Player);
 		}
 	}
 
@@ -163,6 +225,22 @@ public static class ModEntry
 		PlayerChoiceResult remoteChoice = await synchronizer.WaitForRemoteChoice(player, choiceId);
 		int index = remoteChoice.AsIndex();
 		return index >= 0 && index < options.Count ? options[index] : null;
+	}
+
+	private static async Task<RelicModel?> SelectRuneMultiplayer(PendingRuneSelection selection, PlayerChoiceSynchronizer synchronizer)
+	{
+		if (selection.IsLocal)
+		{
+			KeystoneRuneSelectionScreen screen = await CreateRuneSelectionScreenAsync(selection.Options);
+			RelicModel? selectedRelic = (await screen.RelicsSelected()).FirstOrDefault();
+			int selectedIndex = selectedRelic == null ? -1 : selection.Options.IndexOf(selectedRelic);
+			synchronizer.SyncLocalChoice(selection.Player, selection.ChoiceId, PlayerChoiceResult.FromIndex(selectedIndex));
+			return selectedRelic;
+		}
+
+		PlayerChoiceResult remoteChoice = await synchronizer.WaitForRemoteChoice(selection.Player, selection.ChoiceId);
+		int index = remoteChoice.AsIndex();
+		return index >= 0 && index < selection.Options.Count ? selection.Options[index] : null;
 	}
 
 	private static async Task<PlayerChoiceSynchronizer?> WaitForPlayerChoiceSynchronizerAsync(RunManager runManager)

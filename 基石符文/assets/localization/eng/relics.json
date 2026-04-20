@@ -56,10 +56,10 @@
   "unsealedSpellbookRune.flavor": "The hard part is not finding answers. It is choosing which page to open first.",
 
   "HAIL_OF_BLADES_RUNE.title": "Hail of Blades",
-  "HAIL_OF_BLADES_RUNE.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play become free for that combat.",
+  "HAIL_OF_BLADES_RUNE.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play cost [blue]1[/blue] less for that combat.",
   "HAIL_OF_BLADES_RUNE.flavor": "Open quickly, and they never get to settle.",
   "hailOfBladesRune.title": "Hail of Blades",
-  "hailOfBladesRune.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play become free for that combat.",
+  "hailOfBladesRune.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play cost [blue]1[/blue] less for that combat.",
   "hailOfBladesRune.flavor": "Open quickly, and they never get to settle.",
 
   "FLEET_FOOTWORK_RUNE.title": "Fleet Footwork",
@@ -75,6 +75,20 @@
   "arcaneCometRune.title": "Arcane Comet",
   "arcaneCometRune.description": "The first time each turn you use a targeted card on an enemy, deal [blue]{DamagePerRelic}×relic count[/blue] damage to it.",
   "arcaneCometRune.flavor": "Once the mark lands, the sky eventually answers.",
+
+  "GLACIAL_AUGMENT_RUNE.title": "Glacial Augment",
+  "GLACIAL_AUGMENT_RUNE.description": "The first time each turn you apply a debuff to an enemy, it gains [blue]1[/blue] Weak and [blue]1[/blue] turn of Slow.",
+  "GLACIAL_AUGMENT_RUNE.flavor": "Cold does not chase. It waits where you must step.",
+  "glacialAugmentRune.title": "Glacial Augment",
+  "glacialAugmentRune.description": "The first time each turn you apply a debuff to an enemy, it gains [blue]1[/blue] Weak and [blue]1[/blue] turn of Slow.",
+  "glacialAugmentRune.flavor": "Cold does not chase. It waits where you must step.",
+
+  "AFTERSHOCK_RUNE.title": "Aftershock",
+  "AFTERSHOCK_RUNE.description": "The first time each turn you apply a debuff to an enemy, gain [blue]{ActBonus}[/blue] Temporary Dexterity and [blue]{ActBonus}×{BlockMultiplier}[/blue] Block. This value equals the current act number.",
+  "AFTERSHOCK_RUNE.flavor": "Stone answers only after the blow lands.",
+  "aftershockRune.title": "Aftershock",
+  "aftershockRune.description": "The first time each turn you apply a debuff to an enemy, gain [blue]{ActBonus}[/blue] Temporary Dexterity and [blue]{ActBonus}×{BlockMultiplier}[/blue] Block. This value equals the current act number.",
+  "aftershockRune.flavor": "Stone answers only after the blow lands.",
 
   "DARK_HARVEST_RUNE.title": "Dark Harvest",
   "DARK_HARVEST_RUNE.description": "Whenever you kill an enemy, permanently gain [blue]1[/blue] Soul. The first time each turn one of your Attack cards hits an enemy below half HP, deal bonus damage equal to your Souls. Each enemy can trigger this at most once per combat.",

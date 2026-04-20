@@ -56,10 +56,10 @@
   "unsealedSpellbookRune.flavor": "封蜡上的指痕，不属于任何人。",
 
   "HAIL_OF_BLADES_RUNE.title": "丛刃",
-  "HAIL_OF_BLADES_RUNE.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌在本场战斗中变为免费。",
+  "HAIL_OF_BLADES_RUNE.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌在本场战斗中能量消耗减少[blue]1[/blue]。",
   "HAIL_OF_BLADES_RUNE.flavor": "蔷薇丛中传来的声响，密集而短促。",
   "hailOfBladesRune.title": "丛刃",
-  "hailOfBladesRune.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌在本场战斗中变为免费。",
+  "hailOfBladesRune.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌在本场战斗中能量消耗减少[blue]1[/blue]。",
   "hailOfBladesRune.flavor": "蔷薇丛中传来的声响，密集而短促。",
 
   "FLEET_FOOTWORK_RUNE.title": "迅捷步法",
@@ -75,6 +75,20 @@
   "arcaneCometRune.title": "奥术彗星",
   "arcaneCometRune.description": "每回合首次对敌人使用定向牌时，对其造成[blue]{DamagePerRelic}×遗物数量[/blue]点伤害。",
   "arcaneCometRune.flavor": "见此星者，皆已无需许愿。",
+
+  "GLACIAL_AUGMENT_RUNE.title": "冰川增幅",
+  "GLACIAL_AUGMENT_RUNE.description": "每回合首次给予一个敌人负面效果时，使其获得[blue]1[/blue]层[gold]虚弱[/gold]，并附加[blue]1[/blue]回合的[gold]缓慢[/gold]。",
+  "GLACIAL_AUGMENT_RUNE.flavor": "寒意总在脚步停下之前先一步追上。",
+  "glacialAugmentRune.title": "冰川增幅",
+  "glacialAugmentRune.description": "每回合首次给予一个敌人负面效果时，使其获得[blue]1[/blue]层[gold]虚弱[/gold]，并附加[blue]1[/blue]回合的[gold]缓慢[/gold]。",
+  "glacialAugmentRune.flavor": "寒意总在脚步停下之前先一步追上。",
+
+  "AFTERSHOCK_RUNE.title": "余震",
+  "AFTERSHOCK_RUNE.description": "每回合首次给予一个敌人负面效果时，自身获得[blue]{ActBonus}[/blue]点临时敏捷，并获得[blue]{ActBonus}×{BlockMultiplier}[/blue]点格挡。该数值等同于当前幕数。",
+  "AFTERSHOCK_RUNE.flavor": "石壁不会先开口，但总会最后回响。",
+  "aftershockRune.title": "余震",
+  "aftershockRune.description": "每回合首次给予一个敌人负面效果时，自身获得[blue]{ActBonus}[/blue]点临时敏捷，并获得[blue]{ActBonus}×{BlockMultiplier}[/blue]点格挡。该数值等同于当前幕数。",
+  "aftershockRune.flavor": "石壁不会先开口，但总会最后回响。",
 
   "DARK_HARVEST_RUNE.title": "黑暗收割",
   "DARK_HARVEST_RUNE.description": "击杀敌人时，永久获得[blue]1[/blue]层灵魂。首次对半血以下的敌人造成伤害时，额外造成等同于灵魂层数的伤害。",
