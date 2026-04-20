@@ -15,8 +15,8 @@ public static class ModEntry
 		PreloadDependencyAssemblies();
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HeartsteelRelic));
 		ModHelper.AddModelToPool<SharedRelicPool, HeartsteelRelic>();
-		AssetHooks.Install();
-		OrnnsForgeRegistration.Install();
+		HeartsteelHarmony.Install();
+		Log.Info("[Heartsteel] Registered Ornn's Forge shared event.");
 		Log.Info($"[{ModInfo.Id}] Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}.");
 	}
 
