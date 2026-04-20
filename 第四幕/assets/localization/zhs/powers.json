@@ -1,0 +1,20 @@
+{
+  "act4BeatOfDeathPower.title": "死亡律动",
+  "act4BeatOfDeathPower.description": "你每打出一张牌，便受到X点伤害。",
+  "act4BeatOfDeathPower.smartDescription": "你每打出一张牌，便受到[blue]{Damage}[/blue]点伤害。",
+  "ACT4_BEAT_OF_DEATH_POWER.title": "死亡律动",
+  "ACT4_BEAT_OF_DEATH_POWER.description": "你每打出一张牌，便受到X点伤害。",
+  "ACT4_BEAT_OF_DEATH_POWER.smartDescription": "你每打出一张牌，便受到[blue]{Damage}[/blue]点伤害。",
+  "act4InvinciblePower.title": "坚不可摧",
+  "act4InvinciblePower.description": "本回合最多只能受到X点伤害。",
+  "act4InvinciblePower.smartDescription": "本回合最多只能受到[blue]{CurrentCap}[/blue]点伤害。",
+  "ACT4_INVINCIBLE_POWER.title": "坚不可摧",
+  "ACT4_INVINCIBLE_POWER.description": "本回合最多只能受到X点伤害。",
+  "ACT4_INVINCIBLE_POWER.smartDescription": "本回合最多只能受到[blue]{CurrentCap}[/blue]点伤害。",
+  "act4PainfulStabsPower.title": "疼痛戳刺",
+  "act4PainfulStabsPower.description": "每当这个敌人对你造成伤害时，在你的弃牌堆里增加一张伤口。",
+  "act4PainfulStabsPower.smartDescription": "每当这个敌人对你造成伤害时，在你的弃牌堆里增加[blue]{Wounds}[/blue]张伤口。",
+  "ACT4_PAINFUL_STABS_POWER.title": "疼痛戳刺",
+  "ACT4_PAINFUL_STABS_POWER.description": "每当这个敌人对你造成伤害时，在你的弃牌堆里增加一张伤口。",
+  "ACT4_PAINFUL_STABS_POWER.smartDescription": "每当这个敌人对你造成伤害时，在你的弃牌堆里增加[blue]{Wounds}[/blue]张伤口。"
+}

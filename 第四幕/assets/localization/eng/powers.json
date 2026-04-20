@@ -1,0 +1,20 @@
+{
+  "act4BeatOfDeathPower.title": "Beat of Death",
+  "act4BeatOfDeathPower.description": "Whenever the player plays a card, it damages them.",
+  "act4BeatOfDeathPower.smartDescription": "Whenever the player plays a card, it deals [blue]{Damage}[/blue] damage to them.",
+  "ACT4_BEAT_OF_DEATH_POWER.title": "Beat of Death",
+  "ACT4_BEAT_OF_DEATH_POWER.description": "Whenever the player plays a card, it damages them.",
+  "ACT4_BEAT_OF_DEATH_POWER.smartDescription": "Whenever the player plays a card, it deals [blue]{Damage}[/blue] damage to them.",
+  "act4InvinciblePower.title": "Invincible",
+  "act4InvinciblePower.description": "Can only lose a limited amount of HP each turn.",
+  "act4InvinciblePower.smartDescription": "Can only lose up to [blue]{CurrentCap}[/blue] HP this turn.",
+  "ACT4_INVINCIBLE_POWER.title": "Invincible",
+  "ACT4_INVINCIBLE_POWER.description": "Can only lose a limited amount of HP each turn.",
+  "ACT4_INVINCIBLE_POWER.smartDescription": "Can only lose up to [blue]{CurrentCap}[/blue] HP this turn.",
+  "act4PainfulStabsPower.title": "Painful Stabs",
+  "act4PainfulStabsPower.description": "Whenever this creature deals attack damage, shuffle a Wound into the target's discard pile.",
+  "act4PainfulStabsPower.smartDescription": "Whenever this creature deals attack damage, shuffle [blue]{Wounds}[/blue] Wound cards into the target's discard pile.",
+  "ACT4_PAINFUL_STABS_POWER.title": "Painful Stabs",
+  "ACT4_PAINFUL_STABS_POWER.description": "Whenever this creature deals attack damage, shuffle a Wound into the target's discard pile.",
+  "ACT4_PAINFUL_STABS_POWER.smartDescription": "Whenever this creature deals attack damage, shuffle [blue]{Wounds}[/blue] Wound cards into the target's discard pile."
+}

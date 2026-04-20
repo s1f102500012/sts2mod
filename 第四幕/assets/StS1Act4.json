@@ -1,0 +1,10 @@
+{
+  "id": "StS1Act4",
+  "name": "STS1 Act 4",
+  "author": "Natsuki",
+  "description": "在第三幕后追加一个精简版 STS1 第四层，固定挑战盾矛与心脏。",
+  "version": "0.1.0",
+  "has_pck": true,
+  "has_dll": true,
+  "affects_gameplay": true
+}

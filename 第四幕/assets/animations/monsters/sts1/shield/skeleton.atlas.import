@@ -1,0 +1,16 @@
+[remap]
+
+importer="spine.atlas"
+type="SpineAtlasResource"
+uid="uid://brcxl1xxk2pmv"
+path="res://STS1Replica/_imported/skeleton.atlas-384c17c4f9d110a72693171cd394dcec.spatlas"
+
+[deps]
+
+source_file="res://animations/monsters/sts1/shield/skeleton.atlas"
+dest_files=["res://STS1Replica/_imported/skeleton.atlas-384c17c4f9d110a72693171cd394dcec.spatlas"]
+
+[params]
+
+normal_map_prefix="n"
+specular_map_prefix="s"

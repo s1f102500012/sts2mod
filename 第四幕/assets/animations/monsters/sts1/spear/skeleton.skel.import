@@ -1,0 +1,14 @@
+[remap]
+
+importer="spine.skel"
+type="SpineSkeletonFileResource"
+uid="uid://d3rjmbhcajnr0"
+path="res://STS1Replica/_imported/skeleton.skel-d79060b5e830a145c1aaded19375046d.spskel"
+
+[deps]
+
+source_file="res://animations/monsters/sts1/spear/skeleton.skel"
+dest_files=["res://STS1Replica/_imported/skeleton.skel-d79060b5e830a145c1aaded19375046d.spskel"]
+
+[params]
+
