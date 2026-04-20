@@ -1,0 +1,10 @@
+{
+  "id": "RewardEnchants",
+  "name": "奖励附魔",
+  "author": "Natsuki",
+  "description": "遭遇战卡牌奖励会按幕数概率随机附上一个合法附魔。",
+  "version": "0.2.0",
+  "has_pck": true,
+  "has_dll": true,
+  "affects_gameplay": true
+}
