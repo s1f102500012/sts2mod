@@ -7,17 +7,17 @@
   "electrocuteRune.flavor": "刻痕交汇之处，痛觉便无处遁形。",
 
   "FIRST_STRIKE_RUNE.title": "先攻",
-  "FIRST_STRIKE_RUNE.description": "每场战斗中，你打出的第一张攻击牌会额外打出一次。战斗胜利时，额外获得等同于第一回合所造成伤害的金币。",
+  "FIRST_STRIKE_RUNE.description": "每场战斗中，你打出的第一张攻击牌会额外打出一次。战斗胜利时，额外获得等同于第一张攻击牌所造成伤害的金币。",
   "FIRST_STRIKE_RUNE.flavor": "比影子更早抵达的那一下。",
   "firstStrikeRune.title": "先攻",
-  "firstStrikeRune.description": "每场战斗中，你打出的第一张攻击牌会额外打出一次。战斗胜利时，额外获得等同于第一回合所造成伤害的金币。",
+  "firstStrikeRune.description": "每场战斗中，你打出的第一张攻击牌会额外打出一次。战斗胜利时，额外获得等同于第一张攻击牌所造成伤害的金币。",
   "firstStrikeRune.flavor": "比影子更早抵达的那一下。",
 
   "UNDYING_GRASP_RUNE.title": "不灭之握",
-  "UNDYING_GRASP_RUNE.description": "每打出[blue]{CardsPerCharge}[/blue]张牌，充能一次[gold]不灭[/gold]。充能后的下一张攻击牌会额外造成等同于自身最大生命值[blue]{BonusDamagePercent}%[/blue]的伤害，并回复等同于自身最大生命值[blue]{HealPercent}%[/blue]的生命。",
+  "UNDYING_GRASP_RUNE.description": "每打出[blue]{CardsPerCharge}[/blue]张攻击牌，充能一次[gold]不灭[/gold]。充能后的下一张攻击牌会额外造成等同于自身最大生命值[blue]{BonusDamagePercent}%[/blue]的伤害，并回复等同于自身最大生命值[blue]{HealPercent}%[/blue]的生命。",
   "UNDYING_GRASP_RUNE.flavor": "即便断了手腕，剑也不曾落下。",
   "undyingGraspRune.title": "不灭之握",
-  "undyingGraspRune.description": "每打出[blue]{CardsPerCharge}[/blue]张牌，充能一次[gold]不灭[/gold]。充能后的下一张攻击牌会额外造成等同于自身最大生命值[blue]{BonusDamagePercent}%[/blue]的伤害，并回复等同于自身最大生命值[blue]{HealPercent}%[/blue]的生命。",
+  "undyingGraspRune.description": "每打出[blue]{CardsPerCharge}[/blue]张攻击牌，充能一次[gold]不灭[/gold]。充能后的下一张攻击牌会额外造成等同于自身最大生命值[blue]{BonusDamagePercent}%[/blue]的伤害，并回复等同于自身最大生命值[blue]{HealPercent}%[/blue]的生命。",
   "undyingGraspRune.flavor": "即便断了手腕，剑也不曾落下。",
 
   "CONQUEROR_RUNE.title": "征服者",
@@ -28,17 +28,17 @@
   "conquerorRune.flavor": "王冠是从头颅上敲下来的。",
 
   "SUMMON_AERY_RUNE.title": "艾黎",
-  "SUMMON_AERY_RUNE.description": "每回合第一次获得格挡时，额外获得[blue]{ActBonus}[/blue]点格挡；每回合第一次对敌人造成伤害时，额外造成[blue]{ActBonus}[/blue]点伤害。该数值等同于当前幕数。",
+  "SUMMON_AERY_RUNE.description": "每打出[blue]{CardsPerCharge}[/blue]张牌，充能一次。新的回合回满充能。充能后，获得格挡时额外获得[blue]{ActBonus}[/blue]点；造成伤害时额外造成[blue]{ActBonus}[/blue]点。该数值等同于当前幕数。",
   "SUMMON_AERY_RUNE.flavor": "它从不现身，却总在最需要时抵达。",
   "summonAeryRune.title": "艾黎",
-  "summonAeryRune.description": "每回合第一次获得格挡时，额外获得[blue]{ActBonus}[/blue]点格挡；每回合第一次对敌人造成伤害时，额外造成[blue]{ActBonus}[/blue]点伤害。该数值等同于当前幕数。",
+  "summonAeryRune.description": "每打出[blue]{CardsPerCharge}[/blue]张牌，充能一次。新的回合回满充能。充能后，获得格挡时额外获得[blue]{ActBonus}[/blue]点；造成伤害时额外造成[blue]{ActBonus}[/blue]点。该数值等同于当前幕数。",
   "summonAeryRune.flavor": "它从不现身，却总在最需要时抵达。",
 
   "PRESS_THE_ATTACK_RUNE.title": "强攻",
-  "PRESS_THE_ATTACK_RUNE.description": "每回合，同一敌人第[blue]{Hits}[/blue]次受到你的攻击牌伤害后，获得[blue]{DebuffAmount}[/blue]层[gold]虚弱[/gold]和[blue]{DebuffAmount}[/blue]层[gold]易伤[/gold]。",
+  "PRESS_THE_ATTACK_RUNE.description": "每回合，同一敌人被你的定向牌命中[blue]{Hits}[/blue]次后，获得[blue]{DebuffAmount}[/blue]层[gold]虚弱[/gold]和[blue]{DebuffAmount}[/blue]层[gold]易伤[/gold]。",
   "PRESS_THE_ATTACK_RUNE.flavor": "裂缝总是从最薄弱的地方蔓延开来。",
   "pressTheAttackRune.title": "强攻",
-  "pressTheAttackRune.description": "每回合，同一敌人第[blue]{Hits}[/blue]次受到你的攻击牌伤害后，获得[blue]{DebuffAmount}[/blue]层[gold]虚弱[/gold]和[blue]{DebuffAmount}[/blue]层[gold]易伤[/gold]。",
+  "pressTheAttackRune.description": "每回合，同一敌人被你的定向牌命中[blue]{Hits}[/blue]次后，获得[blue]{DebuffAmount}[/blue]层[gold]虚弱[/gold]和[blue]{DebuffAmount}[/blue]层[gold]易伤[/gold]。",
   "pressTheAttackRune.flavor": "裂缝总是从最薄弱的地方蔓延开来。",
 
   "PHASE_RUSH_RUNE.title": "相位猛冲",
@@ -56,10 +56,10 @@
   "unsealedSpellbookRune.flavor": "封蜡上的指痕，不属于任何人。",
 
   "HAIL_OF_BLADES_RUNE.title": "丛刃",
-  "HAIL_OF_BLADES_RUNE.description": "每回合前[blue]{Hits}[/blue]张攻击牌额外造成[blue]{ActBonus}[/blue]点伤害。该数值等同于当前幕数。",
+  "HAIL_OF_BLADES_RUNE.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌在本场战斗中变为免费。",
   "HAIL_OF_BLADES_RUNE.flavor": "蔷薇丛中传来的声响，密集而短促。",
   "hailOfBladesRune.title": "丛刃",
-  "hailOfBladesRune.description": "每回合前[blue]{Hits}[/blue]张攻击牌额外造成[blue]{ActBonus}[/blue]点伤害。该数值等同于当前幕数。",
+  "hailOfBladesRune.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌在本场战斗中变为免费。",
   "hailOfBladesRune.flavor": "蔷薇丛中传来的声响，密集而短促。",
 
   "FLEET_FOOTWORK_RUNE.title": "迅捷步法",
@@ -70,10 +70,10 @@
   "fleetFootworkRune.flavor": "踏出的每一步都恰好落在刀刃之间。",
 
   "ARCANE_COMET_RUNE.title": "奥术彗星",
-  "ARCANE_COMET_RUNE.description": "每回合首次对敌人使用定向牌时，对其造成[blue]3×当前幕数[/blue]点伤害。",
+  "ARCANE_COMET_RUNE.description": "每回合首次对敌人使用定向牌时，对其造成[blue]{DamagePerRelic}×遗物数量[/blue]点伤害。",
   "ARCANE_COMET_RUNE.flavor": "见此星者，皆已无需许愿。",
   "arcaneCometRune.title": "奥术彗星",
-  "arcaneCometRune.description": "每回合首次对敌人使用定向牌时，对其造成[blue]3×当前幕数[/blue]点伤害。",
+  "arcaneCometRune.description": "每回合首次对敌人使用定向牌时，对其造成[blue]{DamagePerRelic}×遗物数量[/blue]点伤害。",
   "arcaneCometRune.flavor": "见此星者，皆已无需许愿。",
 
   "DARK_HARVEST_RUNE.title": "黑暗收割",

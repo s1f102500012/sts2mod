@@ -13,6 +13,22 @@ namespace KeystoneRunes;
 
 internal static class CollectionHooks
 {
+	private const string StarterHeaderZh = "初始：";
+
+	private const string StarterHeaderZhBody = "角色们开始游戏时自身携带的遗物。";
+
+	private const string KeystoneHeaderZh = "基石：";
+
+	private const string KeystoneHeaderZhBody = "来自英雄联盟里的符文遗物。";
+
+	private const string StarterHeaderEn = "Starter:";
+
+	private const string StarterHeaderEnBody = "Relics that characters start the game with.";
+
+	private const string KeystoneHeaderEn = "Keystone:";
+
+	private const string KeystoneHeaderEnBody = "Rune relics from League of Legends.";
+
 	private static readonly FieldInfo HeaderLabelField = RequireField(typeof(NRelicCollectionCategory), "_headerLabel");
 
 	private static readonly FieldInfo SubCategoriesField = RequireField(typeof(NRelicCollectionCategory), "_subCategories");
@@ -30,6 +46,8 @@ internal static class CollectionHooks
 		typeof(HashSet<RelicModel>));
 
 	private static Hook? _loadRelicsHook;
+
+	private static string? _starterHeaderTemplate;
 
 	private delegate void OrigLoadRelics(
 		NRelicCollectionCategory self,
@@ -73,6 +91,8 @@ internal static class CollectionHooks
 			return;
 		}
 
+		_starterHeaderTemplate ??= header.GetRawText();
+
 		AddKeystoneSubcategory(self, collection, seenRelics, allUnlockedRelics);
 	}
 
@@ -114,7 +134,24 @@ internal static class CollectionHooks
 			return;
 		}
 
-		headerLabel.SetTextAutoSize(new LocString("relic_collection", ModInfo.KeystoneSubcategoryKey).GetRawText());
+		string fallback = new LocString("relic_collection", ModInfo.KeystoneSubcategoryKey).GetRawText();
+		headerLabel.SetTextAutoSize(FormatLikeStarterHeader(_starterHeaderTemplate, fallback));
+	}
+
+	private static string FormatLikeStarterHeader(string? starterTemplate, string fallback)
+	{
+		if (string.IsNullOrWhiteSpace(starterTemplate))
+		{
+			return fallback;
+		}
+
+		string formatted = starterTemplate
+			.Replace(StarterHeaderZh, KeystoneHeaderZh)
+			.Replace(StarterHeaderZhBody, KeystoneHeaderZhBody)
+			.Replace(StarterHeaderEn, KeystoneHeaderEn)
+			.Replace(StarterHeaderEnBody, KeystoneHeaderEnBody);
+
+		return formatted == starterTemplate ? fallback : formatted;
 	}
 
 	private static List<NRelicCollectionCategory> GetSubCategories(NRelicCollectionCategory category)

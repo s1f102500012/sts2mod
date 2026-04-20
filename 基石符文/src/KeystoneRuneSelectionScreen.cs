@@ -74,6 +74,7 @@ internal sealed class KeystoneRuneSelectionScreen : Control, IOverlayScreen, ISc
 			MinFontSize = 38,
 			Position = new Vector2(0f, -34f)
 		};
+		ApplyDefaultMegaLabelTheme(title);
 		title.Modulate = Colors.White;
 		title.SetTextAutoSize(new LocString(LocTable, "KEYSTONE_SELECTION_TITLE").GetRawText());
 		root.AddChild(title);
@@ -105,6 +106,7 @@ internal sealed class KeystoneRuneSelectionScreen : Control, IOverlayScreen, ISc
 				MinFontSize = 24,
 				Position = new Vector2(0f, -12f)
 			};
+			ApplyDefaultMegaLabelTheme(label);
 			label.Modulate = Colors.White;
 			label.SetTextAutoSize(new LocString(LocTable, "KEYSTONE_SERIES." + group.LocalizationKey).GetRawText());
 			column.AddChild(label);
@@ -154,6 +156,7 @@ internal sealed class KeystoneRuneSelectionScreen : Control, IOverlayScreen, ISc
 					MaxFontSize = 22,
 					MinFontSize = 14
 				};
+				ApplyDefaultMegaLabelTheme(relicLabel);
 				relicLabel.Modulate = Colors.White;
 				relicLabel.SetTextAutoSize(relic.Title.GetFormattedText());
 				option.AddChild(relicLabel);
@@ -254,5 +257,20 @@ internal sealed class KeystoneRuneSelectionScreen : Control, IOverlayScreen, ISc
 	{
 		relicNode.Icon.Scale = Vector2.One;
 		NHoverTipSet.Remove(owner);
+	}
+
+	private static void ApplyDefaultMegaLabelTheme(MegaLabel label)
+	{
+		Font font = label.GetThemeDefaultFont();
+		if (font != null)
+		{
+			label.AddThemeFontOverride("font", font);
+		}
+
+		int fontSize = label.GetThemeDefaultFontSize();
+		if (fontSize > 0)
+		{
+			label.AddThemeFontSizeOverride("font_size", fontSize);
+		}
 	}
 }

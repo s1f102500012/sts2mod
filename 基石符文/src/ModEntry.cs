@@ -4,6 +4,8 @@ using Godot;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Extensions;
+using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
@@ -129,24 +131,72 @@ public static class ModEntry
 
 	private static async Task<RelicModel?> SelectRune(Player player, IReadOnlyList<RelicModel> options)
 	{
-		NetGameType gameType = RunManager.Instance.NetService.Type;
+		foreach (RelicModel relic in options)
+		{
+			SaveManager.Instance.MarkRelicAsSeen(relic);
+		}
+
+		RunManager runManager = RunManager.Instance;
+		NetGameType gameType = runManager.NetService.Type;
 		if (gameType is NetGameType.Singleplayer or NetGameType.None)
 		{
-			KeystoneRuneSelectionScreen screen = CreateRuneSelectionScreen(options);
-
-			foreach (RelicModel relic in options)
-			{
-				SaveManager.Instance.MarkRelicAsSeen(relic);
-			}
-
+			KeystoneRuneSelectionScreen screen = await CreateRuneSelectionScreenAsync(options);
 			return (await screen.RelicsSelected()).FirstOrDefault();
 		}
 
-		return await RelicSelectCmd.FromChooseARelicScreen(player, options);
+		PlayerChoiceSynchronizer? synchronizer = await WaitForPlayerChoiceSynchronizerAsync(runManager);
+		if (synchronizer == null)
+		{
+			return await RelicSelectCmd.FromChooseARelicScreen(player, options);
+		}
+
+		uint choiceId = synchronizer.ReserveChoiceId(player);
+		if (IsLocalPlayer(runManager, player))
+		{
+			KeystoneRuneSelectionScreen screen = await CreateRuneSelectionScreenAsync(options);
+			RelicModel? selectedRelic = (await screen.RelicsSelected()).FirstOrDefault();
+			int selectedIndex = selectedRelic == null ? -1 : options.IndexOf(selectedRelic);
+			synchronizer.SyncLocalChoice(player, choiceId, PlayerChoiceResult.FromIndex(selectedIndex));
+			return selectedRelic;
+		}
+
+		PlayerChoiceResult remoteChoice = await synchronizer.WaitForRemoteChoice(player, choiceId);
+		int index = remoteChoice.AsIndex();
+		return index >= 0 && index < options.Count ? options[index] : null;
 	}
 
-	private static KeystoneRuneSelectionScreen CreateRuneSelectionScreen(IReadOnlyList<RelicModel> relics)
+	private static async Task<PlayerChoiceSynchronizer?> WaitForPlayerChoiceSynchronizerAsync(RunManager runManager)
 	{
+		for (int i = 0; i < 60; i++)
+		{
+			if (runManager.PlayerChoiceSynchronizer != null)
+			{
+				return runManager.PlayerChoiceSynchronizer;
+			}
+
+			await Task.Yield();
+		}
+
+		return runManager.PlayerChoiceSynchronizer;
+	}
+
+	private static bool IsLocalPlayer(RunManager runManager, Player player)
+	{
+		return player.NetId != 0UL && player.NetId == runManager.NetService.NetId;
+	}
+
+	private static async Task<KeystoneRuneSelectionScreen> CreateRuneSelectionScreenAsync(IReadOnlyList<RelicModel> relics)
+	{
+		for (int i = 0; i < 60; i++)
+		{
+			if (NOverlayStack.Instance != null)
+			{
+				break;
+			}
+
+			await Task.Yield();
+		}
+
 		KeystoneRuneSelectionScreen selectionScreen = KeystoneRuneSelectionScreen.Create(relics);
 
 		if (NOverlayStack.Instance == null)

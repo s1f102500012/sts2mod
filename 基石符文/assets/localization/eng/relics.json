@@ -7,17 +7,17 @@
   "electrocuteRune.flavor": "The third spark is the one that lands.",
 
   "FIRST_STRIKE_RUNE.title": "First Strike",
-  "FIRST_STRIKE_RUNE.description": "The first Attack card you play each combat is played an additional time. When combat ends in victory, gain bonus gold equal to the damage you dealt during turn 1.",
+  "FIRST_STRIKE_RUNE.description": "The first Attack card you play each combat is played an additional time. When combat ends in victory, gain bonus gold equal to the damage dealt by that first Attack card.",
   "FIRST_STRIKE_RUNE.flavor": "The opening blow should already be profitable.",
   "firstStrikeRune.title": "First Strike",
-  "firstStrikeRune.description": "The first Attack card you play each combat is played an additional time. When combat ends in victory, gain bonus gold equal to the damage you dealt during turn 1.",
+  "firstStrikeRune.description": "The first Attack card you play each combat is played an additional time. When combat ends in victory, gain bonus gold equal to the damage dealt by that first Attack card.",
   "firstStrikeRune.flavor": "The opening blow should already be profitable.",
 
   "UNDYING_GRASP_RUNE.title": "Grasp of the Undying",
-  "UNDYING_GRASP_RUNE.description": "Every [blue]{CardsPerCharge}[/blue] cards played charges [gold]Grasp[/gold]. The next Attack that deals damage deals bonus damage equal to [blue]{BonusDamagePercent}%[/blue] of your max HP, then heals you for [blue]{HealPercent}%[/blue] of your max HP.",
+  "UNDYING_GRASP_RUNE.description": "Every [blue]{CardsPerCharge}[/blue] Attack cards played charges [gold]Grasp[/gold]. The next Attack that deals damage deals bonus damage equal to [blue]{BonusDamagePercent}%[/blue] of your max HP, then heals you for [blue]{HealPercent}%[/blue] of your max HP.",
   "UNDYING_GRASP_RUNE.flavor": "Slow, heavy, and never empty-handed.",
   "undyingGraspRune.title": "Grasp of the Undying",
-  "undyingGraspRune.description": "Every [blue]{CardsPerCharge}[/blue] cards played charges [gold]Grasp[/gold]. The next Attack that deals damage deals bonus damage equal to [blue]{BonusDamagePercent}%[/blue] of your max HP, then heals you for [blue]{HealPercent}%[/blue] of your max HP.",
+  "undyingGraspRune.description": "Every [blue]{CardsPerCharge}[/blue] Attack cards played charges [gold]Grasp[/gold]. The next Attack that deals damage deals bonus damage equal to [blue]{BonusDamagePercent}%[/blue] of your max HP, then heals you for [blue]{HealPercent}%[/blue] of your max HP.",
   "undyingGraspRune.flavor": "Slow, heavy, and never empty-handed.",
 
   "CONQUEROR_RUNE.title": "Conqueror",
@@ -28,17 +28,17 @@
   "conquerorRune.flavor": "Momentum is just violence learning to snowball.",
 
   "SUMMON_AERY_RUNE.title": "Summon Aery",
-  "SUMMON_AERY_RUNE.description": "The first time each turn you gain Block, gain [blue]{ActBonus}[/blue] more. The first time each turn you deal damage to an enemy, deal [blue]{ActBonus}[/blue] more. This bonus equals the current act number.",
+  "SUMMON_AERY_RUNE.description": "Every [blue]{CardsPerCharge}[/blue] cards played charges this relic once. At the start of a new turn, it refills its charges. While charged, gaining Block grants [blue]{ActBonus}[/blue] more, and dealing damage deals [blue]{ActBonus}[/blue] more. This bonus equals the current act number.",
   "SUMMON_AERY_RUNE.flavor": "It never misses your first reach.",
   "summonAeryRune.title": "Summon Aery",
-  "summonAeryRune.description": "The first time each turn you gain Block, gain [blue]{ActBonus}[/blue] more. The first time each turn you deal damage to an enemy, deal [blue]{ActBonus}[/blue] more. This bonus equals the current act number.",
+  "summonAeryRune.description": "Every [blue]{CardsPerCharge}[/blue] cards played charges this relic once. At the start of a new turn, it refills its charges. While charged, gaining Block grants [blue]{ActBonus}[/blue] more, and dealing damage deals [blue]{ActBonus}[/blue] more. This bonus equals the current act number.",
   "summonAeryRune.flavor": "It never misses your first reach.",
 
   "PRESS_THE_ATTACK_RUNE.title": "Press the Attack",
-  "PRESS_THE_ATTACK_RUNE.description": "Each turn, after the same enemy takes damage from your Attack cards for the [blue]{Hits}[/blue]rd time, apply [blue]{DebuffAmount}[/blue] Weak and [blue]{DebuffAmount}[/blue] Vulnerable.",
+  "PRESS_THE_ATTACK_RUNE.description": "Each turn, after the same enemy is hit by your targeted cards [blue]{Hits}[/blue] times, apply [blue]{DebuffAmount}[/blue] Weak and [blue]{DebuffAmount}[/blue] Vulnerable.",
   "PRESS_THE_ATTACK_RUNE.flavor": "The third hit is the one that opens them up.",
   "pressTheAttackRune.title": "Press the Attack",
-  "pressTheAttackRune.description": "Each turn, after the same enemy takes damage from your Attack cards for the [blue]{Hits}[/blue]rd time, apply [blue]{DebuffAmount}[/blue] Weak and [blue]{DebuffAmount}[/blue] Vulnerable.",
+  "pressTheAttackRune.description": "Each turn, after the same enemy is hit by your targeted cards [blue]{Hits}[/blue] times, apply [blue]{DebuffAmount}[/blue] Weak and [blue]{DebuffAmount}[/blue] Vulnerable.",
   "pressTheAttackRune.flavor": "The third hit is the one that opens them up.",
 
   "PHASE_RUSH_RUNE.title": "Phase Rush",
@@ -56,10 +56,10 @@
   "unsealedSpellbookRune.flavor": "The hard part is not finding answers. It is choosing which page to open first.",
 
   "HAIL_OF_BLADES_RUNE.title": "Hail of Blades",
-  "HAIL_OF_BLADES_RUNE.description": "Each turn, your first [blue]{Hits}[/blue] Attack cards deal [blue]{ActBonus}[/blue] extra damage. This bonus equals the current act number.",
+  "HAIL_OF_BLADES_RUNE.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play become free for that combat.",
   "HAIL_OF_BLADES_RUNE.flavor": "Open quickly, and they never get to settle.",
   "hailOfBladesRune.title": "Hail of Blades",
-  "hailOfBladesRune.description": "Each turn, your first [blue]{Hits}[/blue] Attack cards deal [blue]{ActBonus}[/blue] extra damage. This bonus equals the current act number.",
+  "hailOfBladesRune.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play become free for that combat.",
   "hailOfBladesRune.flavor": "Open quickly, and they never get to settle.",
 
   "FLEET_FOOTWORK_RUNE.title": "Fleet Footwork",
@@ -70,10 +70,10 @@
   "fleetFootworkRune.flavor": "Once your feet get light, your hands follow.",
 
   "ARCANE_COMET_RUNE.title": "Arcane Comet",
-  "ARCANE_COMET_RUNE.description": "The first time each turn you use a targeted card on an enemy, deal [blue]3×current act[/blue] damage to it.",
+  "ARCANE_COMET_RUNE.description": "The first time each turn you use a targeted card on an enemy, deal [blue]{DamagePerRelic}×relic count[/blue] damage to it.",
   "ARCANE_COMET_RUNE.flavor": "Once the mark lands, the sky eventually answers.",
   "arcaneCometRune.title": "Arcane Comet",
-  "arcaneCometRune.description": "The first time each turn you use a targeted card on an enemy, deal [blue]3×current act[/blue] damage to it.",
+  "arcaneCometRune.description": "The first time each turn you use a targeted card on an enemy, deal [blue]{DamagePerRelic}×relic count[/blue] damage to it.",
   "arcaneCometRune.flavor": "Once the mark lands, the sky eventually answers.",
 
   "DARK_HARVEST_RUNE.title": "Dark Harvest",
