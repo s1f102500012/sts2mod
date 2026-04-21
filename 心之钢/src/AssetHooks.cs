@@ -13,13 +13,13 @@ internal static class AssetHooks
 {
 	private static readonly Dictionary<string, PortableCompressedTexture2D> ManualTextureCache = new();
 
-	private static Hook? _assetLoadHook;
 	private static Hook? _relicIconHook;
 	private static Hook? _relicBigIconHook;
 	private static Hook? _relicReloadHook;
 	private static Hook? _powerIconHook;
 	private static Hook? _powerBigIconHook;
 	private static Hook? _combatPowerReloadHook;
+	private static Hook? _eventInitialPortraitHook;
 
 	private static readonly FieldInfo NRelicModelField = typeof(NRelic).GetField("_model", BindingFlags.Instance | BindingFlags.NonPublic)
 		?? throw new InvalidOperationException("Could not access NRelic._model.");
@@ -33,8 +33,6 @@ internal static class AssetHooks
 	private static readonly FieldInfo CombatPowerFlashField = typeof(NPower).GetField("_powerFlash", BindingFlags.Instance | BindingFlags.NonPublic)
 		?? throw new InvalidOperationException("Could not access NPower._powerFlash.");
 
-	private delegate Resource OrigLoadAsset(AssetCache self, string path);
-
 	private delegate Texture2D OrigGetRelicIcon(RelicModel self);
 
 	private delegate Texture2D OrigGetRelicBigIcon(RelicModel self);
@@ -47,38 +45,39 @@ internal static class AssetHooks
 
 	private delegate void OrigCombatPowerReload(NPower self);
 
+	private delegate Texture2D OrigCreateInitialPortrait(EventModel self);
+
 	public static void Install()
 	{
-		MethodInfo loadAsset = RequireMethod(typeof(AssetCache), "LoadAsset", BindingFlags.Instance | BindingFlags.NonPublic, typeof(string));
 		MethodInfo getRelicIcon = RequireGetter(typeof(RelicModel), nameof(RelicModel.Icon));
 		MethodInfo getRelicBigIcon = RequireGetter(typeof(RelicModel), nameof(RelicModel.BigIcon));
 		MethodInfo relicReload = RequireMethod(typeof(NRelic), "Reload", BindingFlags.Instance | BindingFlags.NonPublic);
 		MethodInfo getPowerIcon = RequireGetter(typeof(PowerModel), nameof(PowerModel.Icon));
 		MethodInfo getPowerBigIcon = RequireGetter(typeof(PowerModel), nameof(PowerModel.BigIcon));
 		MethodInfo combatPowerReload = RequireMethod(typeof(NPower), "Reload", BindingFlags.Instance | BindingFlags.NonPublic);
+		MethodInfo createInitialPortrait = RequireMethod(typeof(EventModel), nameof(EventModel.CreateInitialPortrait), BindingFlags.Instance | BindingFlags.Public);
 
-		_assetLoadHook = new Hook(loadAsset, LoadAssetDetour);
 		_relicIconHook = new Hook(getRelicIcon, RelicIconDetour);
 		_relicBigIconHook = new Hook(getRelicBigIcon, RelicBigIconDetour);
 		_relicReloadHook = new Hook(relicReload, NRelicReloadDetour);
 		_powerIconHook = new Hook(getPowerIcon, PowerIconDetour);
 		_powerBigIconHook = new Hook(getPowerBigIcon, PowerBigIconDetour);
 		_combatPowerReloadHook = new Hook(combatPowerReload, CombatPowerReloadDetour);
+		_eventInitialPortraitHook = new Hook(createInitialPortrait, CreateInitialPortraitDetour);
 	}
 
-	private static Resource LoadAssetDetour(OrigLoadAsset orig, AssetCache self, string path)
+	private static Texture2D CreateInitialPortraitDetour(OrigCreateInitialPortrait orig, EventModel self)
 	{
-		if (path == ModInfo.OrnnsForgePortraitRequestPath)
+		if (self.Id == ModelDb.GetId<OrnnsForge>())
 		{
 			Texture2D? texture = LoadPortableTexture(ModInfo.OrnnsForgePortraitPath);
 			if (texture != null)
 			{
-				self.SetAsset(path, texture);
 				return texture;
 			}
 		}
 
-		return orig(self, path);
+		return orig(self);
 	}
 
 	private static Texture2D RelicIconDetour(OrigGetRelicIcon orig, RelicModel self)

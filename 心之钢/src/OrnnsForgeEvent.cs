@@ -52,6 +52,13 @@ public sealed class OrnnsForge : EventModel
 		return runState.Players.All(static player => player.Gold >= TradeGoldCost || player.Creature.CurrentHp >= StealHpLoss + 1);
 	}
 
+	public override IEnumerable<string> GetAssetPaths(IRunState runState)
+	{
+		return base.GetAssetPaths(runState)
+			.Where(static path => path != ModInfo.OrnnsForgePortraitRequestPath)
+			.Append(ModInfo.OrnnsForgePortraitPath);
+	}
+
 	private EventOption CreateRelicOptionWithHoverTips(RelicModel relic, Func<Task> onChosen, string textKey)
 	{
 		return new EventOption(this, onChosen, textKey, relic.HoverTips).WithRelic(relic);

@@ -11,6 +11,8 @@ using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Combat;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Saves.Runs;
 using MegaCrit.Sts2.Core.ValueProps;
@@ -26,6 +28,14 @@ public sealed class HeartsteelRelic : RelicModel
 	private const decimal OwnerMaxHpDamageRatio = 0.10m;
 
 	private const decimal BonusDamageMaxHpGainRatio = 0.10m;
+
+	private const float TriggerSfxVolumeDb = -7f;
+
+	private const float BaseOwnerScale = 1f;
+
+	private const float MaxOwnerScale = 1.75f;
+
+	private const float MaxHpGainForMaxOwnerScale = 60f;
 
 	private static readonly string[] TriggerSfxPaths =
 	[
@@ -81,6 +91,12 @@ public sealed class HeartsteelRelic : RelicModel
 	public override Task BeforeCombatStart()
 	{
 		ResetCombatTracking();
+		return Task.CompletedTask;
+	}
+
+	public override Task AfterObtained()
+	{
+		ApplyOwnerScale(0f);
 		return Task.CompletedTask;
 	}
 
@@ -159,6 +175,7 @@ public sealed class HeartsteelRelic : RelicModel
 			await CreatureCmd.GainMaxHp(Owner.Creature, maxHpGain);
 			_maxHpGainedFromHeartsteel += maxHpGain;
 			InvokeDisplayAmountChanged();
+			ApplyOwnerScale(0.15f);
 			await RefreshMarkedEnemyPowerAmounts();
 		}
 	}
@@ -166,6 +183,12 @@ public sealed class HeartsteelRelic : RelicModel
 	public override Task AfterCombatEnd(CombatRoom room)
 	{
 		ResetCombatTracking();
+		return Task.CompletedTask;
+	}
+
+	public override Task AfterRoomEntered(AbstractRoom room)
+	{
+		ApplyOwnerScale(0f);
 		return Task.CompletedTask;
 	}
 
@@ -239,6 +262,25 @@ public sealed class HeartsteelRelic : RelicModel
 		Status = MarkedEnemies.Count > 0 ? RelicStatus.Active : RelicStatus.Normal;
 	}
 
+	private void ApplyOwnerScale(float duration)
+	{
+		if (Owner?.Creature == null)
+		{
+			return;
+		}
+
+		NCreature? creatureNode = NCombatRoom.Instance?.GetCreatureNode(Owner.Creature);
+		if (creatureNode == null)
+		{
+			return;
+		}
+
+		float gainedMaxHp = Math.Max(0, Owner.Creature.MaxHp - Owner.Character.StartingHp);
+		float t = Mathf.Clamp(gainedMaxHp / MaxHpGainForMaxOwnerScale, 0f, 1f);
+		float scale = Mathf.Lerp(BaseOwnerScale, MaxOwnerScale, t);
+		creatureNode.ScaleTo(scale, duration);
+	}
+
 	private static int RoundToInt(decimal value)
 	{
 		return (int)decimal.Round(value, 0, MidpointRounding.AwayFromZero);
@@ -279,7 +321,8 @@ public sealed class HeartsteelRelic : RelicModel
 		_triggerSfxPlayer = new AudioStreamPlayer
 		{
 			Name = "HeartsteelTriggerSfx",
-			Bus = "Master"
+			Bus = "Master",
+			VolumeDb = TriggerSfxVolumeDb
 		};
 		NGame.Instance?.AddChild(_triggerSfxPlayer);
 	}
