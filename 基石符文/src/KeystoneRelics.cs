@@ -72,7 +72,7 @@ public sealed class ElectrocuteRune : KeystoneRelicBase
 
 	private int _consecutiveHitsThisTurn;
 
-	private uint? _trackedTargetCombatId;
+	private int _trackedTargetCombatId = -1;
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int SavedConsecutiveHitsThisTurn
@@ -86,7 +86,7 @@ public sealed class ElectrocuteRune : KeystoneRelicBase
 	}
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
-	public uint? SavedTrackedTargetCombatId
+	public int SavedTrackedTargetCombatId
 	{
 		get => _trackedTargetCombatId;
 		set => _trackedTargetCombatId = value;
@@ -136,8 +136,8 @@ public sealed class ElectrocuteRune : KeystoneRelicBase
 		}
 
 		Creature target = cardPlay.Target!;
-		uint? targetCombatId = target.CombatId;
-		if (_trackedTargetCombatId.HasValue && targetCombatId == _trackedTargetCombatId)
+		int targetCombatId = target.CombatId.HasValue ? checked((int)target.CombatId.Value) : -1;
+		if (_trackedTargetCombatId >= 0 && targetCombatId == _trackedTargetCombatId)
 		{
 			_consecutiveHitsThisTurn++;
 		}
@@ -175,7 +175,7 @@ public sealed class ElectrocuteRune : KeystoneRelicBase
 	private void ResetTracking()
 	{
 		_consecutiveHitsThisTurn = 0;
-		_trackedTargetCombatId = null;
+		_trackedTargetCombatId = -1;
 		RefreshVisualState();
 	}
 
@@ -226,7 +226,7 @@ public sealed class FirstStrikeRune : KeystoneRelicBase
 
 	public override int ModifyCardPlayCount(CardModel card, Creature? target, int playCount)
 	{
-		if (_hasDuplicatedFirstAttack || !IsOwnedAttack(card) || target?.Side != CombatSide.Enemy)
+		if (_hasDuplicatedFirstAttack || !IsOwnedAttack(card))
 		{
 			return playCount;
 		}
@@ -1459,6 +1459,106 @@ public sealed class AftershockRune : KeystoneRelicBase
 	}
 }
 
+public sealed class GuardianRune : KeystoneRelicBase
+{
+	private bool _triggeredThisTurn;
+
+	private bool _isGrantingGuardianBlock;
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public bool SavedTriggeredThisTurn
+	{
+		get => _triggeredThisTurn;
+		set
+		{
+			_triggeredThisTurn = value;
+			RefreshVisualState();
+		}
+	}
+
+	protected override string GetIconPath() => ModInfo.GuardianIconPath;
+
+	public override Task BeforeCombatStart()
+	{
+		ResetTracking();
+		return Task.CompletedTask;
+	}
+
+	public override Task AfterCombatEnd(CombatRoom room)
+	{
+		ResetTracking();
+		return Task.CompletedTask;
+	}
+
+	public override Task AfterSideTurnStart(CombatSide side, CombatState combatState)
+	{
+		if (side == CombatSide.Player)
+		{
+			_triggeredThisTurn = false;
+			RefreshVisualState();
+		}
+
+		return Task.CompletedTask;
+	}
+
+	public override async Task AfterBlockGained(Creature creature, decimal amount, ValueProp props, CardModel? cardSource)
+	{
+		Creature? ownerCreature = Owner?.Creature;
+		if (_isGrantingGuardianBlock
+			|| _triggeredThisTurn
+			|| creature != ownerCreature
+			|| amount <= 0m
+			|| cardSource == null
+			|| ownerCreature?.CombatState == null
+			|| ownerCreature.CombatState.CurrentSide != ownerCreature.Side)
+		{
+			return;
+		}
+
+		_triggeredThisTurn = true;
+		RefreshVisualState();
+
+		List<Creature> teammates = ownerCreature.CombatState
+			.GetTeammatesOf(ownerCreature)
+			.Where(static c => c != null && c.IsAlive && c.IsPlayer)
+			.Where(c => c != ownerCreature)
+			.ToList();
+
+		_isGrantingGuardianBlock = true;
+		try
+		{
+			Flash([creature]);
+			if (teammates.Count > 0)
+			{
+				foreach (Creature teammate in teammates)
+				{
+					await CreatureCmd.GainBlock(teammate, amount, ValueProp.Unpowered, null);
+				}
+			}
+			else
+			{
+				await CreatureCmd.GainBlock(creature, amount, ValueProp.Unpowered, null);
+			}
+		}
+		finally
+		{
+			_isGrantingGuardianBlock = false;
+		}
+	}
+
+	private void ResetTracking()
+	{
+		_triggeredThisTurn = false;
+		RefreshVisualState();
+	}
+
+	private void RefreshVisualState()
+	{
+		Status = !_triggeredThisTurn ? RelicStatus.Active : RelicStatus.Normal;
+		InvokeDisplayAmountChanged();
+	}
+}
+
 public sealed class DarkHarvestRune : KeystoneRelicBase
 {
 	private int _souls;
@@ -1469,7 +1569,7 @@ public sealed class DarkHarvestRune : KeystoneRelicBase
 
 	private CardModel? _pendingHarvestCard;
 
-	private uint? _pendingHarvestTargetCombatId;
+	private int _pendingHarvestTargetCombatId = -1;
 
 	private HashSet<uint>? _harvestedTargetCombatIds;
 
@@ -1494,7 +1594,7 @@ public sealed class DarkHarvestRune : KeystoneRelicBase
 	}
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
-	public uint? SavedPendingHarvestTargetCombatId
+	public int SavedPendingHarvestTargetCombatId
 	{
 		get => _pendingHarvestTargetCombatId;
 		set => _pendingHarvestTargetCombatId = value;
@@ -1544,7 +1644,7 @@ public sealed class DarkHarvestRune : KeystoneRelicBase
 	public override Task BeforeCardPlayed(CardPlay cardPlay)
 	{
 		_pendingHarvestCard = null;
-		_pendingHarvestTargetCombatId = null;
+		_pendingHarvestTargetCombatId = -1;
 
 		if (_souls <= 0
 			|| _usedBonusThisTurn
@@ -1565,7 +1665,7 @@ public sealed class DarkHarvestRune : KeystoneRelicBase
 		if (target.CurrentHp * 2 <= target.MaxHp)
 		{
 			_pendingHarvestCard = cardPlay.Card;
-			_pendingHarvestTargetCombatId = targetCombatId;
+			_pendingHarvestTargetCombatId = checked((int)targetCombatId);
 		}
 
 		return Task.CompletedTask;
@@ -1576,7 +1676,7 @@ public sealed class DarkHarvestRune : KeystoneRelicBase
 		if (ReferenceEquals(cardPlay.Card, _pendingHarvestCard))
 		{
 			_pendingHarvestCard = null;
-			_pendingHarvestTargetCombatId = null;
+			_pendingHarvestTargetCombatId = -1;
 		}
 
 		return Task.CompletedTask;
@@ -1606,13 +1706,13 @@ public sealed class DarkHarvestRune : KeystoneRelicBase
 			|| !IsOwnedAttack(cardSource)
 			|| props.HasFlag(ValueProp.Unpowered)
 			|| !target.CombatId.HasValue
-			|| _pendingHarvestTargetCombatId != target.CombatId.Value)
+			|| _pendingHarvestTargetCombatId != checked((int)target.CombatId.Value))
 		{
 			return;
 		}
 
 		_pendingHarvestCard = null;
-		_pendingHarvestTargetCombatId = null;
+		_pendingHarvestTargetCombatId = -1;
 
 		uint targetCombatId = target.CombatId.Value;
 		if (HarvestedTargetCombatIds.Contains(targetCombatId)
@@ -1647,7 +1747,7 @@ public sealed class DarkHarvestRune : KeystoneRelicBase
 	{
 		_usedBonusThisTurn = false;
 		_pendingHarvestCard = null;
-		_pendingHarvestTargetCombatId = null;
+		_pendingHarvestTargetCombatId = -1;
 	}
 
 	private void ResetCombatTracking()

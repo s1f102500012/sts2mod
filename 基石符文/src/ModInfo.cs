@@ -42,6 +42,8 @@ internal static class ModInfo
 
 	public const string AftershockIconPath = "res://KeystoneRunes/images/relics/aftershock.png";
 
+	public const string GuardianIconPath = "res://KeystoneRunes/images/relics/guardian.png";
+
 	public static IReadOnlyList<RelicModel> GetCanonicalRunes()
 	{
 		return
@@ -59,7 +61,8 @@ internal static class ModInfo
 			ModelDb.Relic<ArcaneCometRune>(),
 			ModelDb.Relic<DarkHarvestRune>(),
 			ModelDb.Relic<GlacialAugmentRune>(),
-			ModelDb.Relic<AftershockRune>()
+			ModelDb.Relic<AftershockRune>(),
+			ModelDb.Relic<GuardianRune>()
 		];
 	}
 
@@ -84,7 +87,8 @@ internal static class ModInfo
 			|| id == ModelDb.GetId<ArcaneCometRune>()
 			|| id == ModelDb.GetId<DarkHarvestRune>()
 			|| id == ModelDb.GetId<GlacialAugmentRune>()
-			|| id == ModelDb.GetId<AftershockRune>();
+			|| id == ModelDb.GetId<AftershockRune>()
+			|| id == ModelDb.GetId<GuardianRune>();
 	}
 
 	public static string? TryGetRelicIconPath(RelicModel relic)
@@ -160,6 +164,11 @@ internal static class ModInfo
 			return AftershockIconPath;
 		}
 
+		if (id == ModelDb.GetId<GuardianRune>())
+		{
+			return GuardianIconPath;
+		}
+
 		return null;
 	}
 
@@ -187,7 +196,7 @@ internal static class ModInfo
 			new RuneSeriesGroup("PRECISION", BuildGroup(typeof(ConquerorRune), typeof(PressTheAttackRune), typeof(FleetFootworkRune))),
 			new RuneSeriesGroup("DOMINATION", BuildGroup(typeof(ElectrocuteRune), typeof(HailOfBladesRune), typeof(DarkHarvestRune))),
 			new RuneSeriesGroup("SORCERY", BuildGroup(typeof(SummonAeryRune), typeof(ArcaneCometRune), typeof(PhaseRushRune))),
-			new RuneSeriesGroup("RESOLVE", BuildGroup(typeof(UndyingGraspRune), typeof(AftershockRune))),
+			new RuneSeriesGroup("RESOLVE", BuildGroup(typeof(UndyingGraspRune), typeof(AftershockRune), typeof(GuardianRune))),
 			new RuneSeriesGroup("INSPIRATION", BuildGroup(typeof(FirstStrikeRune), typeof(UnsealedSpellbookRune), typeof(GlacialAugmentRune)))
 		];
 	}

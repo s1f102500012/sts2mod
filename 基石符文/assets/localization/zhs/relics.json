@@ -90,6 +90,13 @@
   "aftershockRune.description": "每回合首次给予一个敌人负面效果时，自身获得[blue]{ActBonus}[/blue]点临时敏捷，并获得[blue]{ActBonus}×{BlockMultiplier}[/blue]点格挡。该数值等同于当前幕数。",
   "aftershockRune.flavor": "石壁不会先开口，但总会最后回响。",
 
+  "GUARDIAN_RUNE.title": "守护者",
+  "GUARDIAN_RUNE.description": "每回合第一次从卡牌中获得格挡时，其他玩家也获得相同数值的格挡。如果没有其他玩家，则改为翻倍你这次获得的格挡。",
+  "GUARDIAN_RUNE.flavor": "盾面朝向何处，便意味着谁值得活下去。",
+  "guardianRune.title": "守护者",
+  "guardianRune.description": "每回合第一次从卡牌中获得格挡时，其他玩家也获得相同数值的格挡。如果没有其他玩家，则改为翻倍你这次获得的格挡。",
+  "guardianRune.flavor": "盾面朝向何处，便意味着谁值得活下去。",
+
   "DARK_HARVEST_RUNE.title": "黑暗收割",
   "DARK_HARVEST_RUNE.description": "击杀敌人时，永久获得[blue]1[/blue]层灵魂。首次对半血以下的敌人造成伤害时，额外造成等同于灵魂层数的伤害。",
   "DARK_HARVEST_RUNE.flavor": "田野里最后的麦穗，总是留给镰刀的。",

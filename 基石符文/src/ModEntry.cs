@@ -61,6 +61,7 @@ public static class ModEntry
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(DarkHarvestRune));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(GlacialAugmentRune));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(AftershockRune));
+		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(GuardianRune));
 	}
 
 	private static void RegisterModels()
@@ -79,6 +80,7 @@ public static class ModEntry
 		ModHelper.AddModelToPool<SharedRelicPool, DarkHarvestRune>();
 		ModHelper.AddModelToPool<SharedRelicPool, GlacialAugmentRune>();
 		ModHelper.AddModelToPool<SharedRelicPool, AftershockRune>();
+		ModHelper.AddModelToPool<SharedRelicPool, GuardianRune>();
 	}
 
 	private static void InstallHooks()

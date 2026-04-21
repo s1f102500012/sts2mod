@@ -90,6 +90,13 @@
   "aftershockRune.description": "The first time each turn you apply a debuff to an enemy, gain [blue]{ActBonus}[/blue] Temporary Dexterity and [blue]{ActBonus}×{BlockMultiplier}[/blue] Block. This value equals the current act number.",
   "aftershockRune.flavor": "Stone answers only after the blow lands.",
 
+  "GUARDIAN_RUNE.title": "Guardian",
+  "GUARDIAN_RUNE.description": "The first time each turn you gain Block from a card, other players gain the same amount of Block. If there are no other players, you gain that much Block again instead.",
+  "GUARDIAN_RUNE.flavor": "A shield is a promise made visible.",
+  "guardianRune.title": "Guardian",
+  "guardianRune.description": "The first time each turn you gain Block from a card, other players gain the same amount of Block. If there are no other players, you gain that much Block again instead.",
+  "guardianRune.flavor": "A shield is a promise made visible.",
+
   "DARK_HARVEST_RUNE.title": "Dark Harvest",
   "DARK_HARVEST_RUNE.description": "Whenever you kill an enemy, permanently gain [blue]1[/blue] Soul. The first time each turn one of your Attack cards hits an enemy below half HP, deal bonus damage equal to your Souls. Each enemy can trigger this at most once per combat.",
   "DARK_HARVEST_RUNE.flavor": "What lingers is never the corpse. It is the echo.",
