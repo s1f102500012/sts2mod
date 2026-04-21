@@ -1,0 +1,20 @@
+{
+  "PLAGUE_SPEAR.title": "Plague Spear",
+  "PLAGUE_SPEAR.description": "Monsters deal [blue]50%[/blue] more attack damage. Each additional [blue]1[/blue] stack adds another [blue]50%[/blue].",
+  "PLAGUE_SPEAR.flavor": "Its tip remembers every loop.",
+  "PLAGUE_SHIELD.title": "Plague Shield",
+  "PLAGUE_SHIELD.description": "Monsters gain [blue]75%[/blue] more max HP, block gain, and healing. Each additional [blue]1[/blue] stack adds another [blue]75%[/blue].",
+  "PLAGUE_SHIELD.flavor": "Heavy enough to block time itself.",
+  "MIMIC_INFESTATION.title": "Mimic Infestation",
+  "MIMIC_INFESTATION.description": "Treasure rooms in later acts become elite fights. Elite fights no longer drop relics.",
+  "MIMIC_INFESTATION.flavor": "Every lid now hides teeth.",
+  "TIME_MAZE.title": "Time Maze",
+  "TIME_MAZE.description": "You cannot play more than [blue]15[/blue] cards each turn.",
+  "TIME_MAZE.flavor": "The path still moves forward. Your steps do not.",
+  "MUZZLE.title": "Muzzle",
+  "MUZZLE.description": "You can no longer increase max HP. Healing you receive is [red]halved[/red].",
+  "MUZZLE.flavor": "It tightens when breathing matters most.",
+  "HORRIBLE_TROPHY.title": "Horrible Trophy",
+  "HORRIBLE_TROPHY.description": "When obtained, add [blue]1[/blue] [red]Enthralled[/red] to your deck. Each later copy also adds [blue]1[/blue] [red]Enthralled[/red].",
+  "HORRIBLE_TROPHY.flavor": "Stare too long and it will hang you with the rest."
+}

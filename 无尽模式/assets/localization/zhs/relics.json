@@ -1,0 +1,20 @@
+{
+  "PLAGUE_SPEAR.title": "荒疫之矛",
+  "PLAGUE_SPEAR.description": "怪物造成的攻击伤害提高[blue]50%[/blue]。每多[blue]1[/blue]层，再额外提高[blue]50%[/blue]。",
+  "PLAGUE_SPEAR.flavor": "尖端会记住每一次轮回。",
+  "PLAGUE_SHIELD.title": "荒疫之盾",
+  "PLAGUE_SHIELD.description": "怪物的最大生命、格挡获取量与回复量提高[blue]75%[/blue]。每多[blue]1[/blue]层，再额外提高[blue]75%[/blue]。",
+  "PLAGUE_SHIELD.flavor": "厚重得足以挡下时间。",
+  "MIMIC_INFESTATION.title": "遍地宝箱怪",
+  "MIMIC_INFESTATION.description": "之后阶段中的宝箱房将被替换为精英敌人。精英敌人不再掉落遗物。",
+  "MIMIC_INFESTATION.flavor": "每一个箱盖背后都长出了牙。",
+  "TIME_MAZE.title": "时间迷宫",
+  "TIME_MAZE.description": "你每回合不能打出多于[blue]15[/blue]张牌。",
+  "TIME_MAZE.flavor": "路依旧向前，只是每一步都会折返。",
+  "MUZZLE.title": "嘴套",
+  "MUZZLE.description": "你无法再增加最大生命值。你获得的回复效果[red]减半[/red]。",
+  "MUZZLE.flavor": "它只会在你最需要呼吸时勒紧。",
+  "HORRIBLE_TROPHY.title": "可怖奖杯",
+  "HORRIBLE_TROPHY.description": "拾起时，获得[blue]1[/blue]张[red]执迷[/red]。之后每次再次获得它时，也会再获得[blue]1[/blue]张[red]执迷[/red]。",
+  "HORRIBLE_TROPHY.flavor": "凝视它太久，会把自己也挂上去。"
+}
