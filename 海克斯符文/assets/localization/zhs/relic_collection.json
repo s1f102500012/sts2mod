@@ -1,0 +1,11 @@
+{
+  "HEXTECH_RUNES_SUBCATEGORY": "[gold]海克斯：[/gold] 来自海克斯符文池的自定义遗物。",
+  "HEXTECH_SELECTION_TITLE": "选择一枚海克斯符文",
+  "HEXTECH_REROLL": "重随",
+  "HEXTECH_CURRENT_TIER_LABEL": "本层稀有度：{0}",
+  "HEXTECH_ENEMY_PREVIEW_LABEL": "敌方本层海克斯",
+  "HEXTECH_SKIP": "跳过",
+  "HEXTECH_SERIES.SILVER": "白银",
+  "HEXTECH_SERIES.GOLD": "黄金",
+  "HEXTECH_SERIES.PRISMATIC": "棱彩"
+}

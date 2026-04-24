@@ -1,0 +1,10 @@
+{
+  "id": "HextechRunes",
+  "name": "海克斯符文",
+  "author": "Natsuki",
+  "description": "在第1、2、3幕开始时选择海克斯符文，获得白银、黄金或棱彩阶的构筑改造；同一幕的敌人也会获得对应稀有度的敌方海克斯。包含专属图鉴分类、敌方海克斯顶部提示、中英文文本与联机同步支持。",
+  "version": "0.2.1",
+  "has_pck": true,
+  "has_dll": true,
+  "affects_gameplay": true
+}
