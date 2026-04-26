@@ -58,6 +58,15 @@ function sendFile(res, filePath, contentType) {
   fs.createReadStream(filePath).pipe(res);
 }
 
+function sendHtml(res, status, body) {
+  res.writeHead(status, {
+    "content-type": "text/html; charset=utf-8",
+    "cache-control": "no-store",
+    "content-length": Buffer.byteLength(body)
+  });
+  res.end(body);
+}
+
 function readBody(req) {
   return new Promise((resolve, reject) => {
     const chunks = [];
@@ -545,11 +554,65 @@ function serveDerived(req, res, pathname) {
   return sendFile(res, path.join(DERIVED_DIR, fileName), contentType);
 }
 
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[ch]);
+}
+
+function fmtPct(value) {
+  return `${Number(value || 0).toFixed(1)}%`;
+}
+
+function renderTable(headers, rows) {
+  if (!rows.length) {
+    return '<div class="empty">暂无可显示数据</div>';
+  }
+  return [
+    `<thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>`,
+    `<tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody>`
+  ].join("");
+}
+
+function renderIndexHtml() {
+  const summary = writeDerivedTables();
+  const indexPath = path.join(PUBLIC_DIR, "index.html");
+  let html = fs.readFileSync(indexPath, "utf8");
+  const note = `默认统计口径：排除 runTime < ${summary.filters.minRunTimeForDefaultStats} 秒的局；原始局仍保存在 runs.csv，eligibleDefaultStats=0。`;
+  const replacements = [
+    [/正在读取数据\.\.\./, `更新时间：${escapeHtml(summary.generatedAtUtc)}`],
+    [/<b id="eligibleRuns">0<\/b>/, `<b id="eligibleRuns">${summary.runCount}</b>`],
+    [/<b id="rawRuns">0<\/b>/, `<b id="rawRuns">${summary.raw.uniqueRuns}</b>`],
+    [/<b id="shortRuns">0<\/b>/, `<b id="shortRuns">${summary.excludedShortRuns}</b>`],
+    [/<b id="wins">0<\/b>/, `<b id="wins">${summary.winCount}</b>`],
+    [/<b id="winRate">0%<\/b>/, `<b id="winRate">${fmtPct(summary.winRate)}</b>`],
+    [/<div class="muted" id="filterNote"><\/div>/, `<div class="muted" id="filterNote">${escapeHtml(note)}</div>`],
+    [/<table id="versions"><\/table>/, `<table id="versions">${renderTable(["版本", "局数"], summary.tables.versions.slice(0, 20).map((row) => [row.id, row.count]))}</table>`],
+    [/<table id="netModes"><\/table>/, `<table id="netModes">${renderTable(["模式", "局数"], summary.tables.netModes.slice(0, 20).map((row) => [row.id, row.count]))}</table>`],
+    [/<table id="characters"><\/table>/, `<table id="characters">${renderTable(["角色", "玩家样本"], summary.tables.characters.slice(0, 20).map((row) => [row.id, row.count]))}</table>`],
+    [/<table id="choices"><\/table>/, `<table id="choices">${renderTable(["海克斯", "出现", "选择", "选择率", "选择后胜率"], summary.tables.playerRuneChoices.slice(0, 80).map((row) => [row.id, row.offered, row.selected, fmtPct(row.pickRate), fmtPct(row.selectedWinRate)]))}</table>`],
+    [/<table id="playerRunes"><\/table>/, `<table id="playerRunes">${renderTable(["海克斯", "持有局数", "胜利", "玩家胜率"], summary.tables.playerRuneRuns.slice(0, 80).map((row) => [row.id, row.runs, row.wins, fmtPct(row.winRate)]))}</table>`],
+    [/<table id="monsterHexes"><\/table>/, `<table id="monsterHexes">${renderTable(["敌方海克斯", "出现局数", "敌方胜利", "敌方胜率", "玩家胜率"], summary.tables.monsterHexRuns.slice(0, 80).map((row) => [row.id, row.runs, row.monsterWins, fmtPct(row.monsterWinRate), fmtPct(row.playerWinRate)]))}</table>`]
+  ];
+  for (const [pattern, replacement] of replacements) {
+    html = html.replace(pattern, replacement);
+  }
+  return html;
+}
+
 function serveStatic(req, res) {
   const url = new URL(req.url, "http://localhost");
   let pathname = decodeURIComponent(url.pathname);
   if (pathname === "/") {
     pathname = "/index.html";
+  }
+
+  if (pathname === "/index.html") {
+    return sendHtml(res, 200, renderIndexHtml());
   }
 
   const filePath = path.normalize(path.join(PUBLIC_DIR, pathname));
