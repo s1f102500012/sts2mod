@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-Hans">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>HextechRunes Telemetry</title>
+  <title>海克斯符文统计</title>
   <style>
     :root {
       color-scheme: light dark;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f7f7f4;
+      background: #f5f6f3;
       color: #1e2528;
     }
     body {
@@ -16,25 +16,30 @@
       padding: 28px;
     }
     main {
-      max-width: 1180px;
+      max-width: 1280px;
       margin: 0 auto;
     }
     h1 {
-      margin: 0 0 4px;
+      margin: 0 0 6px;
       font-size: 28px;
     }
+    h2 {
+      margin: 28px 0 10px;
+      font-size: 18px;
+    }
     .muted {
-      color: #657074;
-      margin-bottom: 24px;
+      color: #647175;
+      margin-bottom: 18px;
+      line-height: 1.55;
     }
     .stats {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 12px;
-      margin-bottom: 24px;
+      margin: 18px 0 18px;
     }
     .stat {
-      border: 1px solid #d8ddd9;
+      border: 1px solid #d7ddd8;
       border-radius: 8px;
       padding: 14px;
       background: #ffffff;
@@ -43,27 +48,50 @@
       display: block;
       font-size: 24px;
       margin-bottom: 4px;
+      font-variant-numeric: tabular-nums;
     }
-    section {
-      margin: 24px 0;
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 12px 0 4px;
+    }
+    .links a {
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid #c8d0cc;
+      border-radius: 6px;
+      padding: 7px 10px;
+      color: inherit;
+      background: #ffffff;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
     }
     table {
       width: 100%;
       border-collapse: collapse;
       background: #ffffff;
-      border: 1px solid #d8ddd9;
+      border: 1px solid #d7ddd8;
       border-radius: 8px;
       overflow: hidden;
     }
     th, td {
-      padding: 9px 10px;
-      border-bottom: 1px solid #e6e9e6;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e5e9e5;
       text-align: right;
-      font-size: 14px;
+      font-size: 13px;
+      white-space: nowrap;
     }
     th:first-child, td:first-child {
       text-align: left;
       font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: normal;
+      overflow-wrap: anywhere;
     }
     th {
       background: #edf1ee;
@@ -72,15 +100,22 @@
     tr:last-child td {
       border-bottom: 0;
     }
+    .empty {
+      border: 1px solid #d7ddd8;
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 16px;
+      color: #647175;
+    }
     @media (prefers-color-scheme: dark) {
       :root {
         background: #111719;
         color: #e7ece8;
       }
-      .muted {
+      .muted, .empty {
         color: #9aa8a5;
       }
-      .stat, table {
+      .stat, table, .links a, .empty {
         background: #182023;
         border-color: #2b3637;
       }
@@ -95,71 +130,134 @@
 </head>
 <body>
   <main>
-    <h1>HextechRunes Telemetry</h1>
-    <div class="muted" id="updated">Loading...</div>
+    <h1>海克斯符文统计</h1>
+    <div class="muted" id="updated">正在读取数据...</div>
     <div class="stats">
-      <div class="stat"><b id="runs">0</b>Total runs</div>
-      <div class="stat"><b id="wins">0</b>Wins</div>
-      <div class="stat"><b id="winRate">0%</b>Win rate</div>
+      <div class="stat"><b id="eligibleRuns">0</b>纳入胜率的局数</div>
+      <div class="stat"><b id="rawRuns">0</b>原始唯一局数</div>
+      <div class="stat"><b id="shortRuns">0</b>默认排除的短局</div>
+      <div class="stat"><b id="wins">0</b>胜利局数</div>
+      <div class="stat"><b id="winRate">0%</b>玩家胜率</div>
     </div>
+    <div class="muted" id="filterNote"></div>
+    <div class="links">
+      <a href="/api/hextech-runes/derived/summary.json">summary.json</a>
+      <a href="/api/hextech-runes/derived/runs.csv">runs.csv</a>
+      <a href="/api/hextech-runes/derived/player_runes.csv">player_runes.csv</a>
+      <a href="/api/hextech-runes/derived/rune_choices.csv">rune_choices.csv</a>
+      <a href="/api/hextech-runes/derived/monster_hexes.csv">monster_hexes.csv</a>
+    </div>
+
+    <div class="grid">
+      <section>
+        <h2>版本分布</h2>
+        <table id="versions"></table>
+      </section>
+      <section>
+        <h2>模式分布</h2>
+        <table id="netModes"></table>
+      </section>
+      <section>
+        <h2>角色分布</h2>
+        <table id="characters"></table>
+      </section>
+    </div>
+
     <section>
-      <h2>Player rune choices</h2>
+      <h2>我方海克斯选择率</h2>
       <table id="choices"></table>
     </section>
     <section>
-      <h2>Player rune run win rate</h2>
+      <h2>我方海克斯持有胜率</h2>
       <table id="playerRunes"></table>
     </section>
     <section>
-      <h2>Monster hex win rate</h2>
+      <h2>敌方海克斯胜率</h2>
       <table id="monsterHexes"></table>
     </section>
   </main>
   <script>
-    const pct = (n, d) => d ? `${((n / d) * 100).toFixed(1)}%` : "0%";
-    const entries = (obj) => Object.entries(obj || {});
+    const fmtPct = (value) => `${Number(value || 0).toFixed(1)}%`;
+    const top = (rows, limit = 80) => Array.isArray(rows) ? rows.slice(0, limit) : [];
+
+    function text(value) {
+      return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[ch]));
+    }
 
     function renderTable(node, headers, rows) {
+      if (!rows.length) {
+        node.outerHTML = `<div class="empty">暂无可显示数据</div>`;
+        return;
+      }
       node.innerHTML = [
-        `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>`,
-        `<tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody>`
+        `<thead><tr>${headers.map((h) => `<th>${text(h)}</th>`).join("")}</tr></thead>`,
+        `<tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${text(cell)}</td>`).join("")}</tr>`).join("")}</tbody>`
       ].join("");
     }
 
     fetch("/api/hextech-runes/summary")
       .then((res) => res.json())
       .then((summary) => {
-        document.getElementById("updated").textContent = `Updated ${summary.generatedAtUtc}`;
-        document.getElementById("runs").textContent = summary.runCount;
+        document.getElementById("updated").textContent = `更新时间：${summary.generatedAtUtc}`;
+        document.getElementById("eligibleRuns").textContent = summary.runCount;
+        document.getElementById("rawRuns").textContent = summary.raw.uniqueRuns;
+        document.getElementById("shortRuns").textContent = summary.excludedShortRuns;
         document.getElementById("wins").textContent = summary.winCount;
-        document.getElementById("winRate").textContent = pct(summary.winCount, summary.runCount);
+        document.getElementById("winRate").textContent = fmtPct(summary.winRate);
+        document.getElementById("filterNote").textContent =
+          `默认统计口径：排除 runTime < ${summary.filters.minRunTimeForDefaultStats} 秒的局；原始局仍保存在 runs.csv，eligibleDefaultStats=0。`;
 
+        renderTable(
+          document.getElementById("versions"),
+          ["版本", "局数"],
+          top(summary.tables.versions, 20).map((row) => [row.id, row.count])
+        );
+        renderTable(
+          document.getElementById("netModes"),
+          ["模式", "局数"],
+          top(summary.tables.netModes, 20).map((row) => [row.id, row.count])
+        );
+        renderTable(
+          document.getElementById("characters"),
+          ["角色", "玩家样本"],
+          top(summary.tables.characters, 20).map((row) => [row.id, row.count])
+        );
         renderTable(
           document.getElementById("choices"),
-          ["Rune", "Offered", "Selected", "Pick rate", "Selected win rate"],
-          entries(summary.playerRuneChoices)
-            .sort((a, b) => b[1].offered - a[1].offered)
-            .map(([id, stat]) => [id, stat.offered, stat.selected, pct(stat.selected, stat.offered), pct(stat.selectedWins, stat.selected)])
+          ["海克斯", "出现", "选择", "选择率", "选择后胜率"],
+          top(summary.tables.playerRuneChoices).map((row) => [
+            row.id,
+            row.offered,
+            row.selected,
+            fmtPct(row.pickRate),
+            fmtPct(row.selectedWinRate)
+          ])
         );
-
         renderTable(
           document.getElementById("playerRunes"),
-          ["Rune", "Runs", "Wins", "Win rate"],
-          entries(summary.playerRuneRuns)
-            .sort((a, b) => b[1].runs - a[1].runs)
-            .map(([id, stat]) => [id, stat.runs, stat.wins, pct(stat.wins, stat.runs)])
+          ["海克斯", "持有局数", "胜利", "玩家胜率"],
+          top(summary.tables.playerRuneRuns).map((row) => [row.id, row.runs, row.wins, fmtPct(row.winRate)])
         );
-
         renderTable(
           document.getElementById("monsterHexes"),
-          ["Monster hex", "Runs", "Player wins", "Player win rate"],
-          entries(summary.monsterHexRuns)
-            .sort((a, b) => b[1].runs - a[1].runs)
-            .map(([id, stat]) => [id, stat.runs, stat.wins, pct(stat.wins, stat.runs)])
+          ["敌方海克斯", "出现局数", "敌方胜利", "敌方胜率", "玩家胜率"],
+          top(summary.tables.monsterHexRuns).map((row) => [
+            row.id,
+            row.runs,
+            row.monsterWins,
+            fmtPct(row.monsterWinRate),
+            fmtPct(row.playerWinRate)
+          ])
         );
       })
       .catch((error) => {
-        document.getElementById("updated").textContent = `Failed to load summary: ${error}`;
+        document.getElementById("updated").textContent = `读取失败：${error}`;
       });
   </script>
 </body>
