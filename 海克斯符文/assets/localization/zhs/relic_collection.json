@@ -1,6 +1,8 @@
 {
   "HEXTECH_RUNES_SUBCATEGORY": "[gold]海克斯：[/gold] 来自海克斯符文池的自定义遗物。",
+  "HEXTECH_FORGES_SUBCATEGORY": "[gold]属性锻造器：[/gold] 来自属性锻造系统的自定义遗物。",
   "HEXTECH_SELECTION_TITLE": "选择一枚海克斯符文",
+  "HEXTECH_WAITING_FOR_PLAYERS": "等待其他玩家选择海克斯符文...",
   "HEXTECH_REROLL": "重随",
   "HEXTECH_CURRENT_TIER_LABEL": "本层稀有度：{0}",
   "HEXTECH_ENEMY_PREVIEW_LABEL": "敌方本层海克斯",

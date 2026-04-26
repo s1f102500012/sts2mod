@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>HextechRunes Telemetry</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f7f7f4;
+      color: #1e2528;
+    }
+    body {
+      margin: 0;
+      padding: 28px;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+    h1 {
+      margin: 0 0 4px;
+      font-size: 28px;
+    }
+    .muted {
+      color: #657074;
+      margin-bottom: 24px;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat {
+      border: 1px solid #d8ddd9;
+      border-radius: 8px;
+      padding: 14px;
+      background: #ffffff;
+    }
+    .stat b {
+      display: block;
+      font-size: 24px;
+      margin-bottom: 4px;
+    }
+    section {
+      margin: 24px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      border: 1px solid #d8ddd9;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #e6e9e6;
+      text-align: right;
+      font-size: 14px;
+    }
+    th:first-child, td:first-child {
+      text-align: left;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    th {
+      background: #edf1ee;
+      font-weight: 650;
+    }
+    tr:last-child td {
+      border-bottom: 0;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        background: #111719;
+        color: #e7ece8;
+      }
+      .muted {
+        color: #9aa8a5;
+      }
+      .stat, table {
+        background: #182023;
+        border-color: #2b3637;
+      }
+      th {
+        background: #202b2d;
+      }
+      th, td {
+        border-bottom-color: #2b3637;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>HextechRunes Telemetry</h1>
+    <div class="muted" id="updated">Loading...</div>
+    <div class="stats">
+      <div class="stat"><b id="runs">0</b>Total runs</div>
+      <div class="stat"><b id="wins">0</b>Wins</div>
+      <div class="stat"><b id="winRate">0%</b>Win rate</div>
+    </div>
+    <section>
+      <h2>Player rune choices</h2>
+      <table id="choices"></table>
+    </section>
+    <section>
+      <h2>Player rune run win rate</h2>
+      <table id="playerRunes"></table>
+    </section>
+    <section>
+      <h2>Monster hex win rate</h2>
+      <table id="monsterHexes"></table>
+    </section>
+  </main>
+  <script>
+    const pct = (n, d) => d ? `${((n / d) * 100).toFixed(1)}%` : "0%";
+    const entries = (obj) => Object.entries(obj || {});
+
+    function renderTable(node, headers, rows) {
+      node.innerHTML = [
+        `<thead><tr>${headers.map((h) => `<th>${h}</th>`).join("")}</tr></thead>`,
+        `<tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody>`
+      ].join("");
+    }
+
+    fetch("/api/hextech-runes/summary")
+      .then((res) => res.json())
+      .then((summary) => {
+        document.getElementById("updated").textContent = `Updated ${summary.generatedAtUtc}`;
+        document.getElementById("runs").textContent = summary.runCount;
+        document.getElementById("wins").textContent = summary.winCount;
+        document.getElementById("winRate").textContent = pct(summary.winCount, summary.runCount);
+
+        renderTable(
+          document.getElementById("choices"),
+          ["Rune", "Offered", "Selected", "Pick rate", "Selected win rate"],
+          entries(summary.playerRuneChoices)
+            .sort((a, b) => b[1].offered - a[1].offered)
+            .map(([id, stat]) => [id, stat.offered, stat.selected, pct(stat.selected, stat.offered), pct(stat.selectedWins, stat.selected)])
+        );
+
+        renderTable(
+          document.getElementById("playerRunes"),
+          ["Rune", "Runs", "Wins", "Win rate"],
+          entries(summary.playerRuneRuns)
+            .sort((a, b) => b[1].runs - a[1].runs)
+            .map(([id, stat]) => [id, stat.runs, stat.wins, pct(stat.wins, stat.runs)])
+        );
+
+        renderTable(
+          document.getElementById("monsterHexes"),
+          ["Monster hex", "Runs", "Player wins", "Player win rate"],
+          entries(summary.monsterHexRuns)
+            .sort((a, b) => b[1].runs - a[1].runs)
+            .map(([id, stat]) => [id, stat.runs, stat.wins, pct(stat.wins, stat.runs)])
+        );
+      })
+      .catch((error) => {
+        document.getElementById("updated").textContent = `Failed to load summary: ${error}`;
+      });
+  </script>
+</body>
+</html>

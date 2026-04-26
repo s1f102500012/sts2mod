@@ -69,12 +69,12 @@ internal static class HextechInspectHooks
 
 	private static IEnumerable<RelicModel> GetUnlockStateRelicsDetour(OrigGetUnlockStateRelics orig, UnlockState self)
 	{
-		return orig(self).Concat(ModInfo.GetCanonicalRunes()).Distinct();
+		return orig(self).Concat(ModInfo.GetCanonicalCustomRelics()).Distinct();
 	}
 
 	private static bool IsRelicSeenDetour(OrigIsRelicSeen orig, SaveManager self, RelicModel relic)
 	{
-		if (ModInfo.IsHextechRelic(relic))
+		if (ModInfo.IsHextechCustomRelic(relic))
 		{
 			return true;
 		}
@@ -107,7 +107,7 @@ internal static class HextechInspectHooks
 			&& index < relics.Count)
 		{
 			RelicModel relic = relics[index];
-			if (ModInfo.IsHextechRelic(relic))
+			if (ModInfo.IsHextechCustomRelic(relic))
 			{
 				RenderHextechInspect(self, relic);
 				return;
@@ -119,7 +119,7 @@ internal static class HextechInspectHooks
 
 	private static string EnergyIconHelperGetPrefixDetour(OrigEnergyIconHelperGetPrefix orig, AbstractModel model)
 	{
-		if (model is RelicModel relic && ModInfo.IsHextechRelic(relic))
+		if (model is RelicModel relic && ModInfo.IsHextechCustomRelic(relic))
 		{
 			return "red";
 		}
@@ -134,14 +134,14 @@ internal static class HextechInspectHooks
 			return;
 		}
 
-		foreach (RelicModel canonicalRelic in ModInfo.GetCanonicalRunes())
+		foreach (RelicModel canonicalRelic in ModInfo.GetCanonicalCustomRelics())
 		{
 			unlockedRelics.Add(canonicalRelic);
 		}
 
 		foreach (RelicModel relic in relics)
 		{
-			if (!ModInfo.IsHextechRelic(relic))
+			if (!ModInfo.IsHextechCustomRelic(relic))
 			{
 				continue;
 			}

@@ -1,0 +1,22 @@
+[Unit]
+Description=HextechRunes Telemetry Service
+After=network.target
+
+[Service]
+Type=simple
+User=hextelemetry
+Group=hextelemetry
+WorkingDirectory=/opt/hextech-runes-telemetry/app
+Environment=HOST=127.0.0.1
+Environment=PORT=3000
+Environment=DATA_DIR=/opt/hextech-runes-telemetry/data
+ExecStart=/usr/bin/env node server.js
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/opt/hextech-runes-telemetry/data
+
+[Install]
+WantedBy=multi-user.target

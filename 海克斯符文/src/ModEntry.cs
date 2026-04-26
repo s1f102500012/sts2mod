@@ -11,6 +11,7 @@ using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Runs.History;
 using MegaCrit.Sts2.Core.Rooms;
+using MegaCrit.Sts2.Core.Saves;
 using MonoMod.RuntimeDetour;
 
 namespace HextechRunes;
@@ -24,6 +25,8 @@ public static class ModEntry
 
 	private static Hook? _eventRoomProceedHook;
 
+	private static Hook? _runEndedHook;
+
 	private static bool _subscribedRoomEntered;
 
 	private static bool _subscribedRoomExited;
@@ -34,9 +37,12 @@ public static class ModEntry
 
 	private delegate Task OrigEventRoomProceed();
 
+	private delegate SerializableRun OrigRunEnded(RunManager self, bool isVictory);
+
 	public static void Initialize()
 	{
 		HextechModelBootstrap.Install();
+		HextechTelemetry.Initialize();
 		InstallHooks();
 		HextechCombatHooks.Install();
 		HextechInspectHooks.Install();
@@ -56,6 +62,9 @@ public static class ModEntry
 		_eventRoomProceedHook = new Hook(
 			RequireMethod(typeof(NEventRoom), nameof(NEventRoom.Proceed), BindingFlags.Public | BindingFlags.Static),
 			EventRoomProceedDetour);
+		_runEndedHook = new Hook(
+			RequireMethod(typeof(RunManager), nameof(RunManager.OnEnded), BindingFlags.Instance | BindingFlags.Public, typeof(bool)),
+			RunEndedDetour);
 	}
 
 	private static async Task FinalizeStartingRelicsDetour(OrigFinalizeStartingRelics orig, RunManager self)
@@ -76,6 +85,7 @@ public static class ModEntry
 
 	private static async Task StartRunDetour(OrigStartRun orig, NGame self, RunState runState)
 	{
+		HextechGoldrendSync.ResetCombat();
 		HextechRuneSelectionCoordinator.ResetActSelectionState();
 		HextechEnemyUi.Clear();
 		HextechEnemyUi.HideMayhemModifierBadge();
@@ -93,7 +103,7 @@ public static class ModEntry
 		{
 			if (ShouldDeferAct0SelectionUntilAfterNeow(runState))
 			{
-				Log.Info($"[{ModInfo.Id}][Mayhem] StartRunDetour: deferring act0 selection until post-Neow map entry {DescribeCurrentEventState(runState)}");
+				Log.Info($"[{ModInfo.Id}][Mayhem] StartRunDetour: deferring act0 selection until safe post-Neow selection point {DescribeCurrentEventState(runState)}");
 			}
 			else
 			{
@@ -137,19 +147,35 @@ public static class ModEntry
 			return;
 		}
 
-		if (NGame.Instance != null)
+		Log.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed: waiting for all ancient events before act0 selection event={eventId} mapOpen={NMapScreen.Instance?.IsOpen == true}");
+		NMapScreen.Instance?.SetTravelEnabled(enabled: false);
+		try
 		{
-			await NGame.Instance.ToSignal(NGame.Instance.GetTree(), SceneTree.SignalName.ProcessFrame);
-		}
+			await WaitForAllCurrentEventsFinished(runState, eventId);
+			if (!IsCurrentRun(runState) || modifier.IsActResolved(0))
+			{
+				Log.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed skip: run changed or act0 resolved after wait event={eventId}");
+				return;
+			}
 
-		if (!IsCurrentRun(runState))
+			Log.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed: selecting act0 hex after all ancient events finished event={eventId} mapOpen={NMapScreen.Instance?.IsOpen == true}");
+			await HextechRuneSelectionCoordinator.HandleActSelection(runState, modifier);
+		}
+		finally
 		{
-			Log.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed skip: stale after frame event={eventId}");
-			return;
+			if (IsCurrentRun(runState))
+			{
+				NMapScreen.Instance?.SetTravelEnabled(enabled: true);
+			}
 		}
+	}
 
-		Log.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed: triggering act0 selection after ancient proceed event={eventId} mapOpen={NMapScreen.Instance?.IsOpen == true}");
-		await HextechRuneSelectionCoordinator.HandleActSelection(runState, modifier);
+	private static SerializableRun RunEndedDetour(OrigRunEnded orig, RunManager self, bool isVictory)
+	{
+		RunState? runState = self.DebugOnlyGetState();
+		SerializableRun serializableRun = orig(self, isVictory);
+		HextechTelemetry.OnRunEnded(runState, serializableRun, isVictory);
+		return serializableRun;
 	}
 
 	private static HextechMayhemModifier? GetMayhemModifier(RunState runState)
@@ -238,8 +264,7 @@ public static class ModEntry
 	{
 		if (GetMayhemModifier(runState) is HextechMayhemModifier existing)
 		{
-			existing.ResetForNewRun();
-			Log.Info($"[{ModInfo.Id}][Mayhem] EnsureMayhemModifier: reset existing state");
+			Log.Info($"[{ModInfo.Id}][Mayhem] EnsureMayhemModifier: existing state preserved {existing.DescribeActState()}");
 			return existing;
 		}
 
@@ -307,6 +332,38 @@ public static class ModEntry
 		runState = currentRunState;
 		eventId = ancientEvent.Id.Entry;
 		return true;
+	}
+
+	private static async Task WaitForAllCurrentEventsFinished(RunState runState, string eventId)
+	{
+		for (int frame = 0; IsCurrentRun(runState); frame++)
+		{
+			IReadOnlyList<EventModel> events = RunManager.Instance.EventSynchronizer.Events;
+			int finishedCount = events.Count(static eventModel => eventModel.IsFinished);
+			if (events.Count >= runState.Players.Count && finishedCount == events.Count)
+			{
+				Log.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed: all events finished event={eventId} count={events.Count} waitedFrames={frame}");
+				return;
+			}
+
+			if (frame % 300 == 0)
+			{
+				Log.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed: waiting for remote events event={eventId} finished={finishedCount}/{events.Count} players={runState.Players.Count}");
+			}
+
+			await WaitOneFrame();
+		}
+	}
+
+	private static async Task WaitOneFrame()
+	{
+		if (NGame.Instance != null)
+		{
+			await NGame.Instance.ToSignal(NGame.Instance.GetTree(), SceneTree.SignalName.ProcessFrame);
+			return;
+		}
+
+		await Task.Yield();
 	}
 
 	private static MethodInfo RequireMethod(Type type, string name, BindingFlags flags, params Type[] parameters)

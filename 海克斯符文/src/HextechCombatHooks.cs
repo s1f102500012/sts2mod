@@ -100,7 +100,17 @@ internal static class HextechCombatHooks
 
 			if (player.GetRelic<BackToBasicsRune>() != null)
 			{
-				amount *= 1.3m;
+				amount *= 1.4m;
+			}
+
+			if (player.GetRelic<GoliathRune>() != null)
+			{
+				amount *= 1.2m;
+			}
+
+			if (player.GetRelic<ProteinShakeRune>() is ProteinShakeRune proteinShakeRune)
+			{
+				amount *= proteinShakeRune.SustainMultiplier;
 			}
 		}
 
@@ -144,6 +154,13 @@ internal static class HextechCombatHooks
 				await PowerCmd.Apply<HextechBurnPower>(target, burnAmount, player.Creature, null);
 			}
 		}
+
+		if (player?.GetRelic<CircleOfDeathRune>() is CircleOfDeathRune circleOfDeathRune
+			&& creature == player.Creature
+			&& creature.CombatState != null)
+		{
+			await circleOfDeathRune.HandleSustainGained(amount);
+		}
 	}
 
 	private static bool CardCanPlayDetour(OrigCardCanPlay orig, CardModel self)
@@ -159,13 +176,13 @@ internal static class HextechCombatHooks
 			return false;
 		}
 
-		if (!IsBlockedByBackToBasics(self, out BackToBasicsRune? preventerRune))
+		if (!IsBlockedByBackToBasics(self, out AbstractModel? backToBasicsPreventer))
 		{
 			return true;
 		}
 
 		reason = default;
-		preventer = preventerRune!;
+		preventer = backToBasicsPreventer!;
 		return false;
 	}
 
@@ -252,18 +269,36 @@ internal static class HextechCombatHooks
 		return IsBlockedByBackToBasics(card, out _);
 	}
 
-	private static bool IsBlockedByBackToBasics(CardModel card, out BackToBasicsRune? rune)
+	private static bool IsBlockedByBackToBasics(CardModel card, out AbstractModel? preventer)
 	{
-		rune = null;
+		preventer = null;
 		if (card.Owner == null)
 		{
 			return false;
 		}
 
-		rune = card.Owner.GetRelic<BackToBasicsRune>();
-		return rune != null
-			&& !card.EnergyCost.CostsX
-			&& card.EnergyCost.GetAmountToSpend() >= 3m;
+		if (card.EnergyCost.CostsX || card.EnergyCost.GetAmountToSpend() < 3m)
+		{
+			return false;
+		}
+
+		BackToBasicsRune? rune = card.Owner.GetRelic<BackToBasicsRune>();
+		if (rune != null)
+		{
+			preventer = rune;
+			return true;
+		}
+
+		if (card.Owner.Creature.CombatState?.RunState is RunState runState
+			&& card.Owner.Creature.Side == CombatSide.Player
+			&& GetMayhemModifier(runState) is HextechMayhemModifier modifier
+			&& modifier.HasActiveMonsterHex(MonsterHexKind.BackToBasics))
+		{
+			preventer = modifier;
+			return true;
+		}
+
+		return false;
 	}
 
 	private static HextechMayhemModifier? GetMayhemModifier(RunState runState)

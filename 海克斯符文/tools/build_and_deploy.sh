@@ -1,8 +1,9 @@
 #!/bin/zsh
 set -euo pipefail
 
-DOTNET="/opt/homebrew/bin/dotnet"
-ROOT="/Users/iniad/Documents/cs_exercise/sts2mod/海克斯符文"
+DOTNET="${DOTNET:-/opt/homebrew/bin/dotnet}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FILE_STEM="HextechRunes"
 MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
 GAME_APP="/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app"

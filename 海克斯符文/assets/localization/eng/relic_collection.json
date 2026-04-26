@@ -1,6 +1,8 @@
 {
   "HEXTECH_RUNES_SUBCATEGORY": "[gold]Hextech:[/gold] Custom relics from the Hextech rune pool.",
+  "HEXTECH_FORGES_SUBCATEGORY": "[gold]Stat Forgers:[/gold] Custom relics from the stat forging system.",
   "HEXTECH_SELECTION_TITLE": "Choose A Hextech Rune",
+  "HEXTECH_WAITING_FOR_PLAYERS": "Waiting for other players to choose...",
   "HEXTECH_REROLL": "Reroll",
   "HEXTECH_CURRENT_TIER_LABEL": "Current Tier: {0}",
   "HEXTECH_ENEMY_PREVIEW_LABEL": "Enemy Hex This Act",

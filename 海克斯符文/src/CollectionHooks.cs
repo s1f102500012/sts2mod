@@ -21,6 +21,10 @@ internal static class CollectionHooks
 
 	private const string HextechHeaderZhBody = "来自海克斯符文池的自定义遗物。";
 
+	private const string ForgeHeaderZh = "属性锻造器：";
+
+	private const string ForgeHeaderZhBody = "来自属性锻造系统的自定义遗物。";
+
 	private const string StarterHeaderEn = "Starter:";
 
 	private const string StarterHeaderEnBody = "Relics that characters start the game with.";
@@ -28,6 +32,10 @@ internal static class CollectionHooks
 	private const string HextechHeaderEn = "Hextech:";
 
 	private const string HextechHeaderEnBody = "Custom relics from the Hextech rune pool.";
+
+	private const string ForgeHeaderEn = "Stat Forgers:";
+
+	private const string ForgeHeaderEnBody = "Custom relics from the stat forging system.";
 
 	private static readonly FieldInfo HeaderLabelField = RequireField(typeof(NRelicCollectionCategory), "_headerLabel");
 
@@ -93,6 +101,7 @@ internal static class CollectionHooks
 
 		_starterHeaderTemplate ??= header.GetRawText();
 		AddHextechSubcategory(self, collection, seenRelics, allUnlockedRelics);
+		AddForgeSubcategory(self, collection, seenRelics, allUnlockedRelics);
 	}
 
 	private static void AddHextechSubcategory(
@@ -127,21 +136,80 @@ internal static class CollectionHooks
 				unlockedWithHextech
 			]);
 
-		ApplyCustomHeaderText(subCategory);
+		ApplyCustomHeaderText(
+			subCategory,
+			ModInfo.HextechSubcategoryKey,
+			HextechHeaderZh,
+			HextechHeaderZhBody,
+			HextechHeaderEn,
+			HextechHeaderEnBody);
 	}
 
-	private static void ApplyCustomHeaderText(NRelicCollectionCategory subCategory)
+	private static void AddForgeSubcategory(
+		NRelicCollectionCategory self,
+		NRelicCollection collection,
+		HashSet<RelicModel> seenRelics,
+		HashSet<RelicModel> allUnlockedRelics)
+	{
+		List<NRelicCollectionCategory> subCategories = GetSubCategories(self);
+		if (collection.Relics.Any(ModInfo.IsHextechForgeRelic))
+		{
+			return;
+		}
+
+		HashSet<RelicModel> visibleForgeRelics = ModInfo.GetCanonicalForges().ToHashSet();
+		HashSet<RelicModel> seenWithForges = seenRelics.Concat(visibleForgeRelics).ToHashSet();
+		HashSet<RelicModel> unlockedWithForges = allUnlockedRelics.Concat(visibleForgeRelics).ToHashSet();
+
+		NRelicCollectionCategory subCategory = (NRelicCollectionCategory)CreateForSubcategoryMethod.Invoke(self, null)!;
+		int insertIndex = ((Control)HeaderLabelField.GetValue(self)!).GetIndex() + subCategories.Count + 1;
+		subCategories.Add(subCategory);
+		self.AddChild(subCategory);
+		self.MoveChild(subCategory, insertIndex);
+
+		LoadSubcategoryMethod.Invoke(
+			subCategory,
+			[
+				collection,
+				new LocString("relic_collection", ModInfo.ForgeSubcategoryKey),
+				ModInfo.GetCanonicalForges(),
+				seenWithForges,
+				unlockedWithForges
+			]);
+
+		ApplyCustomHeaderText(
+			subCategory,
+			ModInfo.ForgeSubcategoryKey,
+			ForgeHeaderZh,
+			ForgeHeaderZhBody,
+			ForgeHeaderEn,
+			ForgeHeaderEnBody);
+	}
+
+	private static void ApplyCustomHeaderText(
+		NRelicCollectionCategory subCategory,
+		string localizationKey,
+		string zhHeader,
+		string zhBody,
+		string enHeader,
+		string enBody)
 	{
 		if (HeaderLabelField.GetValue(subCategory) is not MegaRichTextLabel headerLabel)
 		{
 			return;
 		}
 
-		string fallback = new LocString("relic_collection", ModInfo.HextechSubcategoryKey).GetRawText();
-		headerLabel.SetTextAutoSize(FormatLikeStarterHeader(_starterHeaderTemplate, fallback));
+		string fallback = new LocString("relic_collection", localizationKey).GetRawText();
+		headerLabel.SetTextAutoSize(FormatLikeStarterHeader(_starterHeaderTemplate, fallback, zhHeader, zhBody, enHeader, enBody));
 	}
 
-	private static string FormatLikeStarterHeader(string? starterTemplate, string fallback)
+	private static string FormatLikeStarterHeader(
+		string? starterTemplate,
+		string fallback,
+		string zhHeader,
+		string zhBody,
+		string enHeader,
+		string enBody)
 	{
 		if (string.IsNullOrWhiteSpace(starterTemplate))
 		{
@@ -149,10 +217,10 @@ internal static class CollectionHooks
 		}
 
 		string formatted = starterTemplate
-			.Replace(StarterHeaderZh, HextechHeaderZh)
-			.Replace(StarterHeaderZhBody, HextechHeaderZhBody)
-			.Replace(StarterHeaderEn, HextechHeaderEn)
-			.Replace(StarterHeaderEnBody, HextechHeaderEnBody);
+			.Replace(StarterHeaderZh, zhHeader)
+			.Replace(StarterHeaderZhBody, zhBody)
+			.Replace(StarterHeaderEn, enHeader)
+			.Replace(StarterHeaderEnBody, enBody);
 
 		return formatted == starterTemplate ? fallback : formatted;
 	}

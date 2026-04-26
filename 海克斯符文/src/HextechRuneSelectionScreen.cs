@@ -22,7 +22,7 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 	private const string RerollIconPath = "res://HextechRunes/images/ui/hextechReroll.png";
 
 	private readonly TaskCompletionSource<IEnumerable<RelicModel>> _completionSource = new();
-	private readonly Func<IReadOnlyList<RelicModel>, int, IReadOnlyList<RelicModel>>? _rerollFunc;
+	private readonly Func<IReadOnlyList<RelicModel>, int, int, IReadOnlyList<RelicModel>>? _rerollFunc;
 	private List<RelicModel> _relics;
 	private readonly RelicModel? _monsterHexRelic;
 	private readonly string _rarityKey;
@@ -31,6 +31,7 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 	private readonly List<bool> _rerolledSlots = new();
 	private readonly List<int> _rerollHistory = new();
 	private HBoxContainer? _cardsRow;
+	private MegaLabel? _statusLabel;
 	private bool _choiceLocked;
 	private bool _restoreAfterMapReopenQueued;
 
@@ -46,7 +47,7 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 
 	public IReadOnlyList<int> RerollHistory => _rerollHistory;
 
-	private HextechRuneSelectionScreen(IReadOnlyList<RelicModel> relics, RelicModel? monsterHexRelic, Func<IReadOnlyList<RelicModel>, int, IReadOnlyList<RelicModel>>? rerollFunc)
+	private HextechRuneSelectionScreen(IReadOnlyList<RelicModel> relics, RelicModel? monsterHexRelic, Func<IReadOnlyList<RelicModel>, int, int, IReadOnlyList<RelicModel>>? rerollFunc)
 	{
 		_relics = relics.ToList();
 		_monsterHexRelic = monsterHexRelic;
@@ -60,7 +61,7 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 		BuildUi();
 	}
 
-	public static HextechRuneSelectionScreen Create(IReadOnlyList<RelicModel> relics, RelicModel? monsterHexRelic, Func<IReadOnlyList<RelicModel>, int, IReadOnlyList<RelicModel>>? rerollFunc = null)
+	public static HextechRuneSelectionScreen Create(IReadOnlyList<RelicModel> relics, RelicModel? monsterHexRelic, Func<IReadOnlyList<RelicModel>, int, int, IReadOnlyList<RelicModel>>? rerollFunc = null)
 	{
 		Log.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.Create: count={relics.Count}");
 		return new HextechRuneSelectionScreen(relics, monsterHexRelic, rerollFunc);
@@ -151,6 +152,17 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 
 		RebuildCards();
 
+		_statusLabel = new MegaLabel()
+		{
+			HorizontalAlignment = HorizontalAlignment.Center,
+			SizeFlagsHorizontal = SizeFlags.ExpandFill,
+			MaxFontSize = 22,
+			MinFontSize = 16,
+			Visible = false
+		};
+		ApplyDefaultMegaLabelTheme(_statusLabel);
+		_statusLabel.Modulate = new Color(0.88f, 0.92f, 0.97f, 0.82f);
+		root.AddChild(_statusLabel);
 	}
 
 	private void RebuildCards()
@@ -511,7 +523,7 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 			return;
 		}
 
-		IReadOnlyList<RelicModel> rerolled = _rerollFunc(_relics, slotIndex);
+		IReadOnlyList<RelicModel> rerolled = _rerollFunc(_relics, slotIndex, _rerollHistory.Count);
 		if (rerolled.Count != _relics.Count)
 		{
 			return;
@@ -531,22 +543,59 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 		RebuildCards();
 	}
 
-	public async Task<IEnumerable<RelicModel>> RelicsSelected()
+	public async Task<IEnumerable<RelicModel>> RelicsSelected(bool removeOverlay = true)
 	{
 		IEnumerable<RelicModel> result = await _completionSource.Task;
 		Log.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.RelicsSelected: begin dismiss mousePressed={Input.IsMouseButtonPressed(MouseButton.Left)}");
-		if (IsInsideTree())
+		await WaitForMouseReleaseAsync();
+		if (!removeOverlay)
 		{
-			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-			while (Input.IsMouseButtonPressed(MouseButton.Left))
-			{
-				await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
-			}
-			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+			ShowWaitingForRemotePlayers();
+			Log.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.RelicsSelected: keeping overlay until multiplayer sync completes");
+			return result;
 		}
+
 		Log.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.RelicsSelected: removing overlay");
 		NOverlayStack.Instance?.Remove(this);
 		return result;
+	}
+
+	public async Task DismissAfterSelectionComplete()
+	{
+		if (!IsInsideTree())
+		{
+			return;
+		}
+
+		await WaitForMouseReleaseAsync();
+		Log.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.DismissAfterSelectionComplete: removing overlay");
+		NOverlayStack.Instance?.Remove(this);
+	}
+
+	private async Task WaitForMouseReleaseAsync()
+	{
+		if (!IsInsideTree())
+		{
+			return;
+		}
+
+		await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+		while (Input.IsMouseButtonPressed(MouseButton.Left))
+		{
+			await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+		}
+		await ToSignal(GetTree(), SceneTree.SignalName.ProcessFrame);
+	}
+
+	private void ShowWaitingForRemotePlayers()
+	{
+		if (_statusLabel == null)
+		{
+			return;
+		}
+
+		_statusLabel.SetTextAutoSize(new LocString(LocTable, "HEXTECH_WAITING_FOR_PLAYERS").GetRawText());
+		_statusLabel.Visible = true;
 	}
 
 	public void AfterOverlayOpened()
@@ -554,7 +603,7 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 		Log.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.AfterOverlayOpened");
 		Modulate = Colors.White;
 		Visible = true;
-		CallDeferred(nameof(GrabFocus));
+		GrabFocus();
 	}
 
 	public void AfterOverlayClosed()
@@ -566,7 +615,7 @@ internal sealed class HextechRuneSelectionScreen : Control, IOverlayScreen, IScr
 	public void AfterOverlayShown()
 	{
 		Visible = true;
-		CallDeferred(nameof(GrabFocus));
+		GrabFocus();
 	}
 
 	public void AfterOverlayHidden()
