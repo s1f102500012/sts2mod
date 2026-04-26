@@ -8,6 +8,7 @@ const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
 const PUBLIC_DIR = path.join(__dirname, "public");
 const DERIVED_DIR = path.join(DATA_DIR, "derived");
+const LABELS_FILE = path.join(__dirname, "labels.json");
 const RESULTS_FILE = path.join(DATA_DIR, "run_results.jsonl");
 const MAX_BODY_BYTES = 256 * 1024;
 const MIN_RUN_TIME_FOR_DEFAULT_STATS = 60;
@@ -15,7 +16,33 @@ const MIN_RUN_TIME_FOR_DEFAULT_STATS = 60;
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(DERIVED_DIR, { recursive: true });
 
+const LABELS = loadLabels();
 const knownRunIds = loadKnownRunIds();
+
+function loadLabels() {
+  try {
+    if (fs.existsSync(LABELS_FILE)) {
+      return JSON.parse(fs.readFileSync(LABELS_FILE, "utf8"));
+    }
+  } catch (error) {
+    console.warn(`failed to load labels: ${error.message}`);
+  }
+  return {};
+}
+
+function getLabel(category, id) {
+  if (!id) {
+    return "";
+  }
+  return LABELS?.[category]?.[id] || id;
+}
+
+function displayLabel(row) {
+  if (!row || !row.name || row.name === row.id) {
+    return row?.id || "";
+  }
+  return `${row.name} (${row.id})`;
+}
 
 function loadKnownRunIds() {
   const ids = new Set();
@@ -302,6 +329,7 @@ function buildDerivedData() {
       modVersion: payload.modVersion || "",
       gameVersion: payload.gameVersion || "",
       netMode: run.netMode || "",
+      netModeName: getLabel("netModes", run.netMode || ""),
       playerCount: run.playerCount || 0,
       ascension: run.ascension || 0,
       currentActIndex: run.currentActIndex || 0,
@@ -324,6 +352,7 @@ function buildDerivedData() {
 
     for (const player of payload.players || []) {
       const character = player.character || "";
+      const characterName = getLabel("characters", character);
       if (eligible) {
         addSimpleCounter(summary.characters, character || "(unknown)");
       }
@@ -333,6 +362,8 @@ function buildDerivedData() {
           ...runCommon,
           playerSlot: player.slot ?? "",
           character,
+          characterName,
+          runeName: getLabel("runes", rune),
           rune
         });
         if (eligible) {
@@ -351,9 +382,12 @@ function buildDerivedData() {
           actIndex: choice.actIndex ?? "",
           playerSlot: choice.playerSlot ?? "",
           rarity: choice.rarity || "",
+          rarityName: getLabel("rarities", choice.rarity || ""),
           rerollCount: choice.rerollCount ?? 0,
           option,
+          optionName: getLabel("runes", option),
           selectedRune: selected,
+          selectedRuneName: getLabel("runes", selected),
           isSelected: isSelected ? 1 : 0
         });
         if (eligible) {
@@ -374,7 +408,9 @@ function buildDerivedData() {
         ...runCommon,
         actIndex: monsterHex.actIndex ?? "",
         rarity: monsterHex.rarity || "",
-        hex: monsterHex.hex || ""
+        rarityName: getLabel("rarities", monsterHex.rarity || ""),
+        hex: monsterHex.hex || "",
+        hexName: getLabel("monsterHexes", monsterHex.hex || "")
       });
       if (eligible) {
         addMonsterCounter(summary.monsterHexRuns, monsterHex.hex, isVictory);
@@ -383,12 +419,12 @@ function buildDerivedData() {
   }
 
   summary.winRate = pctNumber(summary.winCount, summary.runCount);
-  summary.tables.playerRuneRuns = buildRateRows(summary.playerRuneRuns, "player");
-  summary.tables.playerRuneChoices = buildChoiceRows(summary.playerRuneChoices);
-  summary.tables.monsterHexRuns = buildMonsterRows(summary.monsterHexRuns);
+  summary.tables.playerRuneRuns = buildRateRows(summary.playerRuneRuns, "runes");
+  summary.tables.playerRuneChoices = buildChoiceRows(summary.playerRuneChoices, "runes");
+  summary.tables.monsterHexRuns = buildMonsterRows(summary.monsterHexRuns, "monsterHexes");
   summary.tables.versions = buildCountRows(summary.versions);
-  summary.tables.netModes = buildCountRows(summary.netModes);
-  summary.tables.characters = buildCountRows(summary.characters);
+  summary.tables.netModes = buildCountRows(summary.netModes, "netModes");
+  summary.tables.characters = buildCountRows(summary.characters, "characters");
 
   return {
     summary,
@@ -405,10 +441,11 @@ function pctNumber(part, total) {
   return total > 0 ? Number(((part / total) * 100).toFixed(1)) : 0;
 }
 
-function buildRateRows(map) {
+function buildRateRows(map, labelCategory) {
   return Object.entries(map)
     .map(([id, stat]) => ({
       id,
+      name: getLabel(labelCategory, id),
       runs: stat.runs,
       wins: stat.wins,
       winRate: pctNumber(stat.wins, stat.runs)
@@ -416,10 +453,11 @@ function buildRateRows(map) {
     .sort((a, b) => b.runs - a.runs || b.winRate - a.winRate || a.id.localeCompare(b.id));
 }
 
-function buildChoiceRows(map) {
+function buildChoiceRows(map, labelCategory) {
   return Object.entries(map)
     .map(([id, stat]) => ({
       id,
+      name: getLabel(labelCategory, id),
       offered: stat.offered,
       selected: stat.selected,
       pickRate: pctNumber(stat.selected, stat.offered),
@@ -429,10 +467,11 @@ function buildChoiceRows(map) {
     .sort((a, b) => b.selected - a.selected || b.pickRate - a.pickRate || b.offered - a.offered || a.id.localeCompare(b.id));
 }
 
-function buildMonsterRows(map) {
+function buildMonsterRows(map, labelCategory) {
   return Object.entries(map)
     .map(([id, stat]) => ({
       id,
+      name: getLabel(labelCategory, id),
       runs: stat.runs,
       playerWins: stat.playerWins,
       playerWinRate: pctNumber(stat.playerWins, stat.runs),
@@ -442,9 +481,9 @@ function buildMonsterRows(map) {
     .sort((a, b) => b.runs - a.runs || b.monsterWinRate - a.monsterWinRate || a.id.localeCompare(b.id));
 }
 
-function buildCountRows(map) {
+function buildCountRows(map, labelCategory = null) {
   return Object.entries(map)
-    .map(([id, count]) => ({ id, count }))
+    .map(([id, count]) => ({ id, name: labelCategory ? getLabel(labelCategory, id) : id, count }))
     .sort((a, b) => b.count - a.count || a.id.localeCompare(b.id));
 }
 
@@ -459,6 +498,7 @@ function writeDerivedTables() {
     "modVersion",
     "gameVersion",
     "netMode",
+    "netModeName",
     "playerCount",
     "ascension",
     "currentActIndex",
@@ -473,6 +513,7 @@ function writeDerivedTables() {
     "runId",
     "modVersion",
     "netMode",
+    "netModeName",
     "playerCount",
     "ascension",
     "totalFloor",
@@ -481,6 +522,8 @@ function writeDerivedTables() {
     "eligibleDefaultStats",
     "playerSlot",
     "character",
+    "characterName",
+    "runeName",
     "rune"
   ]);
   writeCsv("rune_choices.csv", derived.tables.runeChoices, [
@@ -488,6 +531,7 @@ function writeDerivedTables() {
     "runId",
     "modVersion",
     "netMode",
+    "netModeName",
     "playerCount",
     "ascension",
     "totalFloor",
@@ -497,9 +541,12 @@ function writeDerivedTables() {
     "actIndex",
     "playerSlot",
     "rarity",
+    "rarityName",
     "rerollCount",
     "option",
+    "optionName",
     "selectedRune",
+    "selectedRuneName",
     "isSelected"
   ]);
   writeCsv("monster_hexes.csv", derived.tables.monsterHexes, [
@@ -507,6 +554,7 @@ function writeDerivedTables() {
     "runId",
     "modVersion",
     "netMode",
+    "netModeName",
     "playerCount",
     "ascension",
     "totalFloor",
@@ -515,7 +563,9 @@ function writeDerivedTables() {
     "eligibleDefaultStats",
     "actIndex",
     "rarity",
-    "hex"
+    "rarityName",
+    "hex",
+    "hexName"
   ]);
   return derived.summary;
 }
@@ -591,12 +641,12 @@ function renderIndexHtml() {
     [/<b id="wins">0<\/b>/, `<b id="wins">${summary.winCount}</b>`],
     [/<b id="winRate">0%<\/b>/, `<b id="winRate">${fmtPct(summary.winRate)}</b>`],
     [/<div class="muted" id="filterNote"><\/div>/, `<div class="muted" id="filterNote">${escapeHtml(note)}</div>`],
-    [/<table id="versions"><\/table>/, `<table id="versions">${renderTable(["版本", "局数"], summary.tables.versions.slice(0, 20).map((row) => [row.id, row.count]))}</table>`],
-    [/<table id="netModes"><\/table>/, `<table id="netModes">${renderTable(["模式", "局数"], summary.tables.netModes.slice(0, 20).map((row) => [row.id, row.count]))}</table>`],
-    [/<table id="characters"><\/table>/, `<table id="characters">${renderTable(["角色", "玩家样本"], summary.tables.characters.slice(0, 20).map((row) => [row.id, row.count]))}</table>`],
-    [/<table id="choices"><\/table>/, `<table id="choices">${renderTable(["海克斯", "出现", "选择", "选择率", "选择后胜率"], summary.tables.playerRuneChoices.slice(0, 80).map((row) => [row.id, row.offered, row.selected, fmtPct(row.pickRate), fmtPct(row.selectedWinRate)]))}</table>`],
-    [/<table id="playerRunes"><\/table>/, `<table id="playerRunes">${renderTable(["海克斯", "持有局数", "胜利", "玩家胜率"], summary.tables.playerRuneRuns.slice(0, 80).map((row) => [row.id, row.runs, row.wins, fmtPct(row.winRate)]))}</table>`],
-    [/<table id="monsterHexes"><\/table>/, `<table id="monsterHexes">${renderTable(["敌方海克斯", "出现局数", "敌方胜利", "敌方胜率", "玩家胜率"], summary.tables.monsterHexRuns.slice(0, 80).map((row) => [row.id, row.runs, row.monsterWins, fmtPct(row.monsterWinRate), fmtPct(row.playerWinRate)]))}</table>`]
+    [/<table id="versions"><\/table>/, `<table id="versions">${renderTable(["版本", "局数"], summary.tables.versions.slice(0, 20).map((row) => [displayLabel(row), row.count]))}</table>`],
+    [/<table id="netModes"><\/table>/, `<table id="netModes">${renderTable(["模式", "局数"], summary.tables.netModes.slice(0, 20).map((row) => [displayLabel(row), row.count]))}</table>`],
+    [/<table id="characters"><\/table>/, `<table id="characters">${renderTable(["角色", "玩家样本"], summary.tables.characters.slice(0, 20).map((row) => [displayLabel(row), row.count]))}</table>`],
+    [/<table id="choices"><\/table>/, `<table id="choices">${renderTable(["海克斯", "出现", "选择", "选择率", "选择后胜率"], summary.tables.playerRuneChoices.slice(0, 80).map((row) => [displayLabel(row), row.offered, row.selected, fmtPct(row.pickRate), fmtPct(row.selectedWinRate)]))}</table>`],
+    [/<table id="playerRunes"><\/table>/, `<table id="playerRunes">${renderTable(["海克斯", "持有局数", "胜利", "玩家胜率"], summary.tables.playerRuneRuns.slice(0, 80).map((row) => [displayLabel(row), row.runs, row.wins, fmtPct(row.winRate)]))}</table>`],
+    [/<table id="monsterHexes"><\/table>/, `<table id="monsterHexes">${renderTable(["敌方海克斯", "出现局数", "敌方胜利", "敌方胜率", "玩家胜率"], summary.tables.monsterHexRuns.slice(0, 80).map((row) => [displayLabel(row), row.runs, row.monsterWins, fmtPct(row.monsterWinRate), fmtPct(row.playerWinRate)]))}</table>`]
   ];
   for (const [pattern, replacement] of replacements) {
     html = html.replace(pattern, replacement);

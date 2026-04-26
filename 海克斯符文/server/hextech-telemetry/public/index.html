@@ -179,6 +179,7 @@
   <script>
     const fmtPct = (value) => `${Number(value || 0).toFixed(1)}%`;
     const top = (rows, limit = 80) => Array.isArray(rows) ? rows.slice(0, limit) : [];
+    const displayLabel = (row) => row && row.name && row.name !== row.id ? `${row.name} (${row.id})` : (row?.id || "");
 
     function text(value) {
       return String(value ?? "").replace(/[&<>"']/g, (ch) => ({
@@ -216,23 +217,23 @@
         renderTable(
           document.getElementById("versions"),
           ["版本", "局数"],
-          top(summary.tables.versions, 20).map((row) => [row.id, row.count])
+          top(summary.tables.versions, 20).map((row) => [displayLabel(row), row.count])
         );
         renderTable(
           document.getElementById("netModes"),
           ["模式", "局数"],
-          top(summary.tables.netModes, 20).map((row) => [row.id, row.count])
+          top(summary.tables.netModes, 20).map((row) => [displayLabel(row), row.count])
         );
         renderTable(
           document.getElementById("characters"),
           ["角色", "玩家样本"],
-          top(summary.tables.characters, 20).map((row) => [row.id, row.count])
+          top(summary.tables.characters, 20).map((row) => [displayLabel(row), row.count])
         );
         renderTable(
           document.getElementById("choices"),
           ["海克斯", "出现", "选择", "选择率", "选择后胜率"],
           top(summary.tables.playerRuneChoices).map((row) => [
-            row.id,
+            displayLabel(row),
             row.offered,
             row.selected,
             fmtPct(row.pickRate),
@@ -242,13 +243,13 @@
         renderTable(
           document.getElementById("playerRunes"),
           ["海克斯", "持有局数", "胜利", "玩家胜率"],
-          top(summary.tables.playerRuneRuns).map((row) => [row.id, row.runs, row.wins, fmtPct(row.winRate)])
+          top(summary.tables.playerRuneRuns).map((row) => [displayLabel(row), row.runs, row.wins, fmtPct(row.winRate)])
         );
         renderTable(
           document.getElementById("monsterHexes"),
           ["敌方海克斯", "出现局数", "敌方胜利", "敌方胜率", "玩家胜率"],
           top(summary.tables.monsterHexRuns).map((row) => [
-            row.id,
+            displayLabel(row),
             row.runs,
             row.monsterWins,
             fmtPct(row.monsterWinRate),
