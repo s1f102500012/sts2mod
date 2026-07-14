@@ -21,6 +21,7 @@ public static class ModEntry
 
 		_harmony = new Harmony(HarmonyId);
 		_harmony.PatchAll();
+		CustomDifficultyStorage.Initialize();
 		_initialized = true;
 		Log.Info($"[{ModInfo.Id}] Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}.");
 	}

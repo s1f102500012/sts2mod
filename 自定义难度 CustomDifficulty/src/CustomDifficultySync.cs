@@ -92,7 +92,10 @@ internal static class CustomDifficultySync
 		return new CustomDifficultySettingsMessage
 		{
 			HpTicks = (byte)CustomDifficultySettings.MonsterHpTicks,
-			AttackTicks = (byte)CustomDifficultySettings.MonsterAttackTicks
+			AttackTicks = (byte)CustomDifficultySettings.MonsterAttackTicks,
+			DifficultyMode = (byte)CustomDifficultySettings.Mode,
+			HpDeltaPercentPerRoom = CustomDifficultySettings.HpDeltaPercentPerRoom,
+			AttackDeltaPercentPerRoom = CustomDifficultySettings.AttackDeltaPercentPerRoom
 		};
 	}
 
@@ -101,8 +104,13 @@ internal static class CustomDifficultySync
 		NetGameType type = _registeredService?.Type ?? NetGameType.None;
 		if (type == NetGameType.Client)
 		{
-			CustomDifficultySettings.SetRemote(message.HpTicks, message.AttackTicks);
-			Log.Info($"[{ModInfo.Id}] Received host settings from {senderId}: hp={message.HpTicks} attack={message.AttackTicks}.");
+			CustomDifficultySettings.SetRemote(
+				message.HpTicks,
+				message.AttackTicks,
+				CustomDifficultySettings.NormalizeMode(message.DifficultyMode),
+				message.HpDeltaPercentPerRoom,
+				message.AttackDeltaPercentPerRoom);
+			Log.Info($"[{ModInfo.Id}] Received host settings from {senderId}: mode={message.DifficultyMode} hp={message.HpTicks} attack={message.AttackTicks} hpDelta={message.HpDeltaPercentPerRoom} attackDelta={message.AttackDeltaPercentPerRoom}.");
 			return;
 		}
 

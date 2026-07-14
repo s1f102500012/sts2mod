@@ -2,8 +2,9 @@
   "id": "CustomDifficulty",
   "name": "自定义难度",
   "author": "Natsuki",
-  "description": "Adds host-controlled character select sliders for monster HP and attack multipliers.",
-  "version": "0.1.0",
+  "description": "自定义怪物血量与攻击倍率；可选递进模式随房间数逐层叠加，联机以房主配置为准，并与无尽模式跨轮联动。",
+  "version": "0.2.0",
+  "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,
   "affects_gameplay": true

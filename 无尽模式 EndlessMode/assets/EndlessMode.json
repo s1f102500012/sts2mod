@@ -3,7 +3,7 @@
   "name": "无尽模式",
   "author": "Natsuki",
   "description": "在建筑师事件中加入进入无尽模式的选项，并按轮次发放无尽遗物。",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,

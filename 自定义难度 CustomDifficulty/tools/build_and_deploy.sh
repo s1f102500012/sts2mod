@@ -1,11 +1,10 @@
 #!/bin/zsh
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT="/Users/iniad/sts2-mods/CustomDifficulty"
 FILE_STEM="CustomDifficulty"
 MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
-GAME_APP="${STS2_GAME_APP:-/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app}"
+GAME_APP="/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app"
 GAME_BIN="$GAME_APP/Contents/MacOS/Slay the Spire 2"
 MOD_DIR="$GAME_APP/Contents/MacOS/mods/$FILE_STEM"
 BUILD_OUT="$ROOT/src/bin/Release/net9.0"
@@ -31,9 +30,12 @@ clean_macos_metadata() {
   find "$target" -name "._*" -type f -delete
 }
 
+# 双版本构建：STS2_TARGET=0.107.1（公开分支，默认）或 0.108.0（beta 分支）。
+STS2_TARGET="${STS2_TARGET:-0.107.1}"
+
 rm -rf "$ROOT/src/bin" "$ROOT/src/obj" "$ROOT/dist"
 
-DOTNET_ROOT="$DOTNET_ROOT" "$DOTNET_BIN" build "$PROJECT_PATH" -c Release
+DOTNET_ROOT="$DOTNET_ROOT" "$DOTNET_BIN" build "$PROJECT_PATH" -c Release -p:CustomDiffSts2Target="$STS2_TARGET"
 
 MAIN_DLL="$BUILD_OUT/$FILE_STEM.dll"
 if [[ ! -f "$MAIN_DLL" ]]; then
@@ -59,6 +61,9 @@ mkdir -p "$ROOT/dist"
 rm -rf "$MOD_DIR"
 
 cp "$MANIFEST_SRC" "$ROOT/dist/$FILE_STEM.json"
+if [[ "$STS2_TARGET" == 0.108* ]]; then
+  sed -i '' 's/"min_game_version": "[^"]*"/"min_game_version": "0.108.0"/' "$ROOT/dist/$FILE_STEM.json"
+fi
 
 "$GAME_BIN" --headless \
   --path "$ROOT/tools" \

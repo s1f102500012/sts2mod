@@ -5,23 +5,29 @@
     <RootNamespace>CustomDifficulty</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.1.0</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
-    <InformationalVersion>0.1.0</InformationalVersion>
+    <Version>0.2.0</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
+    <InformationalVersion>0.2.0</InformationalVersion>
+    <CustomDiffSts2Target Condition="'$(CustomDiffSts2Target)' == ''">0.107.1</CustomDiffSts2Target>
+    <GameRefsDir>$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups/$(CustomDiffSts2Target)/game-refs</GameRefsDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CustomDiffSts2Target)' == '0.108.0'">
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="sts2">
-      <HintPath>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64/sts2.dll</HintPath>
+      <HintPath>$(GameRefsDir)/sts2.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="GodotSharp">
-      <HintPath>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64/GodotSharp.dll</HintPath>
+      <HintPath>$(GameRefsDir)/GodotSharp.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64/0Harmony.dll</HintPath>
+      <HintPath>$(GameRefsDir)/0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

@@ -1,5 +1,7 @@
 using Godot;
+using MegaCrit.Sts2.addons.mega_text;
 using MegaCrit.Sts2.Core.Localization;
+using MegaCrit.Sts2.Core.Localization.Fonts;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect;
@@ -215,6 +217,7 @@ internal static class EndlessModeConfigUi
 			CustomMinimumSize = new Vector2(360f, 28f),
 			TooltipText = Text("ENDLESS_MODE.config.tooltip", "关闭后，之后进入对应轮次的无尽模式时不会获得该遗物。")
 		};
+		ApplyGameThemeFont(checkBox);
 		checkBox.AddThemeFontSizeOverride("font_size", 15);
 		checkBox.AddThemeColorOverride("font_color", new Color(0.95f, 0.93f, 0.84f));
 		checkBox.Connect(BaseButton.SignalName.Toggled, Callable.From<bool>(enabled =>
@@ -242,18 +245,40 @@ internal static class EndlessModeConfigUi
 		return CreateLiteralLabel(Text(key, fallback), fontSize, color);
 	}
 
+	// 用游戏自带的 MegaLabel（含按语言的字体替换）替代裸 Godot Label，
+	// 后者走引擎默认字体，缩放后发虚；MegaLabel 与原版 UI 同一渲染路径。
 	private static Label CreateLiteralLabel(string text, int fontSize, Color color)
 	{
-		Label label = new()
+		MegaLabel label = new()
 		{
 			Text = text,
-			MouseFilter = Control.MouseFilterEnum.Ignore
+			MouseFilter = Control.MouseFilterEnum.Ignore,
+			AutoSizeEnabled = false
 		};
+		ApplyGameThemeFont(label);
 		label.AddThemeFontSizeOverride("font_size", fontSize);
 		label.AddThemeColorOverride("font_color", color);
 		label.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.72f));
 		label.AddThemeConstantOverride("outline_size", 2);
 		return label;
+	}
+
+	private static void ApplyGameThemeFont(Control control)
+	{
+		try
+		{
+			Font? font = control.GetThemeDefaultFont();
+			if (font != null)
+			{
+				control.AddThemeFontOverride("font", font);
+			}
+
+			FontControlUtils.ApplyLocaleFontSubstitution(control, FontType.Regular, "font");
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[{ModEntryConstants.ModId}] Failed to apply game theme font: {ex.Message}");
+		}
 	}
 
 	private static void ApplyPanelStyle(PanelContainer panel)

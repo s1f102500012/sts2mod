@@ -1,0 +1,18 @@
+{
+  "ENDLESS_MODE.enter.title": "エンドレスモードに入る",
+  "ENDLESS_MODE.enter.description": "第{loop}周のエンドレスを開始する。第1幕に戻る。[gold]荒疫の矛[/gold]と[gold]荒疫の盾[/gold]{optional_reward}を獲得する。",
+  "ENDLESS_MODE.enter.optional.mimic": "、そして[gold]ミミックの巣窟[/gold]",
+  "ENDLESS_MODE.enter.optional.time_maze": "、そして[gold]時の迷宮[/gold]",
+  "ENDLESS_MODE.enter.optional.muzzle": "、そして[gold]口枷[/gold]",
+  "ENDLESS_MODE.enter.optional.horrible_trophy": "、そして[gold]おぞましい戦利品[/gold]",
+  "ENDLESS_MODE.config.title": "エンドレスモード設定",
+  "ENDLESS_MODE.config.note": "今後開始する新しい周回にのみ適用される。マルチプレイではホストの設定が使用される。荒疫の矛と荒疫の盾は常に獲得する。",
+  "ENDLESS_MODE.config.plague_spear": "荒疫の矛の強化",
+  "ENDLESS_MODE.config.plague_shield": "荒疫の盾の強化",
+  "ENDLESS_MODE.config.plague_tooltip": "次の周回開始時に荒疫レリックへ書き込まれる。0% はスタックのみ増加し強化しない。",
+  "ENDLESS_MODE.config.tooltip": "オフにすると、対応する周回でこのレリックを獲得しなくなる。",
+  "ENDLESS_MODE.config.mimic": "ミミックの巣窟を獲得",
+  "ENDLESS_MODE.config.time_maze": "時の迷宮を獲得",
+  "ENDLESS_MODE.config.muzzle": "口枷を獲得",
+  "ENDLESS_MODE.config.horrible_trophy": "おぞましい戦利品を獲得"
+}

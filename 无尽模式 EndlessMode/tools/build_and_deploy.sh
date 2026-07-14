@@ -39,9 +39,12 @@ if [[ -n "$GAME_GODOT_VERSION" && -n "$IMPORT_GODOT_VERSION" \
   print -u2 "Set GODOT_EDITOR to a matching 4.5.x editor if mobile/runtime texture compatibility regresses."
 fi
 
+# 双版本构建：STS2_TARGET=0.107.1（公开分支，默认）或 0.108.0（beta 分支）。
+STS2_TARGET="${STS2_TARGET:-0.107.1}"
+
 rm -rf "$ROOT/src/bin" "$ROOT/src/obj" "$ROOT/dist" "$ROOT/.build"
 
-"$DOTNET_BIN" build "$PROJECT_PATH" -c Release
+"$DOTNET_BIN" build "$PROJECT_PATH" -c Release -p:EndlessSts2Target="$STS2_TARGET"
 
 MAIN_DLL="$BUILD_OUT/$FILE_STEM.dll"
 if [[ ! -f "$MAIN_DLL" ]]; then
@@ -68,6 +71,9 @@ rm -rf "$MOD_DIR"
 mkdir -p "$IMPORT_PROJECT/$FILE_STEM"
 
 cp "$MANIFEST_SRC" "$ROOT/dist/$FILE_STEM.json"
+if [[ "$STS2_TARGET" == 0.108* ]]; then
+  sed -i '' 's/"min_game_version": "[^"]*"/"min_game_version": "0.108.0"/' "$ROOT/dist/$FILE_STEM.json"
+fi
 cp "$ROOT/tools/project.godot" "$IMPORT_PROJECT/project.godot"
 rsync -a --exclude "$FILE_STEM.json" "$ROOT/assets/" "$IMPORT_PROJECT/$FILE_STEM/"
 clean_macos_metadata "$IMPORT_PROJECT"

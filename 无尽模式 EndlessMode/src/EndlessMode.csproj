@@ -3,24 +3,30 @@
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>EndlessMode</AssemblyName>
     <RootNamespace>EndlessMode</RootNamespace>
-    <Version>0.3.0</Version>
-    <AssemblyVersion>0.3.0.0</AssemblyVersion>
-    <FileVersion>0.3.0.0</FileVersion>
+    <Version>0.4.0</Version>
+    <AssemblyVersion>0.4.0.0</AssemblyVersion>
+    <FileVersion>0.4.0.0</FileVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <EndlessSts2Target Condition="'$(EndlessSts2Target)' == ''">0.107.1</EndlessSts2Target>
+    <GameRefsDir>$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups/$(EndlessSts2Target)/game-refs</GameRefsDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EndlessSts2Target)' == '0.108.0'">
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
     <Reference Include="sts2">
-      <HintPath>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64/sts2.dll</HintPath>
+      <HintPath>$(GameRefsDir)/sts2.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="GodotSharp">
-      <HintPath>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64/GodotSharp.dll</HintPath>
+      <HintPath>$(GameRefsDir)/GodotSharp.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="0Harmony">
-      <HintPath>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64/0Harmony.dll</HintPath>
+      <HintPath>$(GameRefsDir)/0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
   </ItemGroup>

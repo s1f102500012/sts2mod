@@ -90,6 +90,19 @@ internal sealed class EndlessModeConfig
 		return flags;
 	}
 
+	// 联机下同步不可用时的兜底值必须两端一致，只能用编译期默认（全部启用），
+	// 绝不能读本地配置——主客本地配置不同会导致发放遗物分叉。
+	internal static int GetDefaultEnabledRewardFlags()
+	{
+		int flags = 0;
+		foreach (EndlessOptionalReward reward in Enum.GetValues<EndlessOptionalReward>())
+		{
+			flags |= GetRewardFlag(reward);
+		}
+
+		return flags;
+	}
+
 	internal static bool IsRewardEnabled(int enabledRewardFlags, EndlessOptionalReward reward)
 	{
 		return (enabledRewardFlags & GetRewardFlag(reward)) != 0;
@@ -197,9 +210,18 @@ internal sealed class EndlessModeConfig
 		config.PlagueShieldPercent = ClampPlagueScalingPercent(config.PlagueShieldPercent);
 	}
 
+	// 本类静态构造器路径上会走到这里；IO 异常若外泄会变成 TypeInitializationException
+	// 毒化整个配置类型（之后每次访问都抛），所以只告警不抛。
 	private static void WriteConfig(string configPath, EndlessModeConfig config)
 	{
-		Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
-		File.WriteAllText(configPath, JsonSerializer.Serialize(config, JsonOptions));
+		try
+		{
+			Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+			File.WriteAllText(configPath, JsonSerializer.Serialize(config, JsonOptions));
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[{ModEntryConstants.ModId}] Failed to write config {configPath}: {ex.Message}");
+		}
 	}
 }

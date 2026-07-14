@@ -68,7 +68,8 @@ public static class ModEntry
 	private const int EndlessChoiceMagic = 0x454E44;
 	private const int ChoiceKindLoopRewardConfig = 1;
 	private static readonly TimeSpan EndlessTransitionRetryDelay = TimeSpan.FromSeconds(30);
-	private static readonly TimeSpan RemoteEndlessChoiceTimeout = TimeSpan.FromSeconds(20);
+	private static readonly TimeSpan RemoteEndlessChoiceWarnInterval = TimeSpan.FromSeconds(30);
+	private static readonly TimeSpan RemoteEndlessChoiceMaxWait = TimeSpan.FromMinutes(10);
 	private static readonly FieldInfo MapPointHistoryField = RequireField(typeof(RunState), "_mapPointHistory");
 	private static readonly FieldInfo VisitedEventIdsField = RequireField(typeof(RunState), "_visitedEventIds");
 	private static readonly MethodInfo RunStateActsSetter = RequirePropertySetter(typeof(RunState), nameof(RunState.Acts), BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
@@ -242,6 +243,12 @@ public static class ModEntry
 		harmony.Patch(
 			RequirePropertyGetter(typeof(RelicModel), nameof(RelicModel.BigIcon), BindingFlags.Instance | BindingFlags.Public),
 			prefix: new HarmonyMethod(typeof(ModEntry), nameof(RelicModelTextureGetterPrefix)));
+		harmony.Patch(
+			RequireMethod(typeof(RunManager), nameof(RunManager.Launch), BindingFlags.Instance | BindingFlags.Public),
+			postfix: new HarmonyMethod(typeof(ModEntry), nameof(ResetStaticStatePostfix)));
+		harmony.Patch(
+			RequireMethod(typeof(RunManager), nameof(RunManager.CleanUp), BindingFlags.Instance | BindingFlags.Public, typeof(bool)),
+			postfix: new HarmonyMethod(typeof(ModEntry), nameof(ResetStaticStatePostfix)));
 		if (TryGetMethod(typeof(NCharacterSelectScreen), nameof(NCharacterSelectScreen._Ready), BindingFlags.Instance | BindingFlags.Public) is { } characterSelectReadyMethod)
 		{
 			harmony.Patch(
@@ -376,28 +383,40 @@ public static class ModEntry
 		eventOptions = BuildEventOptions(__instance, eventOptions);
 	}
 
+	// 本方法在所有事件的 SetEventState 上运行；贴图/本地化加载是本地行为，
+	// 任何异常若外泄会单端中断事件状态推进造成联机分叉（休息室图标分叉同款），
+	// 所以整体兜底：失败时原样返回传入的选项。
 	private static IEnumerable<EventOption> BuildEventOptions(EventModel eventModel, IEnumerable<EventOption> eventOptions)
 	{
 		List<EventOption> options = eventOptions.ToList();
-		if (!ShouldAddEndlessOption(eventModel, options))
+		try
 		{
+			if (!ShouldAddEndlessOption(eventModel, options))
+			{
+				return options;
+			}
+
+			Player owner = eventModel.Owner!;
+			int rewardTier = GetNextRewardTier(owner);
+			int nextLoopIndex = GetCompletedLoopCount(owner) + 1;
+			List<IHoverTip> hoverTips = BuildRewardHoverTips(rewardTier);
+			EndlessTransitionContext? transitionContext = BuildEndlessTransitionContextForCurrentRun();
+			EventOption endlessOption = new(
+				eventModel,
+				() => QueueEndlessModeTransition(eventModel, transitionContext),
+				new LocString("events", EndlessOptionTitleKey),
+				GetEndlessDescription(rewardTier, nextLoopIndex),
+				EndlessOptionTextKey,
+				hoverTips);
+			endlessOption.ThatWontSaveToChoiceHistory();
+			options.Add(endlessOption);
 			return options;
 		}
-
-		Player owner = eventModel.Owner!;
-		int rewardTier = GetNextRewardTier(owner);
-		List<IHoverTip> hoverTips = BuildRewardHoverTips(rewardTier);
-		EndlessTransitionContext? transitionContext = BuildEndlessTransitionContextForCurrentRun();
-		EventOption endlessOption = new(
-			eventModel,
-			() => QueueEndlessModeTransition(eventModel, transitionContext),
-			new LocString("events", EndlessOptionTitleKey),
-			GetEndlessDescription(rewardTier),
-			EndlessOptionTextKey,
-			hoverTips);
-		endlessOption.ThatWontSaveToChoiceHistory();
-		options.Add(endlessOption);
-		return options;
+		catch (Exception ex)
+		{
+			Log.Warn($"[EndlessMode] BuildEventOptions failed; keeping vanilla options: {ex}");
+			return options;
+		}
 	}
 
 	private static bool ShouldAddEndlessOption(EventModel eventModel, List<EventOption> options)
@@ -496,8 +515,9 @@ public static class ModEntry
 		Player? authorityPlayer = GetLoopRewardConfigAuthorityPlayer(runManager, state);
 		if (synchronizer == null || authorityPlayer == null)
 		{
-			Log.Warn($"[EndlessMode] Loop config sync unavailable; using local config loop={nextLoopIndex} {localConfig} synchronizer={synchronizer != null} authority={authorityPlayer?.NetId}.");
-			return localConfig;
+			EndlessLoopConfigSnapshot fallback = GetDefaultLoopConfigSnapshot();
+			Log.Warn($"[EndlessMode] Loop config sync unavailable; using compile-time defaults loop={nextLoopIndex} {fallback} synchronizer={synchronizer != null} authority={authorityPlayer?.NetId}.");
+			return fallback;
 		}
 
 		uint choiceId = synchronizer.ReserveChoiceId(authorityPlayer);
@@ -516,12 +536,21 @@ public static class ModEntry
 			$"loop-config loop={nextLoopIndex}");
 		if (!TryDecodeLoopConfigChoiceResult(remoteChoice, nextLoopIndex, out EndlessLoopConfigSnapshot syncedConfig))
 		{
-			Log.Warn($"[EndlessMode] Loop config sync malformed; using local config loop={nextLoopIndex} choiceId={receivedChoiceId} {localConfig}.");
-			return localConfig;
+			EndlessLoopConfigSnapshot fallback = GetDefaultLoopConfigSnapshot();
+			Log.Warn($"[EndlessMode] Loop config sync malformed; using compile-time defaults loop={nextLoopIndex} choiceId={receivedChoiceId} {fallback}.");
+			return fallback;
 		}
 
 		Log.Info($"[EndlessMode] Loop config client sync loop={nextLoopIndex} choiceId={receivedChoiceId} authority={authorityPlayer.NetId} {syncedConfig} local={localConfig}.");
 		return syncedConfig;
+	}
+
+	private static EndlessLoopConfigSnapshot GetDefaultLoopConfigSnapshot()
+	{
+		return new EndlessLoopConfigSnapshot(
+			EndlessModeConfig.GetDefaultEnabledRewardFlags(),
+			EndlessModeConfig.DefaultPlagueSpearPercent,
+			EndlessModeConfig.DefaultPlagueShieldPercent);
 	}
 
 	private static EndlessLoopConfigSnapshot GetLocalLoopConfigSnapshot()
@@ -577,6 +606,8 @@ public static class ModEntry
 
 	private static void PrepareRunForLoop(RunState state, string loopSeed)
 	{
+		AccumulateFloorsBeforeLoop(state);
+
 		if (VisitedEventIdsField.GetValue(state) is HashSet<ModelId> visitedEventIds)
 		{
 			visitedEventIds.Clear();
@@ -914,7 +945,39 @@ public static class ModEntry
 		}
 
 		await Hook.AfterActEntered(state);
+		ResetActChangeGuardForLoopRollback(runManager, loopIndex);
 		Log.Info($"[EndlessMode] Entered endless loop first act loop={loopIndex} act={state.CurrentActIndex} room={state.CurrentRoom?.GetType().Name ?? "null"}.");
+	}
+
+	// 0.108 起 ActChangeSynchronizer.OnPlayerReady 新增 _lastTransitioningActIndex 守卫：
+	// 非胜利房且 actIndex <= 该字段的转换投票会被忽略。无尽循环把幕索引倒回 0 后，
+	// 上一轮遗留的守卫值会吞掉新一轮的正常转幕投票（表现为一幕 BOSS 后点继续无反应）。
+	// 每次循环过渡后重置为 -1；0.107.1 无此字段时静默跳过。
+	private static void ResetActChangeGuardForLoopRollback(RunManager runManager, int loopIndex)
+	{
+		try
+		{
+			ActChangeSynchronizer? synchronizer = runManager.ActChangeSynchronizer;
+			if (synchronizer == null)
+			{
+				return;
+			}
+
+			FieldInfo? guardField = typeof(ActChangeSynchronizer).GetField(
+				"_lastTransitioningActIndex",
+				BindingFlags.Instance | BindingFlags.NonPublic);
+			if (guardField == null)
+			{
+				return;
+			}
+
+			guardField.SetValue(synchronizer, -1);
+			Log.Info($"[EndlessMode] Reset act change guard after endless loop rollback loop={loopIndex}.");
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[EndlessMode] Failed to reset act change guard loop={loopIndex}: {ex.Message}");
+		}
 	}
 
 	private static async Task InvokeRunManagerTask(MethodInfo method, RunManager runManager)
@@ -1069,11 +1132,61 @@ public static class ModEntry
 		return description.GetFormattedText();
 	}
 
+	// run 边界（开新局/清理旧局）重置所有跨局静态状态：
+	// ScaledEnemyCreatures 只增不清会跨局泄漏 Creature 引用；
+	// StartedEndlessTransitionKeys 的 completed 记录同理；Detached 屏幕集合顺带清理。
+	private static void ResetStaticStatePostfix()
+	{
+		ScaledEnemyCreatures.Clear();
+		lock (StartedEndlessTransitionKeysLock)
+		{
+			StartedEndlessTransitionKeys.Clear();
+		}
+
+		DetachedRewardScreens.Clear();
+		DetachedCardRewardSelectionScreens.Clear();
+	}
+
+	private static void AccumulateFloorsBeforeLoop(RunState state)
+	{
+		int cumulative = GetTotalFloorsBeforeCurrentLoop(state) + Math.Max(0, state.TotalFloor);
+		int written = 0;
+		foreach (Player player in state.Players)
+		{
+			foreach (EndlessPlagueRelicBase relic in player.Relics.OfType<EndlessPlagueRelicBase>())
+			{
+				relic.SavedFloorsBeforeLoop = cumulative;
+				written++;
+			}
+		}
+
+		Log.Info($"[EndlessMode] Accumulated floors before loop cumulative={cumulative} relics={written}.");
+	}
+
+	internal static int GetTotalFloorsBeforeCurrentLoop(RunState state)
+	{
+		int max = 0;
+		foreach (Player player in state.Players)
+		{
+			foreach (EndlessPlagueRelicBase relic in player.Relics.OfType<EndlessPlagueRelicBase>())
+			{
+				max = Math.Max(max, relic.SavedFloorsBeforeLoop);
+			}
+		}
+
+		return max;
+	}
+
 	private static int GetCompletedLoopCount(Player player)
 	{
 		return player.Relics.OfType<PlagueSpear>().FirstOrDefault()?.StackCount
 			?? player.Relics.OfType<PlagueShield>().FirstOrDefault()?.StackCount
 			?? 0;
+	}
+
+	internal static int GetCompletedLoopCountForInterop(RunState state)
+	{
+		return GetCompletedLoopCount(state);
 	}
 
 	private static int GetCompletedLoopCount(RunState state)
@@ -1206,29 +1319,27 @@ public static class ModEntry
 		return true;
 	}
 
+	// Task.Yield 只是微任务让渡，等不了真实时间；改为逐帧等待最多 300 帧（约 5 秒）。
 	private static async Task<PlayerChoiceSynchronizer?> WaitForPlayerChoiceSynchronizerAsync(RunManager runManager)
 	{
-		for (int i = 0; i < 60; i++)
+		for (int i = 0; i < 300; i++)
 		{
 			if (runManager.PlayerChoiceSynchronizer != null)
 			{
 				return runManager.PlayerChoiceSynchronizer;
 			}
 
-			await Task.Yield();
+			await AwaitProcessFramesAsync(1);
 		}
 
 		return runManager.PlayerChoiceSynchronizer;
 	}
 
+	// 权威玩家只是 choice 流的键，必须主客两端选出同一个人。
+	// Players 槽位顺序是共享运行状态，槽位 0 在两端一致；
+	// 旧实现房主按自己 NetId、客户端取第一个，房主不在首位时客户端会在错误的流上等待直到超时。
 	private static Player? GetLoopRewardConfigAuthorityPlayer(RunManager runManager, RunState state)
 	{
-		if (runManager.NetService.Type == NetGameType.Host)
-		{
-			return state.Players.FirstOrDefault(player => player.NetId == runManager.NetService.NetId)
-				?? state.Players.FirstOrDefault();
-		}
-
 		return state.Players.FirstOrDefault();
 	}
 
@@ -1241,13 +1352,28 @@ public static class ModEntry
 	{
 		uint choiceId = initialChoiceId;
 		int skipped = 0;
+		TimeSpan waited = TimeSpan.Zero;
 		while (true)
 		{
+			// 房主发完配置就继续推进了；客户端这里若轻易超时放弃，房主已进新一轮而
+			// 客户端留在事件房，直接永久分叉。所以只按周期告警、拉长到硬上限才放弃
+			// （此时连接多半已死，走可重试的 abort 路径）。
 			Task<PlayerChoiceResult> remoteChoiceTask = synchronizer.WaitForRemoteChoice(player, choiceId);
-			Task finishedTask = await Task.WhenAny(remoteChoiceTask, Task.Delay(RemoteEndlessChoiceTimeout));
-			if (!ReferenceEquals(finishedTask, remoteChoiceTask))
+			while (true)
 			{
-				throw new TimeoutException($"Timed out waiting for endless multiplayer choice context={context} player={player.NetId} choiceId={choiceId} timeout={RemoteEndlessChoiceTimeout.TotalSeconds.ToString("0", CultureInfo.InvariantCulture)}s.");
+				Task finishedTask = await Task.WhenAny(remoteChoiceTask, Task.Delay(RemoteEndlessChoiceWarnInterval));
+				if (ReferenceEquals(finishedTask, remoteChoiceTask))
+				{
+					break;
+				}
+
+				waited += RemoteEndlessChoiceWarnInterval;
+				if (waited >= RemoteEndlessChoiceMaxWait)
+				{
+					throw new TimeoutException($"Timed out waiting for endless multiplayer choice context={context} player={player.NetId} choiceId={choiceId} waited={waited.TotalSeconds.ToString("0", CultureInfo.InvariantCulture)}s.");
+				}
+
+				Log.Warn($"[EndlessMode] Still waiting for endless multiplayer choice context={context} player={player.NetId} choiceId={choiceId} waited={waited.TotalSeconds.ToString("0", CultureInfo.InvariantCulture)}s.");
 			}
 
 			PlayerChoiceResult remoteChoice = await remoteChoiceTask;
@@ -1287,10 +1413,11 @@ public static class ModEntry
 		}
 	}
 
-	private static LocString GetEndlessDescription(int rewardTier)
+	private static LocString GetEndlessDescription(int rewardTier, int nextLoopIndex)
 	{
 		LocString description = new("events", "ENDLESS_MODE.enter.description");
 		description.Add("optional_reward", GetOptionalRewardDescription(rewardTier));
+		description.Add("loop", nextLoopIndex);
 		return description;
 	}
 
@@ -1492,10 +1619,7 @@ public static class ModEntry
 				ApplyManualRelicTexture(__instance, model, texture);
 			}
 		}
-		catch (InvalidOperationException)
-		{
-		}
-		catch (Exception ex) when (IsExpectedGodotLifecycleException(ex))
+		catch (Exception ex) when (ex is InvalidOperationException || IsExpectedGodotLifecycleException(ex))
 		{
 			Log.Warn($"[EndlessMode][Inspect] Skipped relic texture reload because the node was no longer valid: {ex.GetType().Name}");
 		}
@@ -2125,6 +2249,12 @@ public abstract class EndlessPlagueRelicBase : EndlessStackingRelicBase
 		set => SetEffectPercent(value);
 	}
 
+	// 进入新一轮时 mapPointHistory 会被清空、RunState.TotalFloor 归零；
+	// 这里累计"往轮已走过的总楼层"，供跨轮连续的楼层计数（EndlessModeInterop）使用。
+	// 两端在同一确定性转换流程里写入相同值；旧档缺省为 0（从当前轮起算，自然回退）。
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public int SavedFloorsBeforeLoop { get; set; }
+
 	public void SetEffectPercent(int percent)
 	{
 		int clamped = EndlessModeConfig.ClampPlagueScalingPercent(percent);
@@ -2157,7 +2287,11 @@ public sealed class PlagueSpear : EndlessPlagueRelicBase
 
 	protected override int DefaultEffectPercent => EndlessModeConfig.DefaultPlagueSpearPercent;
 
+#if STS2_108_OR_NEWER
+	public override decimal ModifyDamageMultiplicative(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource, CardPlay? cardPlay)
+#else
 	public override decimal ModifyDamageMultiplicative(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
+#endif
 	{
 		if (dealer?.Side != CombatSide.Enemy || amount <= 0m || !props.HasFlag(ValueProp.Move) || props.HasFlag(ValueProp.Unpowered))
 		{

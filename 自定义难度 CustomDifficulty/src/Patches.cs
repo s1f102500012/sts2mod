@@ -7,6 +7,7 @@ using MegaCrit.Sts2.Core.Multiplayer.Game;
 using MegaCrit.Sts2.Core.Multiplayer.Messages.Lobby;
 using MegaCrit.Sts2.Core.Nodes.Screens.CharacterSelect;
 using MegaCrit.Sts2.Core.Runs;
+using MegaCrit.Sts2.Core.Saves;
 
 namespace CustomDifficulty;
 
@@ -97,6 +98,24 @@ internal static class RunCleanUpPatch
 	}
 }
 
+[HarmonyPatch(typeof(SaveManager), nameof(SaveManager.InitProfileId))]
+internal static class SaveManagerInitProfilePatch
+{
+	private static void Postfix()
+	{
+		CustomDifficultyStorage.LoadCurrentProfile();
+	}
+}
+
+[HarmonyPatch(typeof(SaveManager), nameof(SaveManager.SwitchProfileId))]
+internal static class SaveManagerSwitchProfilePatch
+{
+	private static void Postfix()
+	{
+		CustomDifficultyStorage.LoadCurrentProfile();
+	}
+}
+
 [HarmonyPatch(typeof(Creature), nameof(Creature.ScaleMonsterHpForMultiplayer))]
 internal static class MonsterScalingPatch
 {
@@ -107,13 +126,34 @@ internal static class MonsterScalingPatch
 			return;
 		}
 
-		ApplyHpMultiplier(__instance);
-		ApplyAttackMultiplierPower(__instance);
+		int floorIndex = GetEffectiveFloorIndex();
+		ApplyHpMultiplier(__instance, floorIndex);
+		ApplyAttackMultiplierPower(__instance, floorIndex);
 	}
 
-	private static void ApplyHpMultiplier(Creature creature)
+	// 递进模式的房间计数：RunState.TotalFloor（地图历史条目总数，联机两端一致、读档自恢复）
+	// + 无尽模式往轮累计楼层（未装 EndlessMode 时为 0）。
+	private static int GetEffectiveFloorIndex()
 	{
-		decimal multiplier = CustomDifficultySettings.MonsterHpMultiplier;
+		int totalFloor = 0;
+		try
+		{
+			if (RunManager.Instance?.DebugOnlyGetState() is RunState state)
+			{
+				totalFloor = Math.Max(0, state.TotalFloor);
+			}
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[{ModInfo.Id}] Failed to read TotalFloor: {ex.Message}");
+		}
+
+		return totalFloor + EndlessModeCompat.GetFloorsBeforeCurrentLoop();
+	}
+
+	private static void ApplyHpMultiplier(Creature creature, int floorIndex)
+	{
+		decimal multiplier = CustomDifficultySettings.GetHpMultiplierForFloor(floorIndex);
 		if (multiplier == 1m)
 		{
 			return;
@@ -122,19 +162,21 @@ internal static class MonsterScalingPatch
 		int scaledHp = Math.Max(1, (int)Math.Round(creature.MaxHp * multiplier, MidpointRounding.AwayFromZero));
 		creature.SetMaxHpInternal(scaledHp);
 		creature.SetCurrentHpInternal(scaledHp);
-		Log.Debug($"[{ModInfo.Id}] {creature.Name} HP scaled to {scaledHp} ({CustomDifficultySettings.FormatMultiplier(CustomDifficultySettings.MonsterHpTicks)}).");
+		Log.Debug($"[{ModInfo.Id}] {creature.Name} HP scaled to {scaledHp} (mode={CustomDifficultySettings.Mode} floor={floorIndex} x{multiplier:0.00}).");
 	}
 
-	private static void ApplyAttackMultiplierPower(Creature creature)
+	private static void ApplyAttackMultiplierPower(Creature creature, int floorIndex)
 	{
-		if (CustomDifficultySettings.MonsterAttackMultiplier == 1m || creature.HasPower<MonsterAttackScalePower>())
+		decimal multiplier = CustomDifficultySettings.GetAttackMultiplierForFloor(floorIndex);
+		if (multiplier == 1m || creature.HasPower<MonsterAttackScalePower>())
 		{
 			return;
 		}
 
 		try
 		{
-			ModelDb.Power<MonsterAttackScalePower>().ToMutable().ApplyInternal(creature, 1m, silent: true);
+			MonsterAttackScalePower power = (MonsterAttackScalePower)ModelDb.Power<MonsterAttackScalePower>().ToMutable();
+			power.ApplyInternal(creature, MonsterAttackScalePower.EncodeMultiplierPercent(multiplier), silent: true);
 		}
 		catch (Exception ex)
 		{

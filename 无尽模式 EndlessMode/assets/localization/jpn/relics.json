@@ -1,0 +1,20 @@
+{
+  "PLAGUE_SPEAR.title": "荒疫の矛",
+  "PLAGUE_SPEAR.description": "モンスターの与える攻撃ダメージが[blue]{Percent}%[/blue]増加する。スタックが[blue]1[/blue]増えるごとに、さらに[blue]{Percent}%[/blue]増加する。",
+  "PLAGUE_SPEAR.flavor": "その切っ先は、すべての周回を覚えている。",
+  "PLAGUE_SHIELD.title": "荒疫の盾",
+  "PLAGUE_SHIELD.description": "モンスターの最大HP・ブロック獲得量・回復量が[blue]{Percent}%[/blue]増加する。スタックが[blue]1[/blue]増えるごとに、さらに[blue]{Percent}%[/blue]増加する。",
+  "PLAGUE_SHIELD.flavor": "時間さえ受け止める重さ。",
+  "MIMIC_INFESTATION.title": "ミミックの巣窟",
+  "MIMIC_INFESTATION.description": "以降の幕の宝箱部屋がエリート戦に置き換わる。エリート戦はレリックを落とさなくなる。",
+  "MIMIC_INFESTATION.flavor": "どの蓋の裏にも、牙が生えている。",
+  "TIME_MAZE.title": "時の迷宮",
+  "TIME_MAZE.description": "毎ターン[blue]15[/blue]枚を超えてカードをプレイできない。",
+  "TIME_MAZE.flavor": "道は前へ続く。だが一歩ごとに折り返す。",
+  "MUZZLE.title": "口枷",
+  "MUZZLE.description": "最大HPを増やせなくなる。受ける回復効果が[red]半減[/red]する。",
+  "MUZZLE.flavor": "息が最も必要なときにこそ、締め付けてくる。",
+  "HORRIBLE_TROPHY.title": "おぞましい戦利品",
+  "HORRIBLE_TROPHY.description": "入手時、[red]囚われ[/red]を[blue]1[/blue]枚デッキに加える。以降、再入手するたびに[red]囚われ[/red]を[blue]1[/blue]枚加える。",
+  "HORRIBLE_TROPHY.flavor": "見つめすぎれば、自分も飾られる側になる。"
+}
