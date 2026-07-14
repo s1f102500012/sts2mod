@@ -40,8 +40,9 @@ internal static class EndlessModeConfigUi
 			AnchorTop = 0f,
 			AnchorRight = 0f,
 			AnchorBottom = 0f,
-			CustomMinimumSize = new Vector2(500f, 328f),
-			Size = new Vector2(500f, 328f)
+			// 高度 0 = 交给 PanelContainer 按内容自适应，避免底部留白
+			CustomMinimumSize = new Vector2(500f, 0f),
+			Size = new Vector2(500f, 0f)
 		};
 		ApplyPanelStyle(panel);
 		ConnectDragHandle(panel, panel);
@@ -218,6 +219,7 @@ internal static class EndlessModeConfigUi
 			TooltipText = Text("ENDLESS_MODE.config.tooltip", "关闭后，之后进入对应轮次的无尽模式时不会获得该遗物。")
 		};
 		ApplyGameThemeFont(checkBox);
+		ApplyCheckBoxVisuals(checkBox);
 		checkBox.AddThemeFontSizeOverride("font_size", 15);
 		checkBox.AddThemeColorOverride("font_color", new Color(0.95f, 0.93f, 0.84f));
 		checkBox.Connect(BaseButton.SignalName.Toggled, Callable.From<bool>(enabled =>
@@ -261,6 +263,72 @@ internal static class EndlessModeConfigUi
 		label.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.72f));
 		label.AddThemeConstantOverride("outline_size", 2);
 		return label;
+	}
+
+	// Godot 默认勾选框贴图在深色底上非勾选态几乎不可见：改用程序生成的
+	// 描边方框贴图（勾选=内部填充金色）；同时清空按钮 stylebox 内边距，
+	// 让勾选框与上方文字左缘对齐。
+	private static readonly Dictionary<(bool Checked, bool Disabled), ImageTexture> CheckBoxIconCache = new();
+
+	private static void ApplyCheckBoxVisuals(CheckBox checkBox)
+	{
+		try
+		{
+			checkBox.AddThemeIconOverride("checked", GetCheckBoxIcon(isChecked: true, isDisabled: false));
+			checkBox.AddThemeIconOverride("unchecked", GetCheckBoxIcon(isChecked: false, isDisabled: false));
+			checkBox.AddThemeIconOverride("checked_disabled", GetCheckBoxIcon(isChecked: true, isDisabled: true));
+			checkBox.AddThemeIconOverride("unchecked_disabled", GetCheckBoxIcon(isChecked: false, isDisabled: true));
+			foreach (string styleName in new[] { "normal", "hover", "pressed", "hover_pressed", "disabled", "focus" })
+			{
+				checkBox.AddThemeStyleboxOverride(styleName, new StyleBoxEmpty());
+			}
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[{ModEntryConstants.ModId}] Failed to apply checkbox visuals: {ex.Message}");
+		}
+	}
+
+	private static ImageTexture GetCheckBoxIcon(bool isChecked, bool isDisabled)
+	{
+		(bool, bool) key = (isChecked, isDisabled);
+		if (CheckBoxIconCache.TryGetValue(key, out ImageTexture? cached))
+		{
+			return cached;
+		}
+
+		const int size = 22;
+		const int border = 2;
+		const int markInset = 5;
+		float alpha = isDisabled ? 0.45f : 1f;
+		Color borderColor = new(0.88f, 0.86f, 0.78f, 0.95f * alpha);
+		Color fillColor = new(0f, 0f, 0f, 0.4f * alpha);
+		Color markColor = new(0.95f, 0.78f, 0.22f, alpha);
+
+		Image image = Image.CreateEmpty(size, size, false, Image.Format.Rgba8);
+		for (int y = 0; y < size; y++)
+		{
+			for (int x = 0; x < size; x++)
+			{
+				bool isBorder = x < border || y < border || x >= size - border || y >= size - border;
+				image.SetPixel(x, y, isBorder ? borderColor : fillColor);
+			}
+		}
+
+		if (isChecked)
+		{
+			for (int y = markInset; y < size - markInset; y++)
+			{
+				for (int x = markInset; x < size - markInset; x++)
+				{
+					image.SetPixel(x, y, markColor);
+				}
+			}
+		}
+
+		ImageTexture texture = ImageTexture.CreateFromImage(image);
+		CheckBoxIconCache[key] = texture;
+		return texture;
 	}
 
 	private static void ApplyGameThemeFont(Control control)
