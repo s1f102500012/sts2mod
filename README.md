@@ -20,8 +20,8 @@ This is a collection of Slay the Spire 2 mods made and maintained by Natsuki. Ea
 | `集成战略事件 IntegratedStrategyEvents` | `IntegratedStrategyEvents` | `0.5.0` | `0.108.0` | 集成战略风格的事件拓展：先古防线、树洞、秘密节点等大量自定义事件与遭遇。 |
 | `俄洛伊 Illaoi` | `Illaoi` | `0.2.0` | `0.107.1` | 新角色模组，围绕生长、触手、灵魂与信仰机制构建。 |
 | `AI队友 AITeammate` | `sts2AITeammate` | `0.1.1` | - | 加入 AI 多人模式、AI 队友和主机 AI 托管。 |
-| `无尽模式 EndlessMode` | `EndlessMode` | `0.3.0` | `0.107.1` | 通关后继续深入的无尽挑战流程。 |
-| `自定义难度 CustomDifficulty` | `CustomDifficulty` | `0.1.0` | - | 在角色选择界面加入怪物血量与攻击倍率等自定义滑条。 |
+| `无尽模式 EndlessMode` | `EndlessMode` | `0.4.0` | `0.107.1` | 通关后继续深入的无尽挑战流程；提供跨轮楼层与轮次查询的公共 Interop。 |
+| `自定义难度 CustomDifficulty` | `CustomDifficulty` | `0.2.0` | `0.107.1` | 在角色选择界面加入怪物血量与攻击倍率自定义滑条；可选按房间递进模式，联动无尽模式跨轮叠加。 |
 | `更多进阶挑战 MoreAscensionChallenge` | `MoreAscensionChallenge` | `0.1.1` | - | 增加额外的进阶（负进阶）挑战内容。 |
 | `基石符文 KeystoneRunes` | `KeystoneRunes` | `0.4.0` | `0.107.1` | 加入基石符文机制。 |
 | `心之钢 Heartsteel` | `Heartsteel` | `0.1.0` | - | 心之钢主题机制。 |
