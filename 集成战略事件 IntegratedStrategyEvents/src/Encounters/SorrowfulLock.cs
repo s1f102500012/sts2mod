@@ -122,6 +122,7 @@ public sealed class SorrowfulLock : MonsterModel
 			.WithHitFx("vfx/vfx_attack_blunt", AttackSfxPath)
 			.OnlyPlayAnimOnce()
 			.Execute(null);
+		await ConsumeVigorAfterAttack();
 		await HealAfterMove();
 	}
 
@@ -156,7 +157,20 @@ public sealed class SorrowfulLock : MonsterModel
 			.WithWaitBeforeHit(FinishHitDelay, FinishHitDelay)
 			.WithHitFx("vfx/vfx_attack_blunt", HeavyAttackSfxPath)
 			.Execute(null);
+		await ConsumeVigorAfterAttack();
 		await HealAfterMove();
+	}
+
+	// 原版 VigorPower 只对卡牌来源的攻击登记消耗（BeforeAttack 里有 ModelSource is CardModel 守卫），
+	// 怪物攻击会白吃加成且层数永不清空，因此攻击动作结束后手动消耗活力。
+	private async Task ConsumeVigorAfterAttack()
+	{
+		if (Creature.IsDead || !Creature.HasPower<VigorPower>())
+		{
+			return;
+		}
+
+		await PowerCmd.Remove<VigorPower>(Creature);
 	}
 
 	private async Task HealAfterMove()

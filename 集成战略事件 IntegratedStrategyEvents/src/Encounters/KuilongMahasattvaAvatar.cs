@@ -40,7 +40,9 @@ public sealed class KuilongMahasattvaAvatar : MonsterModel
 	public const string WorrylessBearThreeBodiesMoveId = "WORRYLESS_BEAR_THREE_BODIES_MOVE";
 	public const string WorrylessPunishFivePreceptsMoveId = "WORRYLESS_PUNISH_FIVE_PRECEPTS_MOVE";
 
-	private const int InfiniteHp = 999999999;
+	// 冥想阶段的"无限"生命值。联机时 CombatState 会按 人数×幕系数(至多4×1.3) 缩放怪物 HP，
+	// 结果必须落在 int 范围内，否则 decimal→int 转换抛 OverflowException 导致进战斗黑屏。
+	private const int InfiniteHp = 300000000;
 	private const int PhaseHp = 500;
 	private const int WrathfulGazeDamage = 30;
 	private const int PunishFivePreceptsDamage = 10;
