@@ -3,7 +3,7 @@
   "name": "集成战略事件",
   "author": "Natsuki",
   "description": "为 Slay the Spire 2 添加受《明日方舟》集成战略模式启发的事件内容。",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "min_game_version": "0.108.0",
   "has_pck": true,
   "has_dll": true,
