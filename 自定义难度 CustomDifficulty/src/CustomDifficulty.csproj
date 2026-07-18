@@ -5,16 +5,20 @@
     <RootNamespace>CustomDifficulty</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>0.2.0</Version>
-    <AssemblyVersion>0.2.0.0</AssemblyVersion>
-    <FileVersion>0.2.0.0</FileVersion>
-    <InformationalVersion>0.2.0</InformationalVersion>
+    <Version>0.2.1</Version>
+    <AssemblyVersion>0.2.1.0</AssemblyVersion>
+    <FileVersion>0.2.1.0</FileVersion>
+    <InformationalVersion>0.2.1</InformationalVersion>
     <CustomDiffSts2Target Condition="'$(CustomDiffSts2Target)' == ''">0.107.1</CustomDiffSts2Target>
     <GameRefsDir>$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups/$(CustomDiffSts2Target)/game-refs</GameRefsDir>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(CustomDiffSts2Target)' == '0.108.0'">
     <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(CustomDiffSts2Target)' == '0.109.0'">
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER;STS2_109_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

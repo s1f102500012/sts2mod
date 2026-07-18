@@ -29,6 +29,7 @@ using MegaCrit.Sts2.Core.Models.Events;
 using MegaCrit.Sts2.Core.Models.Monsters;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Multiplayer.Game;
+using MegaCrit.Sts2.Core.Multiplayer.Serialization;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Cards.Holders;
 using MegaCrit.Sts2.Core.Nodes.GodotExtensions;
@@ -118,6 +119,26 @@ public static class ModEntry
 		Log.Info("[EndlessMode] Loaded.");
 	}
 
+#if STS2_109_OR_NEWER
+	// 0.109 起 SavedPropertiesTypeCache 被官方删除，net-id 规范化收编进
+	// ModelIdSerializationCache：ExecuteEssential 的 Init() 会从 ModelDb.All 确定性
+	// 排序建全量映射（本模组遗物是正规 ModelDb 模型，自动覆盖），PropertyIdBitSize
+	// 也由官方计算，旧的注入与位宽 hack 均不再需要。这里仅做幂等补注入兜底。
+	private static void InjectSavedPropertyCaches()
+	{
+		try
+		{
+			ModelIdSerializationCache.CacheSavedPropertiesForTypeDebug(typeof(PlagueSpear));
+			ModelIdSerializationCache.CacheSavedPropertiesForTypeDebug(typeof(PlagueShield));
+			ModelIdSerializationCache.CacheSavedPropertiesForTypeDebug(typeof(HorribleTrophy));
+			Log.Info($"[EndlessMode] Saved property cache verified via ModelIdSerializationCache (bitSize={ModelIdSerializationCache.PropertyIdBitSize}).");
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[EndlessMode] ModelIdSerializationCache verification failed: {ex.Message}");
+		}
+	}
+#else
 	private static void InjectSavedPropertyCaches()
 	{
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(PlagueSpear));
@@ -164,6 +185,7 @@ public static class ModEntry
 
 		return bits;
 	}
+#endif
 
 	private static void InstallHooks(Harmony harmony)
 	{
@@ -630,7 +652,13 @@ public static class ModEntry
 
 	private static void RebuildActsForLoop(RunState state, string loopSeed)
 	{
+		// 0.109 移除了 (uint seed, ...) 双参构造；改用 ulong 单参。种子映射跨版本不同
+		// 无碍：幕重建只要求联机两端（同版本+同模组）一致，重建结果本身会持久化进存档。
+#if STS2_109_OR_NEWER
+		Rng actRng = new((ulong)(uint)StringHelper.GetDeterministicHashCode(loopSeed));
+#else
 		Rng actRng = new((uint)StringHelper.GetDeterministicHashCode(loopSeed), 0);
+#endif
 		List<ActModel> rebuiltActs = ActModel.GetRandomList(actRng, state.UnlockState, state.Players.Count > 1)
 			.Select(static act => act.ToMutable())
 			.ToList();

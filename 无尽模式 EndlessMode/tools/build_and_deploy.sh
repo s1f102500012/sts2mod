@@ -71,8 +71,8 @@ rm -rf "$MOD_DIR"
 mkdir -p "$IMPORT_PROJECT/$FILE_STEM"
 
 cp "$MANIFEST_SRC" "$ROOT/dist/$FILE_STEM.json"
-if [[ "$STS2_TARGET" == 0.108* ]]; then
-  sed -i '' 's/"min_game_version": "[^"]*"/"min_game_version": "0.108.0"/' "$ROOT/dist/$FILE_STEM.json"
+if [[ "$STS2_TARGET" != 0.107* ]]; then
+  sed -i '' 's/"min_game_version": "[^"]*"/"min_game_version": "'"$STS2_TARGET"'"/' "$ROOT/dist/$FILE_STEM.json"
 fi
 cp "$ROOT/tools/project.godot" "$IMPORT_PROJECT/project.godot"
 rsync -a --exclude "$FILE_STEM.json" "$ROOT/assets/" "$IMPORT_PROJECT/$FILE_STEM/"

@@ -61,8 +61,8 @@ mkdir -p "$ROOT/dist"
 rm -rf "$MOD_DIR"
 
 cp "$MANIFEST_SRC" "$ROOT/dist/$FILE_STEM.json"
-if [[ "$STS2_TARGET" == 0.108* ]]; then
-  sed -i '' 's/"min_game_version": "[^"]*"/"min_game_version": "0.108.0"/' "$ROOT/dist/$FILE_STEM.json"
+if [[ "$STS2_TARGET" != 0.107* ]]; then
+  sed -i '' 's/"min_game_version": "[^"]*"/"min_game_version": "'"$STS2_TARGET"'"/' "$ROOT/dist/$FILE_STEM.json"
 fi
 
 "$GAME_BIN" --headless \
