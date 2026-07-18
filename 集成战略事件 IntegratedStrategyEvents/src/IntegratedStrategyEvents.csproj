@@ -7,8 +7,8 @@
     <RootNamespace>IntegratedStrategyEvents</RootNamespace>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
     <GameDataPath>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64</GameDataPath>
-    <RitsuLibHintPath>/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295/lib/0.108.0/STS2-RitsuLib.dll</RitsuLibHintPath>
-    <RitsuLibHintPath Condition="!Exists('$(RitsuLibHintPath)')">/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods/STS2-RitsuLib/lib/0.108.0/STS2-RitsuLib.dll</RitsuLibHintPath>
+    <RitsuLibHintPath>/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295/lib/0.109.0/STS2-RitsuLib.dll</RitsuLibHintPath>
+    <RitsuLibHintPath Condition="!Exists('$(RitsuLibHintPath)')">/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods/STS2-RitsuLib/lib/0.109.0/STS2-RitsuLib.dll</RitsuLibHintPath>
   </PropertyGroup>
 
   <ItemGroup>

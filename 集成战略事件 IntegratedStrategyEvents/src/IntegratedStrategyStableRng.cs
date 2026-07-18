@@ -7,10 +7,12 @@ internal static class IntegratedStrategyStableRng
 	private const uint OffsetBasis = 2166136261u;
 	private const uint Prime = 16777619u;
 
-	public static uint CreateSeed(uint runSeed, string scope, params uint[] values)
+	// 0.109 起 Rng.Seed 为 ulong；高低 32 位分别混入，结果保持 uint 稳定种子。
+	public static uint CreateSeed(ulong runSeed, string scope, params uint[] values)
 	{
 		uint hash = HashString(scope);
-		hash = Mix(hash, runSeed);
+		hash = Mix(hash, unchecked((uint)runSeed));
+		hash = Mix(hash, unchecked((uint)(runSeed >> 32)));
 		foreach (uint value in values)
 		{
 			hash = Mix(hash, value);
