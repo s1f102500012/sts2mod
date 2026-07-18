@@ -42,8 +42,9 @@ public sealed class BrokenSwordRelic : IntegratedStrategyEventRelic
 
 	private bool ShouldAffect(CardModel card)
 	{
+		// CostModifiers.None = 含升级的印刷费用（与剑锤同步：按升级后的实际印刷费判定门槛）。
 		return IsOwnedCard(card)
 			&& IsNonXEnergyCard(card)
-			&& card.EnergyCost.Canonical >= MinimumAffectedCost;
+			&& card.EnergyCost.GetWithModifiers(CostModifiers.None) >= MinimumAffectedCost;
 	}
 }

@@ -39,8 +39,9 @@ public sealed class SwordHammerRelic : IntegratedStrategyEventRelic
 
 	private bool ShouldAffect(CardModel card)
 	{
+		// CostModifiers.None = 含升级的印刷费用（Canonical 不含升级，会漏掉升级后才 0 费的牌）。
 		return IsOwnedCard(card)
 			&& IsNonXEnergyCard(card)
-			&& card.EnergyCost.Canonical == 0m;
+			&& card.EnergyCost.GetWithModifiers(CostModifiers.None) == 0;
 	}
 }
