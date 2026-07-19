@@ -76,7 +76,17 @@ internal static class IntegratedStrategyForcedRoomController
 			return false;
 		}
 
+		// PullNextEvent 内部会走原生 Hook.ModifyNextEvent——其他模组的遗物可以在这里
+		// 替换掉我们强制的事件；以 PullNextEvent 的返回值为准（与原版语义一致），
+		// 被替换时记录日志，后续访问计数/历史登记按真实事件 id 处理。
 		EventModel forcedEvent = state.Act.PullNextEvent(state);
+		if (forcedEvent.GetType() != forcedEventType)
+		{
+			Log.Info(
+				$"{ModInfo.LogPrefix} Forced event {forcedEventType.Name} was overridden to " +
+				$"{forcedEvent.Id.Entry} by a ModifyNextEvent hook; honoring the override.");
+		}
+
 		LogForcedModelReplacement("Forced event node", model, forcedEvent);
 		room = new EventRoom(forcedEvent);
 		return true;

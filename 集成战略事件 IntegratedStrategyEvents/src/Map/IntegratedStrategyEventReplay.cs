@@ -56,12 +56,23 @@ internal static class IntegratedStrategyEventReplay
 		RunState? runState = RunManager.Instance.DebugOnlyGetState();
 		if (runState == null ||
 			roomType != RoomType.Event ||
-			!ReplayMarkers.TryGetValue(runState, out _))
+			!ReplayMarkers.TryGetValue(runState, out ReplayMarker? marker))
 		{
 			return false;
 		}
 
 		ReplayMarkers.Remove(runState);
+		// 其他模组可通过原生 Hook.ModifyNextEvent 替换真正进入的事件；只有实际进入的
+		// 事件与标记一致时才吞掉本次访问计数，否则撤销标记并按原版计数。
+		if (runState.CurrentRoom is not EventRoom eventRoom ||
+			!marker.EventId.Equals(eventRoom.CanonicalEvent.Id))
+		{
+			Log.Info(
+				$"{ModInfo.LogPrefix} Entered event does not match the replay marker " +
+				$"(another mod may have modified the next event); counting the visit normally.");
+			return false;
+		}
+
 		Log.Info($"{ModInfo.LogPrefix} Re-entered saved event without advancing event visit counters.");
 		return true;
 	}
