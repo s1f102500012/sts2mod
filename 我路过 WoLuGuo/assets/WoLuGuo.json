@@ -1,0 +1,11 @@
+{
+  "id": "WoLuGuo",
+  "name": "我路过",
+  "author": "Natsuki",
+  "description": "Adds a leave option to events so you can skip them without taking any event-specific action.",
+  "version": "1.0.2",
+  "min_game_version": "0.107.1",
+  "has_pck": true,
+  "has_dll": true,
+  "affects_gameplay": true
+}

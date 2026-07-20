@@ -1,0 +1,8 @@
+; Engine configuration file.
+; Minimal project used only to run the PCK packing script.
+
+config_version=5
+
+[application]
+
+config/name="STS2 Mod Pack Tool"
