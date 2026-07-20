@@ -1,0 +1,11 @@
+{
+  "id": "RepeatableEnchantments",
+  "name": "可重复附魔",
+  "author": "Natsuki",
+  "description": "卡牌可以同时拥有多种附魔；重复获得同类附魔时，层数型附魔会叠加层数。",
+  "version": "0.107.1",
+  "min_game_version": "0.107.1",
+  "has_pck": true,
+  "has_dll": true,
+  "affects_gameplay": true
+}
