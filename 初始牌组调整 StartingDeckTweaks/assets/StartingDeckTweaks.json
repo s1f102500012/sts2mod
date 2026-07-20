@@ -2,8 +2,9 @@
   "id": "StartingDeckTweaks",
   "name": "初始牌组调整",
   "author": "Natsuki",
-  "description": "Adjusts the five original characters' starter decks to two Strikes, two Defends, and two signature cards.",
-  "version": "1.0.0",
+  "description": "Adjusts the five original characters' starter decks to three Strikes, three Defends, and two signature cards.",
+  "version": "1.0.1",
+  "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,
   "affects_gameplay": true

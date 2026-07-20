@@ -13,6 +13,7 @@ public static class ModEntry
 {
 	private const string HarmonyId = "Natsuki.StartingDeckTweaks";
 	private const string ModId = "StartingDeckTweaks";
+	private const string TargetGameVersion = "0.107.1";
 
 	private static Harmony? _harmony;
 	private static bool _hooksInstalled;
@@ -21,7 +22,7 @@ public static class ModEntry
 	{
 		Harmony harmony = _harmony ??= new Harmony(HarmonyId);
 		InstallHooks(harmony);
-		Log.Info($"[{ModId}] Loaded for Slay the Spire 2 v0.103.2.");
+		Log.Info($"[{ModId}] Loaded for Slay the Spire 2 {TargetGameVersion}.");
 	}
 
 	private static void InstallHooks(Harmony harmony)
@@ -58,6 +59,8 @@ public static class ModEntry
 		{
 			ModelDb.Card<StrikeIronclad>(),
 			ModelDb.Card<StrikeIronclad>(),
+			ModelDb.Card<StrikeIronclad>(),
+			ModelDb.Card<DefendIronclad>(),
 			ModelDb.Card<DefendIronclad>(),
 			ModelDb.Card<DefendIronclad>(),
 			ModelDb.Card<Bash>(),
@@ -72,6 +75,8 @@ public static class ModEntry
 		{
 			ModelDb.Card<StrikeSilent>(),
 			ModelDb.Card<StrikeSilent>(),
+			ModelDb.Card<StrikeSilent>(),
+			ModelDb.Card<DefendSilent>(),
 			ModelDb.Card<DefendSilent>(),
 			ModelDb.Card<DefendSilent>(),
 			ModelDb.Card<Neutralize>(),
@@ -86,6 +91,8 @@ public static class ModEntry
 		{
 			ModelDb.Card<StrikeDefect>(),
 			ModelDb.Card<StrikeDefect>(),
+			ModelDb.Card<StrikeDefect>(),
+			ModelDb.Card<DefendDefect>(),
 			ModelDb.Card<DefendDefect>(),
 			ModelDb.Card<DefendDefect>(),
 			ModelDb.Card<Zap>(),
@@ -100,6 +107,8 @@ public static class ModEntry
 		{
 			ModelDb.Card<StrikeRegent>(),
 			ModelDb.Card<StrikeRegent>(),
+			ModelDb.Card<StrikeRegent>(),
+			ModelDb.Card<DefendRegent>(),
 			ModelDb.Card<DefendRegent>(),
 			ModelDb.Card<DefendRegent>(),
 			ModelDb.Card<Venerate>(),
@@ -114,6 +123,8 @@ public static class ModEntry
 		{
 			ModelDb.Card<StrikeNecrobinder>(),
 			ModelDb.Card<StrikeNecrobinder>(),
+			ModelDb.Card<StrikeNecrobinder>(),
+			ModelDb.Card<DefendNecrobinder>(),
 			ModelDb.Card<DefendNecrobinder>(),
 			ModelDb.Card<DefendNecrobinder>(),
 			ModelDb.Card<Unleash>(),

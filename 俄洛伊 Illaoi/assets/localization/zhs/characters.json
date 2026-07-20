@@ -1,13 +1,24 @@
 {
   "ILLAOI_CHARACTER.title": "俄洛伊",
+  "ILLAOI-ILLAOI_CHARACTER.title": "俄洛伊",
   "ILLAOI_CHARACTER.titleObject": "俄洛伊",
+  "ILLAOI-ILLAOI_CHARACTER.titleObject": "俄洛伊",
   "ILLAOI_CHARACTER.pronounObject": "她",
+  "ILLAOI-ILLAOI_CHARACTER.pronounObject": "她",
   "ILLAOI_CHARACTER.possessiveAdjective": "她的",
+  "ILLAOI-ILLAOI_CHARACTER.possessiveAdjective": "她的",
   "ILLAOI_CHARACTER.pronounPossessive": "她的",
+  "ILLAOI-ILLAOI_CHARACTER.pronounPossessive": "她的",
   "ILLAOI_CHARACTER.pronounSubject": "她",
+  "ILLAOI-ILLAOI_CHARACTER.pronounSubject": "她",
   "ILLAOI_CHARACTER.cardsModifierTitle": "俄洛伊牌",
+  "ILLAOI-ILLAOI_CHARACTER.cardsModifierTitle": "俄洛伊牌",
   "ILLAOI_CHARACTER.cardsModifierDescription": "奖励中只出现俄洛伊牌。",
+  "ILLAOI-ILLAOI_CHARACTER.cardsModifierDescription": "奖励中只出现俄洛伊牌。",
   "ILLAOI_CHARACTER.eventDeathPrevention": "真神还没有允许我倒下。",
+  "ILLAOI-ILLAOI_CHARACTER.eventDeathPrevention": "真神还没有允许我倒下。",
   "ILLAOI_CHARACTER.unlockText": "已解锁。",
-  "ILLAOI_CHARACTER.description": "来自比尔吉沃特深海的虔诚祭司。\n在浪潮与神明的回响中，将一切不配之物驱逐出这片大海。"
+  "ILLAOI-ILLAOI_CHARACTER.unlockText": "已解锁。",
+  "ILLAOI_CHARACTER.description": "来自比尔吉沃特深海的虔诚祭司。\n在浪潮与神明的回响中，将一切不配之物驱逐出这片大海。",
+  "ILLAOI-ILLAOI_CHARACTER.description": "来自比尔吉沃特深海的虔诚祭司。\n在浪潮与神明的回响中，将一切不配之物驱逐出这片大海。"
 }

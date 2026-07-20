@@ -1,13 +1,24 @@
 {
   "ILLAOI_CHARACTER.title": "Illaoi",
+  "ILLAOI-ILLAOI_CHARACTER.title": "Illaoi",
   "ILLAOI_CHARACTER.titleObject": "Illaoi",
+  "ILLAOI-ILLAOI_CHARACTER.titleObject": "Illaoi",
   "ILLAOI_CHARACTER.pronounObject": "her",
+  "ILLAOI-ILLAOI_CHARACTER.pronounObject": "her",
   "ILLAOI_CHARACTER.possessiveAdjective": "her",
+  "ILLAOI-ILLAOI_CHARACTER.possessiveAdjective": "her",
   "ILLAOI_CHARACTER.pronounPossessive": "hers",
+  "ILLAOI-ILLAOI_CHARACTER.pronounPossessive": "hers",
   "ILLAOI_CHARACTER.pronounSubject": "she",
+  "ILLAOI-ILLAOI_CHARACTER.pronounSubject": "she",
   "ILLAOI_CHARACTER.cardsModifierTitle": "Illaoi Cards",
+  "ILLAOI-ILLAOI_CHARACTER.cardsModifierTitle": "Illaoi Cards",
   "ILLAOI_CHARACTER.cardsModifierDescription": "Only Illaoi cards appear in rewards.",
+  "ILLAOI-ILLAOI_CHARACTER.cardsModifierDescription": "Only Illaoi cards appear in rewards.",
   "ILLAOI_CHARACTER.eventDeathPrevention": "The Great Kraken has not permitted me to fall.",
+  "ILLAOI-ILLAOI_CHARACTER.eventDeathPrevention": "The Great Kraken has not permitted me to fall.",
   "ILLAOI_CHARACTER.unlockText": "Unlocked.",
-  "ILLAOI_CHARACTER.description": "A devoted priestess from the deep seas of Bilgewater.\nAmid the echoes of tide and god, she drives all unworthy things from these waters."
+  "ILLAOI-ILLAOI_CHARACTER.unlockText": "Unlocked.",
+  "ILLAOI_CHARACTER.description": "A devoted priestess from the deep seas of Bilgewater.\nAmid the echoes of tide and god, she drives all unworthy things from these waters.",
+  "ILLAOI-ILLAOI_CHARACTER.description": "A devoted priestess from the deep seas of Bilgewater.\nAmid the echoes of tide and god, she drives all unworthy things from these waters."
 }
