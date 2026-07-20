@@ -82,7 +82,11 @@ internal static class BuiltInRepeatableEnchantments
 	{
 		lock (InitializeLock)
 		{
+#if !STS2_109_OR_NEWER
+			// 0.109.0 起注入入口移除:游戏在 ExecuteEssential 的 ModelIdSerializationCache.Init()
+			// 里从 ModelDb.All 自动收录全部载体(本类型经模组程序集注册进 ModelDb,无需手动注入)。
 			SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(SponsorCompositeEnchantment));
+#endif
 			if (_initialized)
 			{
 				return;

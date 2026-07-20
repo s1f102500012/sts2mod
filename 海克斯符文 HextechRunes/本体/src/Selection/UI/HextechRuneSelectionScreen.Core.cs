@@ -160,7 +160,12 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		RestoreMapButtonState();
 		_mapPreviewHint?.QueueFree();
 		_mapPreviewHint = null;
-		_completionSource.TrySetResult(Array.Empty<RelicModel>());
+		// 场景重建、SL 或 overlay 被意外移除时不能把“尚未选择”伪装成空的成功结果。
+		// 成功选择会先由 OnHolderSelected 完成 TCS；其余退出统一取消，让本幕保持未解析并可恢复。
+		if (!_choiceLocked)
+		{
+			_completionSource.TrySetCanceled();
+		}
 		base._ExitTree();
 	}
 

@@ -40,6 +40,14 @@
     <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.109.0'">
+    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER;STS2_109_OR_NEWER</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="HextechCompatibilityTarget" Value="$(HextechSts2Target)" />
+  </ItemGroup>
+
   <ItemGroup>
     <Reference Include="sts2">
       <HintPath>$(GameDataDir)/sts2.dll</HintPath>

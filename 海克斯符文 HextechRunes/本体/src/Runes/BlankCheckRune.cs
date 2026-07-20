@@ -74,7 +74,7 @@ public sealed class BlankCheckRune : HextechRelicBase
 		return true;
 	}
 
-	public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPosition(
+	public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPositionCompat(
 		CardModel card,
 		bool isAutoPlay,
 		ResourceInfo resources,

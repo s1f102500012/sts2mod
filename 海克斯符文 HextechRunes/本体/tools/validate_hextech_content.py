@@ -238,7 +238,7 @@ def validate_relic_registry(errors: list[str]) -> None:
         if missing_order:
             fail(errors, f"{character_pool}RuneTypes missing character order: {', '.join(missing_order)}")
 
-    for flag in ("Disabled", "AttributeConversionExclusive", "FirstActExcluded", "ThirdActExcluded"):
+    for flag in ("Disabled", "AttributeConversionExclusive", "FirstActExcluded", "ThirdActExcluded", "Retired"):
         values = [str(reg["type"]) for reg in rune_regs if flag in reg["flags"]]
         check_duplicates(errors, f"{flag} rune registry", values)
 

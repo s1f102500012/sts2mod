@@ -50,4 +50,40 @@ internal static class HextechPlayerContextHelper
 	{
 		return player.Character.Id == ModelDb.GetId<Necrobinder>();
 	}
+
+	public static bool TryGetRuneCharacterPool(Player player, out PlayerRuneCharacterPool characterPool)
+	{
+		if (IsIroncladPlayer(player))
+		{
+			characterPool = PlayerRuneCharacterPool.Ironclad;
+			return true;
+		}
+
+		if (IsSilentPlayer(player))
+		{
+			characterPool = PlayerRuneCharacterPool.Silent;
+			return true;
+		}
+
+		if (IsRegentPlayer(player))
+		{
+			characterPool = PlayerRuneCharacterPool.Regent;
+			return true;
+		}
+
+		if (IsDefectPlayer(player))
+		{
+			characterPool = PlayerRuneCharacterPool.Defect;
+			return true;
+		}
+
+		if (IsNecrobinderPlayer(player))
+		{
+			characterPool = PlayerRuneCharacterPool.Necrobinder;
+			return true;
+		}
+
+		characterPool = default;
+		return false;
+	}
 }

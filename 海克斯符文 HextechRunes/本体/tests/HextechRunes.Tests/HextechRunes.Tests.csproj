@@ -15,6 +15,10 @@
     <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.109.0'">
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER;STS2_109_OR_NEWER</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/HextechRunes.csproj" />
   </ItemGroup>
@@ -36,6 +40,11 @@
     </Reference>
     <Reference Include="0Harmony">
       <HintPath>$(GameDataDir)/0Harmony.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <!-- 0.109 起游戏用 XxHash32 计算 net-id 表哈希,测试进程需要能加载它。 -->
+    <Reference Include="System.IO.Hashing" Condition="Exists('$(GameDataDir)/System.IO.Hashing.dll')">
+      <HintPath>$(GameDataDir)/System.IO.Hashing.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>

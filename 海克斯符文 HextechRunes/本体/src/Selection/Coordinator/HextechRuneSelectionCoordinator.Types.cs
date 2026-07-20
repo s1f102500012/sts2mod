@@ -2,6 +2,13 @@ namespace HextechRunes;
 
 internal static partial class HextechRuneSelectionCoordinator
 {
+	internal static T RequireCompletedSelection<T>(T? selected, string context)
+		where T : class
+	{
+		return selected ?? throw new OperationCanceledException(
+			$"Hextech selection ended without a confirmed choice: {context}");
+	}
+
 	private readonly record struct PendingRuneSelection(Player Player, List<RelicModel> Options, uint ChoiceId, bool IsLocal);
 
 	private readonly record struct RuneSelectionResult(

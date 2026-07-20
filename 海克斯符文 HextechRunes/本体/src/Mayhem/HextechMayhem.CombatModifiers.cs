@@ -90,7 +90,7 @@ internal sealed partial class HextechMayhemModifier
         return true;
     }
 
-    public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPosition(CardModel card, bool isAutoPlay, ResourceInfo resources, PileType pileType, CardPilePosition position)
+    public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPositionCompat(CardModel card, bool isAutoPlay, ResourceInfo resources, PileType pileType, CardPilePosition position)
     {
         (pileType, position) = HextechEnemyHexDispatcher.Transform(
             this,

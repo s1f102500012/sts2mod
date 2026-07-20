@@ -207,14 +207,14 @@ public sealed class PrismaticArtifactForge : HextechForgeBase
 
 public sealed class FortuneForge : HextechForgeBase
 {
-	public override bool HasUponPickupEffect => true;
-
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new GoldVar(1000)
+		new GoldVar(100)
 	];
 
-	public override Task AfterObtained()
+	internal int ExtraGoldRewardAmount => FloorToInt(Stacked(DynamicVars.Gold.BaseValue));
+
+	public override Task AfterCombatEnd(CombatRoom room)
 	{
 		if (Owner == null)
 		{
@@ -222,7 +222,11 @@ public sealed class FortuneForge : HextechForgeBase
 		}
 
 		Flash();
-		return PlayerCmd.GainGold(DynamicVars.Gold.BaseValue, Owner);
+		HextechGoldRewardHelper.AddFixedExtraGoldReward(
+			room,
+			Owner,
+			ExtraGoldRewardAmount);
+		return Task.CompletedTask;
 	}
 }
 

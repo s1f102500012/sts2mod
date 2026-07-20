@@ -1,5 +1,6 @@
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 
 namespace HextechRunes;
 
@@ -20,11 +21,53 @@ internal static partial class HextechRunLifecycleHooks
 		try
 		{
 			await RefreshEnemyUiForRunWhenReady(runState, "LoadRun", EnemyUiRefreshFrameBudget);
+			_ = TaskHelper.RunSafely(ResumePendingActSelectionAfterLoad(runState));
 		}
 		catch (Exception ex)
 		{
 			Log.Error($"[{ModInfo.Id}][Mayhem] LoadRun continuation failed: {ex}");
 		}
+	}
+
+	private static async Task ResumePendingActSelectionAfterLoad(RunState runState)
+	{
+		const int frameBudget = 300;
+		for (int frame = 0; frame <= frameBudget; frame++)
+		{
+			if (!IsCurrentRun(runState))
+			{
+				return;
+			}
+
+			HextechMayhemModifier? modifier = GetMayhemModifier(runState);
+			if (modifier != null)
+			{
+				int actIndex = runState.CurrentActIndex;
+				if (actIndex is < 0 or > 2 || modifier.IsActResolved(actIndex))
+				{
+					return;
+				}
+
+				if (ShouldDeferActSelectionUntilAfterCurrentEvent(runState))
+				{
+					HextechLog.Info($"[{ModInfo.Id}][Mayhem] ResumePendingActSelectionAfterLoad: deferred for current event act={actIndex}");
+					return;
+				}
+
+				if (NOverlayStack.Instance != null
+					&& NRun.Instance?.GlobalUi?.TopBar != null
+					&& ShouldScheduleActSelectionOnRoomEntered(runState, modifier))
+				{
+					HextechLog.Info($"[{ModInfo.Id}][Mayhem] ResumePendingActSelectionAfterLoad: reopening unresolved selection act={actIndex} frame={frame} room={runState.CurrentRoom?.GetType().Name ?? "null"}");
+					await HextechRuneSelectionCoordinator.HandleActSelection(runState, modifier);
+					return;
+				}
+			}
+
+			await WaitOneFrame();
+		}
+
+		Log.Warn($"[{ModInfo.Id}][Mayhem] ResumePendingActSelectionAfterLoad timed out: currentRun={IsCurrentRun(runState)} act={runState.CurrentActIndex} room={runState.CurrentRoom?.GetType().Name ?? "null"}");
 	}
 
 	private static void TopBarInitializePostfix(IRunState runState)

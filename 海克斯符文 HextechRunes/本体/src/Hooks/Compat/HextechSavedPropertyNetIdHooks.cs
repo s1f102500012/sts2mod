@@ -59,6 +59,22 @@ internal static class HextechSavedPropertyNetIdHooks
 
 		_canonicalized = true;
 
+#if STS2_109_OR_NEWER
+		// 0.109.0:ExecuteEssential 内游戏已用 ModelIdSerializationCache.Init() 做过确定性排序
+		// (ContentSorter)与位宽/哈希计算,规范化职责被官方收编,这里不再动表——只在表填充完成后
+		// 补跑载体自检(启动期 InjectCaches 阶段表还是空的,自检整体推迟到了这里)。
+		try
+		{
+			HextechSavedPropertyBootstrap.WarnOnUninjectedSavedPropertyCarriers();
+			FieldInfo? mapField = TryGetField(typeof(SavedPropertiesTypeCache), "_netIdToPropertyNameMap", StaticNonPublic);
+			int propertyNameCount = (mapField?.GetValue(null) as System.Collections.ICollection)?.Count ?? 0;
+			HextechLog.Info($"[{ModInfo.Id}][MultiplayerCompat] SavedProperty net-id map is game-canonical on 0.109+: total={propertyNameCount} bitSize={SavedPropertiesTypeCache.PropertyIdBitSize} hash={SavedPropertiesTypeCache.Hash:X8}.");
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] SavedProperty post-init audit failed: {ex.GetType().Name}: {ex.Message}");
+		}
+#else
 		try
 		{
 			IReadOnlySet<string>? vanillaNames = BuildVanillaPropertyNameSet();
@@ -104,8 +120,10 @@ internal static class HextechSavedPropertyNetIdHooks
 		{
 			Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] SavedProperty net-id canonicalization failed: {ex.GetType().Name}: {ex.Message}");
 		}
+#endif
 	}
 
+#if !STS2_109_OR_NEWER
 	/// <summary>
 	/// 重放原版种子:遍历 <c>AbstractModelSubtypes</c> 收集所有带 <c>[SavedProperty]</c> 的属性名。
 	/// 只需名字集合(用于把原版前缀与模组后缀区分开),不依赖游戏的排序细节,且随游戏版本自适应。
@@ -145,4 +163,5 @@ internal static class HextechSavedPropertyNetIdHooks
 
 		backing.SetValue(null, bitSize);
 	}
+#endif
 }

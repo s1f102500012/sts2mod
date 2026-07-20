@@ -33,6 +33,7 @@ SavedHextechRunConfigurationSnapshotJson
 SavedHpGainedThisCombat
 SavedInitialPowerAppliedThisCombat
 SavedLastRecordedRound
+SavedLingeringBuff
 SavedMapLengthReducedActs
 SavedMaxHpGainCapThisCombat
 SavedModActiveForRun

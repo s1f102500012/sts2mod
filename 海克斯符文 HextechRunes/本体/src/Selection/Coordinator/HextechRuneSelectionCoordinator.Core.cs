@@ -160,7 +160,9 @@ internal static partial class HextechRuneSelectionCoordinator
 							monsterHexRelic = CreateMonsterHexRelic(visibleMonsterHex);
 						}
 
-						RelicModel selected = selection.SelectedRelic ?? options[0];
+						RelicModel selected = RequireCompletedSelection(
+							selection.SelectedRelic,
+							$"singleplayer act={actIndex} ordinal={choiceOrdinal} player={player.NetId}");
 						HextechTelemetry.RecordRuneChoice(runState, actIndex, rarity, player, selection.FinalOptions, selected, selection.RerollCount, choiceOrdinal);
 						await RelicCmd.Obtain(selected, player);
 						HextechLog.Info($"[{ModInfo.Id}][Mayhem] HandleHextechActSelection obtained: player={player.NetId} ordinal={choiceOrdinal} relic={(selected.CanonicalInstance?.Id ?? selected.Id).Entry}");

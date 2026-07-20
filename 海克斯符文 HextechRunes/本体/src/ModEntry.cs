@@ -41,6 +41,7 @@ public static class ModEntry
 			HextechCombatHooks.Install(harmony);
 			HextechEnemyPowerScalingHooks.Install(harmony);
 			TryInstallOptionalHookGroup("artifact encounter compatibility", () => HextechArtifactCompatibilityHooks.Install(harmony));
+			TryInstallOptionalHookGroup("personal hive damage-response safety", () => HextechPersonalHiveSafetyHooks.Install(harmony));
 			TryInstallOptionalHookGroup("encounter compatibility", () => HextechEncounterCompatibilityHooks.Install(harmony));
 			HextechUpdateChecker.Install(harmony);
 			TryInstallOptionalHookGroup("inspect relic screen", () => HextechInspectHooks.Install(harmony));
@@ -65,12 +66,18 @@ public static class ModEntry
 			TryInstallOptionalHookGroup("burn health bar prediction", () => HextechBurnHealthBarHooks.Install(harmony));
 			TryInstallOptionalHookGroup("neurosurge doom redirect", () => HextechNeurosurgeHooks.Install(harmony));
 			TryInstallOptionalHookGroup("inkshadow blade of ink guard", () => HextechInkshadowHooks.Install(harmony));
-			TryInstallOptionalHookGroup("well-laid plans unlimited retain", () => HextechWellLaidPlansHooks.Install(harmony));
+			TryInstallOptionalHookGroup("creature anim trigger safety", () => HextechAnimTriggerSafetyHooks.Install(harmony));
+			TryInstallOptionalHookGroup("starter card unlimited upgrade", () => HextechStarterUpgradeHooks.Install(harmony));
+			TryInstallOptionalHookGroup("card grid upgrade preview revert", () => HextechCardGridPreviewHooks.Install(harmony));
+			TryInstallOptionalHookGroup("retired well-laid plans save compatibility", () => HextechWellLaidPlansHooks.Install(harmony));
+			TryInstallOptionalHookGroup("prismatic egg treasure replacement", () => HextechTreasureRuneHooks.Install(harmony));
 			TryInstallOptionalHookGroup("nightmare dark orb passive", () => HextechNightmareHooks.Install(harmony));
 			TryInstallOptionalHookGroup("game over score line compatibility", () => HextechGameOverCompatibilityHooks.Install(harmony));
 			_initialized = true;
 			// 加载确认行保持始终输出（headless 验证与用户排障都依赖它），不走 verbose 门控。
-			Log.Info($"[{ModInfo.Id}] Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}.");
+			Log.Info(
+				$"[{ModInfo.Id}] Loaded implementation variant for " +
+				$"Slay the Spire 2 compat target {ModInfo.TargetGameVersion}.");
 		}
 	}
 

@@ -133,6 +133,9 @@ class Truth:
             r"Rune<(\w+)>\(\s*HextechRarityTier\.(\w+)([^)]*)\)", registry
         ):
             cls, rarity, args = match.group(1), match.group(2), match.group(3)
+            flags = set(re.findall(r"PlayerRuneFlags\.(\w+)", args))
+            if "Retired" in flags:
+                continue
             pool_match = re.search(r"characterPool:\s*PlayerRuneCharacterPool\.(\w+)", args)
             tag_match = re.search(r'tagKey:\s*"(\w+)"', args)
             self.player.append(
@@ -141,7 +144,7 @@ class Truth:
                     "rarity": rarity,
                     "pool": pool_match.group(1) if pool_match else None,
                     "tag_key": tag_match.group(1) if tag_match else "COMPREHENSIVE",
-                    "disabled": "Disabled" in re.findall(r"PlayerRuneFlags\.(\w+)", args),
+                    "disabled": "Disabled" in flags,
                     "source": "main",
                 }
             )
@@ -162,6 +165,10 @@ class Truth:
 
         # 敌方海克斯。
         monster_src = read(ROOT / "src" / "Content" / "HextechMonsterHexRegistry.cs")
+        config_src = read(ROOT / "src" / "Config" / "HextechRuneConfiguration.cs")
+        config_default_disabled_monsters = set(
+            re.findall(r"MonsterHexKind\.(\w+)", config_src)
+        )
         self.monster: list[dict] = []
         for match in re.finditer(
             r"Monster<(\w+)>\(\s*MonsterHexKind\.(\w+),\s*HextechRarityTier\.(\w+)([^)]*)\)",
@@ -172,7 +179,8 @@ class Truth:
                     "class": match.group(1),
                     "kind": match.group(2),
                     "rarity": match.group(3),
-                    "disabled": bool(re.search(r"disabled:\s*true", match.group(4))),
+                    "disabled": bool(re.search(r"disabled:\s*true", match.group(4)))
+                    or match.group(2) in config_default_disabled_monsters,
                 }
             )
 

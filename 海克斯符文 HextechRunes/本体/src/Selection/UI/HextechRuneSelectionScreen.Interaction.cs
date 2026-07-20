@@ -50,6 +50,11 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			return;
 		}
 
+		RestartSelectionConfirmGuard();
+	}
+
+	private void RestartSelectionConfirmGuard()
+	{
 		_selectionConfirmGuardStarted = true;
 		_selectionConfirmGuardEndsAtMsec = Time.GetTicksMsec() + SelectionConfirmGuardDurationMsec;
 	}
@@ -85,6 +90,9 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		_relics = rerolled.ToList();
 		_playerRuneRerollCounts[slotIndex]++;
 		_rerollHistory.Add(slotIndex);
+		// RebuildCards 会在当前输入事件内销毁并重建按钮。重新开启确认保护，避免鼠标、
+		// 手柄确认键或键盘重复输入落到新生成的卡片上，表现为“刷新后直接跳过”。
+		RestartSelectionConfirmGuard();
 		RebuildCards();
 	}
 

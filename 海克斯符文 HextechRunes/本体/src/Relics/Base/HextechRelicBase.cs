@@ -27,6 +27,43 @@ public abstract partial class HextechRelicBase : RelicModel
 	}
 #endif
 
+	// 0.109.0 起卡牌打出去向从 (PileType, CardPilePosition) 元组改为 CardLocation(新增 player 字段):
+	// 子类统一重写版本无关的 Compat 虚方法(签名沿用 0.108 元组口径,player 目前无子类需要,需要时再扩)。
+	public virtual (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPositionCompat(CardModel card, bool isAutoPlay, ResourceInfo resources, PileType pileType, CardPilePosition position)
+	{
+		return (pileType, position);
+	}
+
+	public virtual Task AfterModifyingCardPlayResultPileOrPositionCompat(CardModel card, PileType pileType, CardPilePosition position)
+	{
+		return Task.CompletedTask;
+	}
+
+#if STS2_109_OR_NEWER
+	public sealed override CardLocation ModifyCardPlayResultLocation(CardModel card, bool isAutoPlay, ResourceInfo resources, CardLocation cardLocation)
+	{
+		(PileType pileType, CardPilePosition position) = ModifyCardPlayResultPileTypeAndPositionCompat(card, isAutoPlay, resources, cardLocation.pileType, cardLocation.position);
+		cardLocation.pileType = pileType;
+		cardLocation.position = position;
+		return cardLocation;
+	}
+
+	public sealed override Task AfterModifyingCardPlayResultLocation(CardModel card, CardLocation cardLocation)
+	{
+		return AfterModifyingCardPlayResultPileOrPositionCompat(card, cardLocation.pileType, cardLocation.position);
+	}
+#else
+	public sealed override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPosition(CardModel card, bool isAutoPlay, ResourceInfo resources, PileType pileType, CardPilePosition position)
+	{
+		return ModifyCardPlayResultPileTypeAndPositionCompat(card, isAutoPlay, resources, pileType, position);
+	}
+
+	public sealed override Task AfterModifyingCardPlayResultPileOrPosition(CardModel card, PileType pileType, CardPilePosition position)
+	{
+		return AfterModifyingCardPlayResultPileOrPositionCompat(card, pileType, position);
+	}
+#endif
+
 #if STS2_106_OR_NEWER
 	public virtual Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, HextechCombatState combatState)
 	{

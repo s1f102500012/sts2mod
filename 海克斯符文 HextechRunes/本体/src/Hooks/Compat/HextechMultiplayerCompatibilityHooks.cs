@@ -146,8 +146,11 @@ internal static class HextechMultiplayerCompatibilityHooks
 		for (Exception? current = exception; current != null; current = current.InnerException)
 		{
 			string message = current.Message ?? string.Empty;
+			// 栈帧类名用字面量:0.109 起缓存类真名是 ModelIdSerializationCache(mod 内经别名仍叫
+			// SavedPropertiesTypeCache),两个名字都匹配以覆盖新旧版本的栈。
 			if (message.Contains("SavedProperty net ID", StringComparison.Ordinal)
-				|| current.StackTrace?.Contains(nameof(SavedPropertiesTypeCache), StringComparison.Ordinal) == true
+				|| current.StackTrace?.Contains("SavedPropertiesTypeCache", StringComparison.Ordinal) == true
+				|| current.StackTrace?.Contains("ModelIdSerializationCache", StringComparison.Ordinal) == true
 				|| current.StackTrace?.Contains(nameof(SavedProperties), StringComparison.Ordinal) == true)
 			{
 				return true;
@@ -265,8 +268,13 @@ internal static class HextechMultiplayerCompatibilityHooks
 			}
 		}
 
-		string payload = $"{SavedPropertiesTypeCache.NetIdBitSize}\n{string.Join("\n", propertyNames)}";
-		return $"{SavedPropertiesTypeCache.NetIdBitSize}/{propertyNames.Count}/{ShortHash(ComputeSha256(Encoding.UTF8.GetBytes(payload)))}";
+#if STS2_109_OR_NEWER
+		int netIdBitSize = SavedPropertiesTypeCache.PropertyIdBitSize;
+#else
+		int netIdBitSize = SavedPropertiesTypeCache.NetIdBitSize;
+#endif
+		string payload = $"{netIdBitSize}\n{string.Join("\n", propertyNames)}";
+		return $"{netIdBitSize}/{propertyNames.Count}/{ShortHash(ComputeSha256(Encoding.UTF8.GetBytes(payload)))}";
 	}
 
 	private static string ShortFileHash(string? path)

@@ -86,6 +86,39 @@ internal static class HextechMonsterInteractionPolicy
 	}
 
 	/// <summary>
+	/// 怪物专属机制/形态类 buff:不适合镜像/转移到玩家身上
+	/// (动画触发器、怪物行动脚本或受击目标语义在玩家模型上不存在)。
+	/// 范围 = 结构性 buff + 已放开剥除的动画/形态 buff + 已确认与怪物侧语义耦合的机制 buff
+	/// (可剥不代表可镜像)。
+	/// </summary>
+	public static bool IsMonsterMechanismBuff(PowerModel power)
+	{
+		return IsStructuralMonsterBuff(power)
+			|| power is SkittishPower
+				or SmoggyPower
+				or BurrowedPower
+#if STS2_108_OR_NEWER
+				or HibernatePower
+#endif
+				or CurlUpPower
+				or HardenedShellPower
+				or SentryModePower
+				or ShadowmeldPower
+				or ShroudPower
+				or SneakyPower
+				or CoveredPower
+				or SurprisePower
+				or SoarPower
+				or FlutterPower
+				or SpectrumShiftPower
+				// 养蜂人「个人蜂巢」默认攻击者是玩家,并把晕眩塞进 dealer.Player 的牌堆。
+				// 薄暮法衣镜像到玩家后攻击者是怪物,dealer.Player 为空并会中断受击任务链。
+				or PersonalHivePower
+				// 机器人「库存」(Stock):囤积-释放机制与敌人行动脚本耦合,薄暮法衣镜像到玩家会卡死(玩家实报)。
+				or StockPower;
+	}
+
+	/// <summary>
 	/// 安全剥除怪物增益:对有"进场动画等待出场"状态机的 power(幽灵鳗 Skittish),先补出场动画再移除,
 	/// 否则 Spine 状态机停在 Block 态、下一次动画触发永远等不到(玩家实报"感受燃烧打四鳗卡死"的根因)。
 	/// 感受燃烧/升级:暴露的剥除一律走这里。

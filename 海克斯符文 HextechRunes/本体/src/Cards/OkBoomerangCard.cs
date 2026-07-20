@@ -76,8 +76,16 @@ public sealed class OkBoomerangCard : CardModel
 			.Execute(choiceContext);
 	}
 
-	// 打出后返回手牌:回力镖掷出必归。(0.108.0 起该虚方法改为返回含位置的元组)
-#if STS2_108_OR_NEWER
+	// 打出后返回手牌:回力镖掷出必归。(0.108.0 起该虚方法改为返回含位置的元组,0.109.0 起改为 CardLocation)
+#if STS2_109_OR_NEWER
+	protected override CardLocation GetResultLocationForCardPlay()
+	{
+		CardLocation location = base.GetResultLocationForCardPlay();
+		location.pileType = PileType.Hand;
+		location.position = CardPilePosition.Bottom;
+		return location;
+	}
+#elif STS2_108_OR_NEWER
 	protected override (PileType, CardPilePosition) GetResultPileTypeAndPositionForCardPlay()
 	{
 		return (PileType.Hand, CardPilePosition.Bottom);

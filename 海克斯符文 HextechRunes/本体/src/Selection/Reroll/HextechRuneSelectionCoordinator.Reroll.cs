@@ -35,21 +35,32 @@ internal static partial class HextechRuneSelectionCoordinator
 		HashSet<ModelId> excludedIds = new(currentOptionIds);
 		excludedIds.UnionWith(seenOptionIds);
 		HextechRarityTier rarity = GetRarityForOptions(currentOptions);
-		List<RelicModel> rerolled = BuildSelectableRunesForRarity(player, rarity, runState, excludedIds, useEndlessTagWindow);
-		if (rerolled.Count == 0 && seenOptionIds.Count > 0)
+		List<RelicModel> candidates = ConstrainRerollCandidates(
+			player,
+			BuildSelectableRunePool(player, rarity, runState, excludedIds),
+			currentOptions,
+			slotIndex);
+		if (candidates.Count == 0 && seenOptionIds.Count > 0)
 		{
 			// 池被「已见」清空:重置(清空)已见集,让重随能重新刷到此前见过的符文(仍排除当前选项)。
 			seenOptionIds.Clear();
-			rerolled = BuildSelectableRunesForRarity(player, rarity, runState, currentOptionIds, useEndlessTagWindow);
+			candidates = ConstrainRerollCandidates(
+				player,
+				BuildSelectableRunePool(player, rarity, runState, currentOptionIds),
+				currentOptions,
+				slotIndex);
 		}
 
-		if (rerolled.Count == 0)
+		if (candidates.Count == 0)
 		{
 			return currentOptions;
 		}
 
+		Dictionary<string, int> tagCounts = BuildOwnedRuneTagCounts(player, useEndlessTagWindow);
+		List<int> weights = BuildRuneTagWeights(candidates, tagCounts, useEndlessTagWindow, out int totalWeight);
+		int selectedIndex = SelectWeightedIndex(weights, runState.Rng.Niche.NextInt(totalWeight));
 		List<RelicModel> updated = currentOptions.ToList();
-		updated[slotIndex] = rerolled[0];
+		updated[slotIndex] = CreateSelectableRuneOption(player, candidates[selectedIndex]);
 		return updated;
 	}
 
@@ -89,14 +100,22 @@ internal static partial class HextechRuneSelectionCoordinator
 
 		HextechRarityTier rarity = GetRarityForOptions(currentOptions);
 		RunState runState = (RunState)player.RunState;
-		List<RelicModel> pool = BuildSelectableRunePool(player, rarity, runState, excludedIds)
+		List<RelicModel> pool = ConstrainRerollCandidates(
+				player,
+				BuildSelectableRunePool(player, rarity, runState, excludedIds),
+				currentOptions,
+				slotIndex)
 			.OrderBy(static relic => (relic.CanonicalInstance?.Id ?? relic.Id).Entry, StringComparer.Ordinal)
 			.ToList();
 		if (pool.Count == 0 && seenOptionIds.Count > 0)
 		{
 			// 池被「已见」清空:重置(清空)已见集,让重随能重新刷到此前见过的符文(仍排除当前选项)。
 			seenOptionIds.Clear();
-			pool = BuildSelectableRunePool(player, rarity, runState, currentOptionIds)
+			pool = ConstrainRerollCandidates(
+					player,
+					BuildSelectableRunePool(player, rarity, runState, currentOptionIds),
+					currentOptions,
+					slotIndex)
 				.OrderBy(static relic => (relic.CanonicalInstance?.Id ?? relic.Id).Entry, StringComparer.Ordinal)
 				.ToList();
 		}
@@ -110,6 +129,27 @@ internal static partial class HextechRuneSelectionCoordinator
 		List<RelicModel> updated = currentOptions.ToList();
 		updated[slotIndex] = CreateSelectableRuneOption(player, pool[index]);
 		return updated;
+	}
+
+	private static List<RelicModel> ConstrainRerollCandidates(
+		Player player,
+		IEnumerable<RelicModel> candidates,
+		IReadOnlyList<RelicModel> currentOptions,
+		int slotIndex)
+	{
+		bool upgradeAlreadyPresent = currentOptions
+			.Where((_, index) => index != slotIndex)
+			.Any(HextechRunePoolBuilder.IsUpgradeRune);
+		PlayerRuneCharacterPool? characterPool = HextechPlayerContextHelper.TryGetRuneCharacterPool(
+			player,
+			out PlayerRuneCharacterPool resolvedCharacterPool)
+				? resolvedCharacterPool
+				: null;
+		return HextechRunePoolBuilder.ConstrainCandidatesForSlot(
+			candidates,
+			characterPool,
+			slotIndex,
+			upgradeAlreadyPresent);
 	}
 
 	private static int GetMultiplayerRerollIndex(

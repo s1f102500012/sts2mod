@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Entities.CardRewardAlternatives;
 using MegaCrit.Sts2.Core.Entities.Rewards;
+using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Models.Relics;
 using static HextechRunes.HextechHookReflection;
@@ -25,6 +26,13 @@ internal static class HextechRewardSafetyHooks
 			RequireMethod(typeof(Reward), nameof(Reward.SelectUnsynchronized), BindingFlags.Instance | BindingFlags.Public),
 			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RewardSelectUnsynchronizedPrefix)),
 			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RewardSelectUnsynchronizedPostfix)));
+		harmony.Patch(
+			RequireMethod(typeof(EventOption), nameof(EventOption.Chosen), BindingFlags.Instance | BindingFlags.Public),
+			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(EventOptionChosenPrefix)),
+			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(EventOptionChosenPostfix)));
+		harmony.Patch(
+			RequireMethod(typeof(DustyTome), nameof(DustyTome.AfterObtained), BindingFlags.Instance | BindingFlags.Public),
+			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(DustyTomeAfterObtainedPrefix)));
 		harmony.Patch(
 			RequireMethod(typeof(CardReward), "OnSelect", BindingFlags.Instance | BindingFlags.NonPublic),
 			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(CardRewardOnSelectPrefix)),
@@ -205,6 +213,27 @@ internal static class HextechRewardSafetyHooks
 	private static void RewardSelectUnsynchronizedPostfix(object? __state)
 	{
 		DoubleVisionRune.CompleteRewardCommandSuppression(__state);
+	}
+
+	private static void EventOptionChosenPrefix(EventOption __instance, out object? __state)
+	{
+		__state = DoubleVisionRune.BeginEventOptionRelicTransaction(__instance);
+	}
+
+	private static void EventOptionChosenPostfix(object? __state, ref Task __result)
+	{
+		__result = DoubleVisionRune.CompleteEventOptionRelicTransactionAsync(__result, __state);
+	}
+
+	internal static bool DustyTomeAfterObtainedPrefix(DustyTome __instance, ref Task __result)
+	{
+		if (!DoubleVisionRune.ShouldSuppressDustyTomeAfterObtained(__instance))
+		{
+			return true;
+		}
+
+		__result = Task.CompletedTask;
+		return false;
 	}
 
 	// 承载 OnSelect 前后所需状态:DoubleVision 的追踪 scope + 进入 OnSelect 前的卡数(供禁忌魔典判别是否真选走了卡)。

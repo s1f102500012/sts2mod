@@ -7,7 +7,7 @@ public sealed class BloodlettingUpgradeRune : CardUpgradeRuneBase<Bloodletting>
 		return IsIroncladPlayer(player);
 	}
 
-	public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPosition(
+	public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPositionCompat(
 		CardModel card,
 		bool isAutoPlay,
 		ResourceInfo resources,

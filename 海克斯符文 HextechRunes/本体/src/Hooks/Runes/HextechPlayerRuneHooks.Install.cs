@@ -72,12 +72,24 @@ internal static partial class HextechPlayerRuneHooks
 
 	private static void InstallBigKnifeHooks(Harmony harmony)
 	{
+		// 反射签名注意:0.104 起 combatState 形参就是 ICombatState(经 HextechCombatState 别名匹配,
+		// 此前误写具体 CombatState 导致精确匹配落空、hook 被 per-rune 护栏静默禁用);
+		// 0.109 起尾部再加可选参 Player creator。
+#if STS2_109_OR_NEWER
 		harmony.Patch(
-			RequireMethod(typeof(Shiv), nameof(Shiv.CreateInHand), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(CombatState)),
+			RequireMethod(typeof(Shiv), nameof(Shiv.CreateInHand), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(HextechCombatState), typeof(Player)),
 			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(ShivCreateOneInHandPrefix)));
 		harmony.Patch(
-			RequireMethod(typeof(Shiv), nameof(Shiv.CreateInHand), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(int), typeof(CombatState)),
+			RequireMethod(typeof(Shiv), nameof(Shiv.CreateInHand), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(int), typeof(HextechCombatState), typeof(Player)),
 			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(ShivCreateManyInHandPrefix)));
+#else
+		harmony.Patch(
+			RequireMethod(typeof(Shiv), nameof(Shiv.CreateInHand), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(HextechCombatState)),
+			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(ShivCreateOneInHandPrefix)));
+		harmony.Patch(
+			RequireMethod(typeof(Shiv), nameof(Shiv.CreateInHand), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(int), typeof(HextechCombatState)),
+			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(ShivCreateManyInHandPrefix)));
+#endif
 		harmony.Patch(
 			RequireMethod(typeof(SovereignBlade), "get_TargetType", BindingFlags.Instance | BindingFlags.Public),
 			postfix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(SovereignBladeTargetTypePostfix)));

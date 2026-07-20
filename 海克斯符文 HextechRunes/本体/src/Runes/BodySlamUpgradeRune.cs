@@ -36,7 +36,12 @@ public sealed class BodySlamUpgradeRune : CardUpgradeRuneBase<BodySlam>
 		}
 
 		Flash();
+		// 0.109.0 起 LoseBlock 首参新增 PlayerChoiceContext。
+#if STS2_109_OR_NEWER
+		await CreatureCmd.LoseBlock(context, Owner.Creature, block, Owner.Creature);
+#else
 		await CreatureCmd.LoseBlock(Owner.Creature, block);
+#endif
 	}
 
 	private static bool IsBodySlam(CardModel? card)

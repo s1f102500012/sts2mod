@@ -149,10 +149,9 @@ internal static class HextechIntegrityCheck
 			return false;
 		}
 
-		string? modDir = Path.GetDirectoryName(dllPath);
-		if (string.IsNullOrWhiteSpace(modDir))
+		if (!TryFindBundleRoot(dllPath, out string modDir))
 		{
-			error = "mod directory not found";
+			error = "bundle root containing PCK and manifest not found";
 			return false;
 		}
 
@@ -175,6 +174,24 @@ internal static class HextechIntegrityCheck
 			ComputeSha256(pckPath),
 			ComputeSha256(manifestPath));
 		return true;
+	}
+
+	private static bool TryFindBundleRoot(string dllPath, out string modDir)
+	{
+		modDir = string.Empty;
+		DirectoryInfo? directory = new FileInfo(dllPath).Directory;
+		for (int depth = 0; directory != null && depth <= 3; depth++, directory = directory.Parent)
+		{
+			string pckPath = Path.Combine(directory.FullName, $"{ModInfo.Id}.pck");
+			string manifestPath = Path.Combine(directory.FullName, $"{ModInfo.Id}.json");
+			if (File.Exists(pckPath) && File.Exists(manifestPath))
+			{
+				modDir = directory.FullName;
+				return true;
+			}
+		}
+
+		return false;
 	}
 
 	private static string ComputeSha256(string path)

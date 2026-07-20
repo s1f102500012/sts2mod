@@ -1,6 +1,8 @@
 using MegaCrit.Sts2.Core.Context;
+using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.Saves;
+using System.Runtime.CompilerServices;
 
 namespace HextechRunes;
 
@@ -8,10 +10,14 @@ public sealed class DoubleVisionRune : HextechRelicBase
 {
 	private static readonly AsyncLocal<CardRewardTracker?> CurrentCardRewardTracker = new();
 	private static readonly AsyncLocal<int> CommandDuplicationSuppressionDepth = new();
+	private static readonly AsyncLocal<EventRelicTransaction?> CurrentEventRelicTransaction = new();
+	private static readonly AsyncLocal<int> EventRelicObtainDepth = new();
+	private static readonly AsyncLocal<DustyTome?> SuppressedDustyTomeAfterObtained = new();
+	private static readonly ConditionalWeakTable<EventRoom, EventRelicTransactionBatch> EventRelicTransactionBatches = new();
 	private static readonly FieldInfo? GoldRewardWasStolenBackField = typeof(GoldReward).GetField("_wasGoldStolenBack", BindingFlags.Instance | BindingFlags.NonPublic);
 
-	// 事件房的遗物获得(先古遗物/事件遗物/交换事件等)不能在事件选项回调里内联复制(单机卡死、联机袋序分叉,
-	// 见 BeginDirectCommandReward 的排除注释)。改为记账:获得时只记 id,离开事件房进入下一房间后再走标准复制路径。
+	// 0.109.0 以前的版本会把事件遗物写进此字段。新代码只将它作为旧存档恢复队列:
+	// 正常事件获得由 EventOption.Chosen 外层事务在原选项 Task 完成后立即结算,不再新增 pending。
 	private readonly List<string> _pendingEventRelicIds = new();
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
@@ -28,9 +34,34 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 	}
 
-	public override async Task AfterRoomEntered(AbstractRoom room)
+	public override Task AfterRoomEntered(AbstractRoom room)
 	{
-		if (Owner == null || _pendingEventRelicIds.Count == 0 || room is EventRoom)
+		// 只恢复旧版本存档留下的 pending。事件房和战斗初始化仍不是安全恢复点:
+		// 华美手镯等交互式 AfterObtained 在战斗 init 开不出 UI,联机也不能在此广播旧奖励消息。
+		if (room is EventRoom || room is CombatRoom || CombatManager.Instance.IsInProgress)
+		{
+			return Task.CompletedTask;
+		}
+
+		return FlushPendingEventRelics();
+	}
+
+	// 旧存档恰好从事件直接进入战斗时,在胜利判定后恢复 pending。
+	public override Task AfterCombatEnd(CombatRoom room)
+	{
+		if (Owner == null
+			|| room.CombatState == null
+			|| HextechCombatCreatureHelper.GetAliveEnemies(room.CombatState).Count > 0)
+		{
+			return Task.CompletedTask;
+		}
+
+		return FlushPendingEventRelics();
+	}
+
+	private async Task FlushPendingEventRelics()
+	{
+		if (Owner == null || _pendingEventRelicIds.Count == 0)
 		{
 			return;
 		}
@@ -43,17 +74,17 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 
 		List<string> pending = new(_pendingEventRelicIds);
-		_pendingEventRelicIds.Clear();
 		foreach (string idEntry in pending)
 		{
-			// 只复制仍持有的遗物(交换事件里已被换走/转化的不复制);排除规则由 DuplicateObtainedRelic 统一把关。
+			// 旧格式只有 id,无法恢复真实实例身份;沿用旧语义,但成功处理一项后才移除,
+			// 避免复制/交互抛异常时把整个恢复队列提前清空。
 			RelicModel? source = Owner.Relics.FirstOrDefault(relic => (relic.CanonicalInstance?.Id ?? relic.Id).Entry == idEntry);
-			if (source == null)
+			if (source != null)
 			{
-				continue;
+				await DuplicateObtainedRelic(Owner, source);
 			}
 
-			await DuplicateObtainedRelic(Owner, source);
+			_pendingEventRelicIds.Remove(idEntry);
 		}
 	}
 
@@ -131,13 +162,14 @@ public sealed class DoubleVisionRune : HextechRelicBase
 
 	internal static object? BeginDirectRelicReward(Player player)
 	{
-		return BeginDirectCommandReward(player) ?? (object?)BeginEventRelicRecording(player);
+		return BeginEventRelicRecording(player) ?? (object?)BeginDirectCommandReward(player);
 	}
 
 	internal static Task<RelicModel> CompleteDirectRelicRewardAsync(Task<RelicModel> originalTask, object? duplicationState)
 	{
 		if (duplicationState is EventRelicRecordScope recordScope)
 		{
+			EventRelicObtainDepth.Value = recordScope.PreviousObtainDepth;
 			return RecordEventRelicAsync(originalTask, recordScope);
 		}
 
@@ -152,33 +184,117 @@ public sealed class DoubleVisionRune : HextechRelicBase
 
 	private static EventRelicRecordScope? BeginEventRelicRecording(Player player)
 	{
-		if (IsCommandDuplicationSuppressed()
+		EventRelicTransaction? transaction = CurrentEventRelicTransaction.Value;
+		if (transaction == null
+			|| transaction.IsCommitting
+			|| IsCommandDuplicationSuppressed()
 			|| CombatManager.Instance.IsInProgress
 			|| player.RunState.CurrentRoom is not EventRoom
-			|| !ShouldDuplicateForPlayer(player))
+			|| player.Creature.IsDead)
 		{
 			return null;
 		}
 
-		IReadOnlyList<DoubleVisionRune> runes = GetActiveRunes(player);
-		return runes.Count == 0 ? null : new EventRelicRecordScope(runes);
+		IReadOnlyList<DoubleVisionRune> runes = GetEventActiveRunes(player);
+		if (runes.Count == 0)
+		{
+			return null;
+		}
+
+		int previousDepth = EventRelicObtainDepth.Value;
+		EventRelicObtainDepth.Value = previousDepth + 1;
+		return new EventRelicRecordScope(transaction, player, runes, previousDepth, previousDepth == 0);
 	}
 
 	private static async Task<RelicModel> RecordEventRelicAsync(Task<RelicModel> originalTask, EventRelicRecordScope scope)
 	{
 		RelicModel obtained = await originalTask;
-		if (obtained.Owner == null || obtained.Owner.Creature.IsDead)
+		if (!scope.IsOutermostObtain
+			|| obtained.Owner == null
+			|| obtained.Owner.Creature.IsDead
+			|| !ReferenceEquals(obtained.Owner, scope.Player))
 		{
 			return obtained;
 		}
 
-		string idEntry = (obtained.CanonicalInstance?.Id ?? obtained.Id).Entry;
-		foreach (DoubleVisionRune rune in scope.Runes)
+		scope.Transaction.Record(new EventRelicIntent(scope.Player, obtained, scope.Runes));
+		return obtained;
+	}
+
+	internal static object? BeginEventOptionRelicTransaction(EventOption option)
+	{
+		if (option.IsProceed
+			|| RunManager.Instance.DebugOnlyGetState() is not RunState runState
+			|| runState.CurrentRoom is not EventRoom eventRoom)
 		{
-			rune._pendingEventRelicIds.Add(idEntry);
+			return null;
 		}
 
-		return obtained;
+		EventRelicTransaction? previous = CurrentEventRelicTransaction.Value;
+		EventRelicTransactionBatch batch = EventRelicTransactionBatches.GetValue(
+			eventRoom,
+			static _ => new EventRelicTransactionBatch());
+		batch.Begin();
+		EventRelicTransaction transaction = new(runState, eventRoom, batch);
+		CurrentEventRelicTransaction.Value = transaction;
+		return new EventRelicTransactionScope(transaction, previous);
+	}
+
+	internal static Task CompleteEventOptionRelicTransactionAsync(Task originalTask, object? transactionState)
+	{
+		if (transactionState is not EventRelicTransactionScope scope)
+		{
+			return originalTask;
+		}
+
+		CurrentEventRelicTransaction.Value = scope.Previous;
+		return CompleteEventOptionRelicTransactionAsync(originalTask, scope.Transaction);
+	}
+
+	private static async Task CompleteEventOptionRelicTransactionAsync(Task originalTask, EventRelicTransaction transaction)
+	{
+		bool committedRewards = false;
+		bool shouldSave = false;
+		try
+		{
+			await originalTask;
+			await transaction.CommitSequentially(CommitEventRelicIntent);
+			committedRewards = transaction.Count > 0;
+		}
+		finally
+		{
+			bool canSaveFinishedAncientEvent = ReferenceEquals(
+					RunManager.Instance.DebugOnlyGetState(),
+					transaction.RunState)
+				&& ReferenceEquals(transaction.RunState.CurrentRoom, transaction.EventRoom)
+				&& transaction.EventRoom.IsPreFinished
+				&& RunManager.Instance.EventSynchronizer.Events.All(static eventModel => eventModel.IsFinished);
+			shouldSave = transaction.Batch.Complete(committedRewards, canSaveFinishedAncientEvent);
+		}
+
+		// AncientEvent 完成时原版会立即 fire-and-forget 一次存档,它可能早于本外层事务提交。
+		// 同一事件房最后一个活跃选项事务负责补写一次完整状态,避免共享事件保存到半提交快照。
+		if (shouldSave)
+		{
+			await SaveManager.Instance.SaveRun(transaction.EventRoom);
+		}
+	}
+
+	private static async Task CommitEventRelicIntent(EventRelicIntent intent)
+	{
+		Player player = intent.Player;
+		RelicModel sourceRelic = intent.ObtainedRelic;
+		if (player.Creature.IsDead
+			|| !ReferenceEquals(sourceRelic.Owner, player)
+			|| !player.Relics.Contains(sourceRelic))
+		{
+			return;
+		}
+
+		foreach (DoubleVisionRune rune in intent.Runes)
+		{
+			await rune.DuplicateObtainedRelic(player, sourceRelic, syncReward: false);
+		}
 	}
 
 	internal static object? BeginDirectPotionReward(Player player)
@@ -463,7 +579,7 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		await DuplicateObtainedRelic(player, claimedRelic);
 	}
 
-	private async Task DuplicateObtainedRelic(Player player, RelicModel sourceRelic)
+	private async Task DuplicateObtainedRelic(Player player, RelicModel sourceRelic, bool syncReward = true)
 	{
 		// 复视不复制海克斯模组自己的符文/遗物/锻造(只对原版遗物生效):自定义内容的获得→转化→联机同步流程
 		// 复杂且对多人敏感,重复获得易引发分叉/卡死(玩家实测黑屏的一类来源)。按需求收窄复视作用域为原版遗物。
@@ -479,15 +595,15 @@ public sealed class DoubleVisionRune : HextechRelicBase
 
 		if (sourceRelic is DustyTome dustyTome)
 		{
-			await DuplicateDustyTomeAncientCard(player, dustyTome);
+			await DuplicateDustyTome(player, dustyTome, syncReward);
 			return;
 		}
 
 		// 复视不对 Orobas 先古遗物「古老牙齿」「欧洛巴斯之触」生效（不复制它们）：
 		// 它们的获得/转化流程不适合被复制（古老牙齿重复获得会因牌组无可转化牌而卡死）。
 		// 黄金罗盘（GoldenCompass）同样跳过：其 AfterObtained 会 await RunManager.GenerateMap() 重建全图、
-		// 消耗共享 RNG 并改写共享地图。复制会触发第二次 GenerateMap，而联机远端是经两条 fire-and-forget 奖励消息
-		// 异步重算，与持有端的严格顺序不一致 → 两端 State.Map/State.Rng 分叉、随后投票/checksum 报"数据不匹配"。
+		// 消耗共享 RNG 并改写共享地图。即使事件事务在所有端执行,多人各玩家事件任务仍可能并发完成,
+		// 不能把全局地图重建挂到玩家级奖励事务里。
 		// 先古遗物本就不该被双倍，复制出第二枚黄金罗盘语义上也不成立。
 		if (sourceRelic is ArchaicTooth or TouchOfOrobas or GoldenCompass)
 		{
@@ -497,51 +613,120 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		RelicModel copy = ModelDb.GetById<RelicModel>(sourceRelic.CanonicalInstance?.Id ?? sourceRelic.Id).ToMutable();
 		RelicModel obtained = await RunWithCommandDuplicationSuppressed(
 			() => RelicCmd.Obtain(copy, player));
-		Flash();
-		TrySyncObtainedRelic(obtained);
+		if (LocalContext.IsMe(player))
+		{
+			Flash();
+		}
+		if (syncReward)
+		{
+			TrySyncObtainedRelic(obtained);
+		}
 	}
 
-	private async Task DuplicateDustyTomeAncientCard(Player player, DustyTome sourceTome)
+	private async Task DuplicateDustyTome(Player player, DustyTome sourceTome, bool syncReward)
 	{
-		if (!TryResolveDustyTomeAncientCard(player, sourceTome, out ModelId ancientCardId))
+		if (sourceTome.AncientCard == null)
 		{
-			Log.Warn($"[{ModInfo.Id}][DoubleVision] Failed to resolve Dusty Tome ancient card for duplicated reward.");
+			Log.Warn($"[{ModInfo.Id}][DoubleVision] Refused to duplicate Dusty Tome without an AncientCard.");
 			return;
 		}
 
-		CardModel card = player.RunState.CreateCard(ModelDb.GetById<CardModel>(ancientCardId), player);
-		CardCmd.Upgrade(card);
-		CardPileAddResult result = await RunWithCommandDuplicationSuppressed(
-			() => CardPileCmd.Add(card, PileType.Deck, clonedBy: this));
-		if (!result.success)
+		DustyTome obtained = await DuplicateDustyTomeSpecialized(
+			sourceTome,
+			syncReward,
+			copy => RunWithCommandDuplicationSuppressed(async () =>
+				(DustyTome)await RelicCmd.Obtain(copy, player)),
+			static copy => TrySyncObtainedRelic(copy));
+		if (LocalContext.IsMe(player))
 		{
-			return;
+			Flash();
 		}
-
-		SaveManager.Instance.MarkCardAsSeen(result.cardAdded);
-		TrySyncObtainedCard(result.cardAdded);
-		Flash();
-		CardCmd.PreviewCardPileAdd(result, 2f);
 	}
 
-	private static bool TryResolveDustyTomeAncientCard(Player player, DustyTome sourceTome, out ModelId ancientCardId)
+	internal static Task<T> DuplicateDustyTomeSpecialized<T>(
+		DustyTome sourceTome,
+		bool syncReward,
+		Func<DustyTome, Task<T>> obtainCopy,
+		Action<T> synchronize)
 	{
-		if (sourceTome.AncientCard is { } sourceAncientCard)
+		return DuplicateDustyTomeSpecializedCore(
+			sourceTome,
+			syncReward,
+			obtainCopy,
+			synchronize,
+			createCopy: null,
+			assignAncientCard: null);
+	}
+
+	internal static Task<T> DuplicateDustyTomeSpecializedForTest<T>(
+		DustyTome sourceTome,
+		bool syncReward,
+		Func<DustyTome, Task<T>> obtainCopy,
+		Action<T> synchronize,
+		Func<DustyTome> createCopy,
+		Action<DustyTome, ModelId> assignAncientCard)
+	{
+		return DuplicateDustyTomeSpecializedCore(
+			sourceTome,
+			syncReward,
+			obtainCopy,
+			synchronize,
+			createCopy,
+			assignAncientCard);
+	}
+
+	private static async Task<T> DuplicateDustyTomeSpecializedCore<T>(
+		DustyTome sourceTome,
+		bool syncReward,
+		Func<DustyTome, Task<T>> obtainCopy,
+		Action<T> synchronize,
+		Func<DustyTome>? createCopy,
+		Action<DustyTome, ModelId>? assignAncientCard)
+	{
+		ArgumentNullException.ThrowIfNull(sourceTome);
+		ArgumentNullException.ThrowIfNull(obtainCopy);
+		ArgumentNullException.ThrowIfNull(synchronize);
+		if (sourceTome.AncientCard is not { } ancientCardId)
 		{
-			ancientCardId = sourceAncientCard;
-			return true;
+			throw new InvalidOperationException("Cannot duplicate Dusty Tome without an AncientCard.");
 		}
 
-		DustyTome fallback = (DustyTome)ModelDb.Relic<DustyTome>().ToMutable();
-		fallback.SetupForPlayer(player);
-		if (fallback.AncientCard is { } fallbackAncientCard)
+		DustyTome copy = createCopy?.Invoke()
+			?? (DustyTome)ModelDb
+				.GetById<RelicModel>(sourceTome.CanonicalInstance?.Id ?? sourceTome.Id)
+				.ToMutable();
+		assignAncientCard ??= static (dustyTome, cardId) => dustyTome.AncientCard = cardId;
+		assignAncientCard(copy, ancientCardId);
+		T obtained = await RunWithDustyTomeAfterObtainedSuppressed(
+			copy,
+			() => obtainCopy(copy));
+		if (syncReward)
 		{
-			ancientCardId = fallbackAncientCard;
-			return true;
+			synchronize(obtained);
 		}
 
-		ancientCardId = ModelId.none;
-		return false;
+		return obtained;
+	}
+
+	internal static bool ShouldSuppressDustyTomeAfterObtained(DustyTome dustyTome)
+	{
+		return ReferenceEquals(SuppressedDustyTomeAfterObtained.Value, dustyTome);
+	}
+
+	private static async Task<T> RunWithDustyTomeAfterObtainedSuppressed<T>(
+		DustyTome dustyTome,
+		Func<Task<T>> action)
+	{
+		DustyTome? previous = SuppressedDustyTomeAfterObtained.Value;
+		SuppressedDustyTomeAfterObtained.Value = dustyTome;
+		try
+		{
+			return await action();
+		}
+		finally
+		{
+			SuppressedDustyTomeAfterObtained.Value = previous;
+		}
 	}
 
 	private async Task DuplicateForgeReward(Player player, HextechForgeChoiceReward reward)
@@ -595,11 +780,9 @@ public sealed class DoubleVisionRune : HextechRelicBase
 			return null;
 		}
 
-		// 事件房间内不触发 Direct 类复制:事件的给予(如兰韦德长者的"1 遗物换 2 遗物")走的
-		// 也是 RelicCmd.Obtain/PotionCmd 等直接命令,但它们是交换/事件效果而非"奖励"。
-		// 在事件的异步选项回调里嵌套复制任务,单机会卡死事件流程(玩家实报"换不了/你遇见了一个bug"),
-		// 联机则因持有端多出的 Obtain+同步与远端袋序错位,产生 aabb/abcd 遗物分叉(玩家实报)。
-		// 战后奖励屏的翻倍走 RelicReward.OnSelect 等 Reward 专用 hook,不受此排除影响。
+		// 事件房不走 Direct 类内联复制。事件选项内的 RelicCmd.Obtain 由 EventOption.Chosen
+		// 外层事务捕获,等原 OnChosen Task 返回后再在所有端顺序提交;不在事务内的背景命令不猜测为奖励。
+		// 战后奖励屏的翻倍仍走 RelicReward.OnSelect 等 Reward 专用 hook。
 		if (player.RunState.CurrentRoom is EventRoom)
 		{
 			return null;
@@ -667,6 +850,19 @@ public sealed class DoubleVisionRune : HextechRelicBase
 	private static IReadOnlyList<DoubleVisionRune> GetActiveRunes(Player player)
 	{
 		if (!ShouldDuplicateForPlayer(player))
+		{
+			return [];
+		}
+
+		return player.Relics
+			.OfType<DoubleVisionRune>()
+			.Where(static rune => rune.Owner != null)
+			.ToList();
+	}
+
+	private static IReadOnlyList<DoubleVisionRune> GetEventActiveRunes(Player player)
+	{
+		if (player.Creature.IsDead)
 		{
 			return [];
 		}
@@ -814,15 +1010,102 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		public bool WasGoldStolenBack { get; set; }
 	}
 
-	private sealed class EventRelicRecordScope
+	private sealed class EventRelicTransaction
 	{
-		public EventRelicRecordScope(IReadOnlyList<DoubleVisionRune> runes)
+		private readonly EventRewardTransaction<EventRelicIntent> _transaction = new();
+
+		public EventRelicTransaction(
+			RunState runState,
+			EventRoom eventRoom,
+			EventRelicTransactionBatch batch)
 		{
-			Runes = runes;
+			RunState = runState;
+			EventRoom = eventRoom;
+			Batch = batch;
 		}
 
-		public IReadOnlyList<DoubleVisionRune> Runes { get; }
+		public RunState RunState { get; }
+
+		public EventRoom EventRoom { get; }
+
+		public EventRelicTransactionBatch Batch { get; }
+
+		public int Count => _transaction.Count;
+
+		public bool IsCommitting { get; private set; }
+
+		public void Record(EventRelicIntent intent)
+		{
+			_transaction.Record(intent);
+		}
+
+		public async Task CommitSequentially(Func<EventRelicIntent, Task> commit)
+		{
+			IsCommitting = true;
+			try
+			{
+				await _transaction.CommitSequentially(commit);
+			}
+			finally
+			{
+				IsCommitting = false;
+			}
+		}
 	}
+
+	private sealed class EventRelicTransactionBatch
+	{
+		private readonly object _lock = new();
+		private int _activeTransactions;
+		private bool _hasCommittedRewardsSinceLastSave;
+
+		public void Begin()
+		{
+			lock (_lock)
+			{
+				_activeTransactions++;
+			}
+		}
+
+		public bool Complete(bool committedRewards, bool canSaveFinishedAncientEvent)
+		{
+			lock (_lock)
+			{
+				if (_activeTransactions <= 0)
+				{
+					throw new InvalidOperationException("Event relic transaction batch completed without a matching begin.");
+				}
+
+				_activeTransactions--;
+				_hasCommittedRewardsSinceLastSave |= committedRewards;
+				if (_activeTransactions != 0
+					|| !_hasCommittedRewardsSinceLastSave
+					|| !canSaveFinishedAncientEvent)
+				{
+					return false;
+				}
+
+				_hasCommittedRewardsSinceLastSave = false;
+				return true;
+			}
+		}
+	}
+
+	private sealed record EventRelicIntent(
+		Player Player,
+		RelicModel ObtainedRelic,
+		IReadOnlyList<DoubleVisionRune> Runes);
+
+	private sealed record EventRelicTransactionScope(
+		EventRelicTransaction Transaction,
+		EventRelicTransaction? Previous);
+
+	private sealed record EventRelicRecordScope(
+		EventRelicTransaction Transaction,
+		Player Player,
+		IReadOnlyList<DoubleVisionRune> Runes,
+		int PreviousObtainDepth,
+		bool IsOutermostObtain);
 
 	private sealed class CardRewardTrackingScope : RewardDuplicationScope
 	{

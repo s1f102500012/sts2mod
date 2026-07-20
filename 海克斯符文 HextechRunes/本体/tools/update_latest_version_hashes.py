@@ -36,11 +36,12 @@ def main() -> int:
     parser.add_argument("--server-name", default="海克斯大乱斗")
     parser.add_argument("--server-identity", default="Natsuki.HextechRunes.official")
     parser.add_argument("--game-version", required=True)
+    parser.add_argument("--dll-path", type=Path)
     parser.add_argument("--output-fingerprint", type=Path)
     args = parser.parse_args()
 
     manifest_path = args.dist / f"{args.mod_id}.json"
-    dll_path = args.dist / f"{args.mod_id}.dll"
+    dll_path = args.dll_path or args.dist / f"{args.mod_id}.dll"
     pck_path = args.dist / f"{args.mod_id}.pck"
     for path in (manifest_path, dll_path, pck_path):
         if not path.exists():

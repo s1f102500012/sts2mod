@@ -21,6 +21,11 @@ public sealed class GiantSerpentsFangRune : HextechRelicBase
 
 		int blockLoss = Math.Max(1, (int)Math.Ceiling(target.Block * DynamicVars["BlockReductionPercent"].BaseValue / 100m));
 		Flash([target]);
+		// 0.109.0 起 LoseBlock 首参新增 PlayerChoiceContext。
+#if STS2_109_OR_NEWER
+		await CreatureCmd.LoseBlock(choiceContext, target, blockLoss, Owner.Creature);
+#else
 		await CreatureCmd.LoseBlock(target, blockLoss);
+#endif
 	}
 }

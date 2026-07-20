@@ -79,8 +79,12 @@ internal sealed partial class HextechMayhemModifier
 
 	private async Task ApplyBossStartHexesToEnemy(Creature creature, CombatRoom room)
 	{
-		await ApplyPersistentMonsterHexes(creature, replayOneShotPowers: true);
-		await ApplyMonsterCombatStartHexesToEnemy(creature, room);
+		// 转阶段补发的是"开局类"海克斯增益,薄暮法衣不应镜像(等同战斗开始时的增益)。
+		using (TwilightVeilRune.BeginMirrorSuppression())
+		{
+			await ApplyPersistentMonsterHexes(creature, replayOneShotPowers: true);
+			await ApplyMonsterCombatStartHexesToEnemy(creature, room);
+		}
 	}
 
 	private static bool ShouldDeferInitialBossStartHexes(Creature creature)

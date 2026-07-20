@@ -67,7 +67,9 @@ internal static partial class HextechRuneSelectionCoordinator
 				fallbackNewMonsterHexes = selection.ResolvedMonsterHexes.ToList();
 				fallbackActiveMonsterHexes = CombineMonsterHexes(previousMonsterHexes, fallbackNewMonsterHexes);
 				monsterHexRelic = CreateMonsterHexRelic(FirstMonsterHexOrNull(fallbackNewMonsterHexes));
-				RelicModel selected = selection.SelectedRelic ?? options[0];
+				RelicModel selected = RequireCompletedSelection(
+					selection.SelectedRelic,
+					$"multiplayer fallback act={actIndex} ordinal={choiceOrdinal} player={player.NetId}");
 				HextechTelemetry.RecordRuneChoice(runState, actIndex, rarity, player, selection.FinalOptions, selected, selection.RerollCount, choiceOrdinal);
 				await RelicCmd.Obtain(selected, player);
 			}
@@ -131,7 +133,9 @@ internal static partial class HextechRuneSelectionCoordinator
 			{
 				PendingRuneSelection selection = pendingSelections[i];
 				RuneSelectionResult selectedResult = selectedRelics[i];
-				RelicModel selectedRelic = selectedResult.SelectedRelic ?? selectedResult.FinalOptions.FirstOrDefault() ?? selection.Options[0];
+				RelicModel selectedRelic = RequireCompletedSelection(
+					selectedResult.SelectedRelic,
+					$"multiplayer telemetry act={actIndex} ordinal={choiceOrdinal} player={selection.Player.NetId}");
 				HextechTelemetry.RecordRuneChoice(runState, actIndex, rarity, selection.Player, selectedResult.FinalOptions, selectedRelic, selectedResult.RerollCount, choiceOrdinal);
 			}
 
@@ -139,7 +143,9 @@ internal static partial class HextechRuneSelectionCoordinator
 			{
 				PendingRuneSelection selection = pendingSelections[i];
 				RuneSelectionResult selectedResult = selectedRelics[i];
-				RelicModel selectedRelic = selectedResult.SelectedRelic ?? selectedResult.FinalOptions.FirstOrDefault() ?? selection.Options[0];
+				RelicModel selectedRelic = RequireCompletedSelection(
+					selectedResult.SelectedRelic,
+					$"multiplayer obtain act={actIndex} ordinal={choiceOrdinal} player={selection.Player.NetId}");
 				await RelicCmd.Obtain(selectedRelic, selection.Player);
 			}
 

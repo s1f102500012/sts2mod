@@ -14,7 +14,9 @@ public sealed class SearingAttackCard : CardModel
 
 	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
 
-	public override int MaxUpgradeLevel => 999;
+	// 上限护栏:第三方 mod 存在「while IsUpgradable 升到满」式逻辑,999 会被一口气拉满
+	// (升级:打击/防御曾因此炸出 3003 伤害,玩家实报)。正常一场战斗打不出 200 次,封顶无感。
+	public override int MaxUpgradeLevel => Math.Max(CurrentUpgradeLevel, 200);
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[

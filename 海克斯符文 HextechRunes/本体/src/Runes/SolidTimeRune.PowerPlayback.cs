@@ -39,6 +39,10 @@ public sealed partial class SolidTimeRune
 		CardPlay cardPlay = new()
 		{
 			Card = card,
+#if STS2_109_OR_NEWER
+			// 0.109.0 起 CardPlay 新增 required Player(打出者);回放存储 power 的打出者即卡牌所有者。
+			Player = card.Owner,
+#endif
 			Target = target,
 			ResultPile = PileType.None,
 			Resources = new ResourceInfo

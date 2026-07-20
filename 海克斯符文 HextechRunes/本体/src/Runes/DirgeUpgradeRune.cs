@@ -9,7 +9,7 @@ public sealed class DirgeUpgradeRune : CardUpgradeRuneBase<Dirge>
 		return IsNecrobinderPlayer(player);
 	}
 
-	public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPosition(
+	public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPositionCompat(
 		CardModel card,
 		bool isAutoPlay,
 		ResourceInfo resources,
@@ -26,7 +26,7 @@ public sealed class DirgeUpgradeRune : CardUpgradeRuneBase<Dirge>
 		return (pileType, position);
 	}
 
-	public override Task AfterModifyingCardPlayResultPileOrPosition(CardModel card, PileType pileType, CardPilePosition position)
+	public override Task AfterModifyingCardPlayResultPileOrPositionCompat(CardModel card, PileType pileType, CardPilePosition position)
 	{
 		if (_preventedExhaustLastPlay && card.Owner == Owner)
 		{

@@ -1,3 +1,5 @@
+using MegaCrit.Sts2.Core.Nodes.CommonUi;
+
 namespace HextechRunes;
 
 public sealed class SearingAttackRune : HextechRelicBase
@@ -11,11 +13,18 @@ public sealed class SearingAttackRune : HextechRelicBase
 
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
 	[
-		HoverTipFactory.FromCard<SearingAttackCard>()
+		HoverTipFactory.FromCard<SearingAttackCard>(upgrade: true)
 	];
 
 	public override Task AfterObtained()
 	{
-		return AddCardCopiesToDeckOrHand<SearingAttackCard>(DynamicVars.Cards.IntValue);
+		return AddCardCopiesToDeckOrHand<SearingAttackCard>(
+			DynamicVars.Cards.IntValue,
+			UpgradeGrantedCard);
+	}
+
+	internal static void UpgradeGrantedCard(CardModel card)
+	{
+		CardCmd.Upgrade(card, CardPreviewStyle.None);
 	}
 }

@@ -4,47 +4,29 @@ internal sealed class MindOverMatterEnemyHex : HextechEnemyHexEffect
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.MindOverMatter;
 
-	internal override async Task AfterPlayerTurnStartLate(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, Player player)
+	internal override Task AfterCardDrawn(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
 	{
-		if (player.Creature.IsDead
-			|| player.Creature.CombatState is not HextechCombatState combatState
-			|| combatState.RunState != context.RunState)
+		Player? owner = card.Owner;
+		if (owner?.Creature.Side != CombatSide.Player
+			|| owner.Creature.IsDead
+			|| owner.Creature.CombatState?.RunState != context.RunState
+			|| !TryConsumeFirstDraw(context.Tracking, owner.NetId))
 		{
-			return;
+			return Task.CompletedTask;
 		}
 
-		List<CardModel> pool = player.Character.CardPool
-			.GetUnlockedCards(player.UnlockState, player.RunState.CardMultiplayerConstraint)
-			.Where(static card => card.Rarity is not CardRarity.Basic and not CardRarity.Ancient && card.CanBeGeneratedInCombat)
-			.OrderBy(HextechStableRandom.CardKey, StringComparer.Ordinal)
-			.ToList();
-		if (pool.Count == 0)
-		{
-			return;
-		}
-
-		CardModel canonicalCard = HextechStableRandom.Pick(
-			pool,
-			(RunState)context.RunState,
-			HextechStableRandom.CardKey,
-			"enemy-mind-over-matter",
-			HextechStableRandom.PlayerKey(player),
-			combatState.RoundNumber.ToString(),
-			CountPlayerDrawnCardsFromHistory(player).ToString());
-		CardModel card = combatState.CreateCard(canonicalCard, player);
 		if (!card.EnergyCost.CostsX)
 		{
-			int costIncrease = context.TierValue(Kind, 1, 2, 3);
-			card.EnergyCost.SetUntilPlayed(card.EnergyCost.GetAmountToSpend() + costIncrease, reduceOnly: false);
+			card.EnergyCost.AddThisTurnOrUntilPlayed(
+				context.TierValue(Kind, 1, 2, 3),
+				reduceOnly: false);
 		}
 
-		await HextechCardGeneration.AddGeneratedCardToCombat(card, PileType.Hand, addedByPlayer: false);
+		return Task.CompletedTask;
 	}
 
-	private static int CountPlayerDrawnCardsFromHistory(Player player)
+	internal static bool TryConsumeFirstDraw(HextechMayhemCombatTrackingState tracking, ulong playerNetId)
 	{
-		return CombatManager.Instance.History.Entries
-			.OfType<CardDrawnEntry>()
-			.Count(entry => entry.Card.Owner?.NetId == player.NetId);
+		return tracking.MindOverMatterPlayersTriggeredThisTurn.Add(playerNetId);
 	}
 }

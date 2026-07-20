@@ -13,11 +13,31 @@ internal static class HextechSavedPropertyBootstrap
 			Log.Warn($"[{ModInfo.Id}][Mayhem] SavedProperty 载体 {type.FullName} 在 net-id 规范化之后才注入:其属性按加载顺序追加,联机可能 1014/ModMismatch。请提前到启动初始化阶段注册。");
 		}
 
+#if STS2_109_OR_NEWER
+		// 0.109.0 起游戏在 OneTimeInitialization.ExecuteEssential 里由 ModelIdSerializationCache.Init()
+		// 从 ModelDb.All 自动收录全部载体并做确定性排序;Init 前无需(也不能,守卫会抛)手动注入。
+		// Init 之后的补注入走官方 CacheSavedPropertiesForTypeDebug(幂等:已缓存类型直接返回,
+		// 未缓存则追加属性 net-id——与 0.108 延迟注入同样是"追加尾部"语义,时序告警照旧适用)。
+		try
+		{
+			SavedPropertiesTypeCache.CacheSavedPropertiesForTypeDebug(type);
+		}
+		catch (InvalidOperationException)
+		{
+			// Init 尚未运行:类型此刻已在 ModelDb,启动流程稍后会统一收录。
+		}
+#else
 		SavedPropertiesTypeCache.InjectTypeIntoCache(type);
+#endif
 	}
 
 	internal static void InjectCaches()
 	{
+#if STS2_109_OR_NEWER
+		// 0.109.0:注入与位宽兜底全部由游戏侧 Init() 承担;自检推迟到 ExecuteEssential 后
+		// (此刻表尚未填充,现跑必误报全量),见 HextechSavedPropertyNetIdHooks 的 0.109 分支。
+		HextechLog.Info($"[{ModInfo.Id}][Mayhem] SavedProperty 注入跳过:0.109+ 由 ModelIdSerializationCache.Init 自动收录 ModelDb 载体。");
+#else
 		foreach (Type type in HextechModelTypeIdentity.Distinct(HextechCatalog.GetAllCustomRelicTypes()))
 		{
 			SavedPropertiesTypeCache.InjectTypeIntoCache(type);
@@ -49,6 +69,7 @@ internal static class HextechSavedPropertyBootstrap
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechCloudDragonSoulPower));
 		WarnOnUninjectedSavedPropertyCarriers();
 		EnsureSavedPropertyNetIdBitSize();
+#endif
 	}
 
 	// R3 启动自检:扫本程序集所有 AbstractModel 载体,凡带 [SavedProperty] 却没进 net-id 表的属性名都告警。
@@ -170,6 +191,7 @@ internal static class HextechSavedPropertyBootstrap
 		return result;
 	}
 
+#if !STS2_109_OR_NEWER
 	private static void EnsureSavedPropertyNetIdBitSize()
 	{
 		// 兜底:按与游戏 / RitsuLib 一致的公式 CeilToInt(Log2(count)) 把位宽抬到能容纳当前属性数。
@@ -198,4 +220,5 @@ internal static class HextechSavedPropertyBootstrap
 		backingField.SetValue(null, targetBitSize);
 		HextechLog.Info($"[{ModInfo.Id}][Mayhem] SavedPropertiesTypeCache NetIdBitSize updated: old={currentBitSize} new={targetBitSize} propertyNames={propertyNameCount}");
 	}
+#endif
 }

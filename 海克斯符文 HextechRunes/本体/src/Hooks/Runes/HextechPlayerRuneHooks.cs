@@ -135,25 +135,27 @@ internal static partial class HextechPlayerRuneHooks
 		return false;
 	}
 
-	private static bool ShivCreateOneInHandPrefix(Player owner, CombatState combatState, ref Task<CardModel?> __result)
+	// 形参按游戏真实签名用 HextechCombatState(0.104+ 为 ICombatState);helper 需要具体 CombatState,
+	// 拿不到时放行原版(与旧行为一致,不吞小刀)。
+	private static bool ShivCreateOneInHandPrefix(Player owner, HextechCombatState combatState, ref Task<CardModel?> __result)
 	{
-		if (owner.GetRelic<BigKnifeRune>() == null)
+		if (owner.GetRelic<BigKnifeRune>() == null || combatState is not CombatState concreteState)
 		{
 			return true;
 		}
 
-		__result = HextechKnifeHelper.CreateOneBigKnifeBladeInHand(owner, combatState);
+		__result = HextechKnifeHelper.CreateOneBigKnifeBladeInHand(owner, concreteState);
 		return false;
 	}
 
-	private static bool ShivCreateManyInHandPrefix(Player owner, int count, CombatState combatState, ref Task<IEnumerable<CardModel>> __result)
+	private static bool ShivCreateManyInHandPrefix(Player owner, int count, HextechCombatState combatState, ref Task<IEnumerable<CardModel>> __result)
 	{
-		if (owner.GetRelic<BigKnifeRune>() == null)
+		if (owner.GetRelic<BigKnifeRune>() == null || combatState is not CombatState concreteState)
 		{
 			return true;
 		}
 
-		__result = HextechKnifeHelper.CreateBigKnifeBladesInHand(owner, count, combatState);
+		__result = HextechKnifeHelper.CreateBigKnifeBladesInHand(owner, count, concreteState);
 		return false;
 	}
 
