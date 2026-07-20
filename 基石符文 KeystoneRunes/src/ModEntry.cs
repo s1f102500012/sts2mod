@@ -76,6 +76,7 @@ public static class ModEntry
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(Keystone_FirstStrikeRune));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(Keystone_UndyingGraspRune));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(Keystone_ConquerorRune));
+		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(Keystone_ConquerorTemporaryStrengthPower));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(Keystone_SummonAeryRune));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(Keystone_LethalTempoRune));
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(Keystone_PhaseRushRune));
@@ -285,12 +286,8 @@ public static class ModEntry
 		PlayerChoiceSynchronizer? synchronizer = await WaitForPlayerChoiceSynchronizerAsync(runManager);
 		if (synchronizer == null)
 		{
-			foreach (Player player in orderedPlayers)
-			{
-				changed |= await EnsureKeystoneRuneSelected(player);
-			}
-
-			return changed;
+			Log.Warn($"[{ModInfo.Id}] Keystone multiplayer selection skipped: PlayerChoiceSynchronizer is not available.");
+			return false;
 		}
 
 		List<PendingRuneSelection> pendingSelections = new();
@@ -441,7 +438,8 @@ public static class ModEntry
 		PlayerChoiceSynchronizer? synchronizer = await WaitForPlayerChoiceSynchronizerAsync(runManager);
 		if (synchronizer == null)
 		{
-			return await RelicSelectCmd.FromChooseARelicScreen(player, options);
+			Log.Warn($"[{ModInfo.Id}] Keystone multiplayer selection skipped for player={player.NetId}: PlayerChoiceSynchronizer is not available.");
+			return null;
 		}
 
 		uint choiceId = synchronizer.ReserveChoiceId(player);
@@ -500,14 +498,14 @@ public static class ModEntry
 
 	private static async Task<PlayerChoiceSynchronizer?> WaitForPlayerChoiceSynchronizerAsync(RunManager runManager)
 	{
-		for (int i = 0; i < 60; i++)
+		for (int i = 0; i < 200; i++)
 		{
 			if (runManager.PlayerChoiceSynchronizer != null)
 			{
 				return runManager.PlayerChoiceSynchronizer;
 			}
 
-			await Task.Yield();
+			await Task.Delay(50);
 		}
 
 		return runManager.PlayerChoiceSynchronizer;
@@ -515,7 +513,7 @@ public static class ModEntry
 
 	private static bool IsLocalPlayer(RunManager runManager, Player player)
 	{
-		return player.NetId != 0UL && player.NetId == runManager.NetService.NetId;
+		return player.NetId == runManager.NetService.NetId;
 	}
 
 	private static async Task<KeystoneRuneSelectionScreen> CreateRuneSelectionScreenAsync(IReadOnlyList<RelicModel> relics, string? titleOverride = null)

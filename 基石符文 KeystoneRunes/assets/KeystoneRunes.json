@@ -3,7 +3,7 @@
   "name": "基石符文",
   "author": "Natsuki",
   "description": "在每局开始时从 15 个 LOL 基石符文遗物中选择一个，并将它们加入“基石遗物”图鉴栏。",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,

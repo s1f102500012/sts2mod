@@ -85,15 +85,31 @@ public static class ModEntry
 	private static void InstallHooks()
 	{
 		Harmony harmony = _harmony ??= new Harmony(HarmonyId);
-		MethodInfo addCardsMethod = RequireMethod(
-			typeof(CardPileCmd),
-			nameof(CardPileCmd.Add),
-			BindingFlags.Public | BindingFlags.Static,
-			typeof(IEnumerable<CardModel>),
-			typeof(CardPile),
-			typeof(CardPilePosition),
-			typeof(AbstractModel),
-			typeof(bool));
+		// 0.108.0 给该重载追加了 bool isChangingOwners 参数；先按 0.108 签名找，退回 0.107 签名，兼容双版本。
+		MethodInfo addCardsMethod =
+			typeof(CardPileCmd).GetMethod(
+				nameof(CardPileCmd.Add),
+				BindingFlags.Public | BindingFlags.Static,
+				null,
+				new[]
+				{
+					typeof(IEnumerable<CardModel>),
+					typeof(CardPile),
+					typeof(CardPilePosition),
+					typeof(AbstractModel),
+					typeof(bool),
+					typeof(bool),
+				},
+				null)
+			?? RequireMethod(
+				typeof(CardPileCmd),
+				nameof(CardPileCmd.Add),
+				BindingFlags.Public | BindingFlags.Static,
+				typeof(IEnumerable<CardModel>),
+				typeof(CardPile),
+				typeof(CardPilePosition),
+				typeof(AbstractModel),
+				typeof(bool));
 		MethodInfo drawMethod = RequireMethod(
 			typeof(CardPileCmd),
 			nameof(CardPileCmd.Draw),
@@ -154,9 +170,11 @@ public static class ModEntry
 		harmony.Patch(GetAsyncStateMachineTarget(addCardsMethod), transpiler: new HarmonyMethod(typeof(ModEntry), nameof(PatchAddCardsTranspiler)));
 		harmony.Patch(GetAsyncStateMachineTarget(drawMethod), transpiler: new HarmonyMethod(typeof(ModEntry), nameof(PatchDrawTranspiler)));
 		harmony.Patch(checkCanDrawMethod, transpiler: new HarmonyMethod(typeof(ModEntry), nameof(PatchCheckCanDrawTranspiler)));
-		harmony.Patch(handPosGetPosition, prefix: new HarmonyMethod(typeof(ModEntry), nameof(GetPositionPrefix)));
-		harmony.Patch(handPosGetAngle, prefix: new HarmonyMethod(typeof(ModEntry), nameof(GetAnglePrefix)));
-		harmony.Patch(handPosGetScale, prefix: new HarmonyMethod(typeof(ModEntry), nameof(GetScalePrefix)));
+		// RitsuLib 也会给这几个方法打"超过10张单排压缩"前缀，默认优先级下会盖掉本模组的双排布局。
+		// Priority.High 让本模组的前缀先执行；bool 前缀返回 false 后，RitsuLib 的同类前缀会被跳过。
+		harmony.Patch(handPosGetPosition, prefix: new HarmonyMethod(typeof(ModEntry), nameof(GetPositionPrefix)) { priority = Priority.High });
+		harmony.Patch(handPosGetAngle, prefix: new HarmonyMethod(typeof(ModEntry), nameof(GetAnglePrefix)) { priority = Priority.High });
+		harmony.Patch(handPosGetScale, prefix: new HarmonyMethod(typeof(ModEntry), nameof(GetScalePrefix)) { priority = Priority.High });
 		harmony.Patch(
 			refreshLayoutMethod,
 			prefix: new HarmonyMethod(typeof(ModEntry), nameof(RefreshLayoutPrefix)),
@@ -164,7 +182,8 @@ public static class ModEntry
 		harmony.Patch(onHolderFocusedMethod, prefix: new HarmonyMethod(typeof(ModEntry), nameof(OnHolderFocusedPrefix)));
 		harmony.Patch(onHolderUnfocusedMethod, prefix: new HarmonyMethod(typeof(ModEntry), nameof(OnHolderUnfocusedPrefix)));
 		harmony.Patch(handCardHoverMethod, postfix: new HarmonyMethod(typeof(ModEntry), nameof(DoCardHoverEffectsPostfix)));
-		harmony.Patch(startCardPlayMethod, prefix: new HarmonyMethod(typeof(ModEntry), nameof(StartCardPlayPrefix)));
+		// StartCardPlay 同样与 RitsuLib 撞车，一并提高优先级
+		harmony.Patch(startCardPlayMethod, prefix: new HarmonyMethod(typeof(ModEntry), nameof(StartCardPlayPrefix)) { priority = Priority.High });
 	}
 
 	private static bool MaxCardsInHandPrefix(ref int __result)

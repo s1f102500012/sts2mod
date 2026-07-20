@@ -56,10 +56,10 @@
   "keystoneUnsealedSpellbookRune.flavor": "封蜡上的指痕，不属于任何人。",
 
   "KEYSTONE_HAIL_OF_BLADES_RUNE.title": "丛刃",
-  "KEYSTONE_HAIL_OF_BLADES_RUNE.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌在本场战斗中能量消耗减少[blue]1[/blue]。",
+  "KEYSTONE_HAIL_OF_BLADES_RUNE.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌能量消耗减少[blue]1[/blue]。",
   "KEYSTONE_HAIL_OF_BLADES_RUNE.flavor": "蔷薇丛中传来的声响，密集而短促。",
   "keystoneHailOfBladesRune.title": "丛刃",
-  "keystoneHailOfBladesRune.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌在本场战斗中能量消耗减少[blue]1[/blue]。",
+  "keystoneHailOfBladesRune.description": "每场战斗中，你打出的前[blue]{Hits}[/blue]张攻击牌能量消耗减少[blue]1[/blue]。",
   "keystoneHailOfBladesRune.flavor": "蔷薇丛中传来的声响，密集而短促。",
 
   "KEYSTONE_FLEET_FOOTWORK_RUNE.title": "迅捷步法",

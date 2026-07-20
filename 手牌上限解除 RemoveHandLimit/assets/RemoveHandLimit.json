@@ -3,7 +3,7 @@
   "name": "解除手牌上限",
   "author": "Natsuki",
   "description": "将 STS2 战斗手牌上限改为 20，超过 10 张时以两排布局显示，并保持原版手牌图层不变。",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,

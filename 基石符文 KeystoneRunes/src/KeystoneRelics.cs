@@ -370,16 +370,29 @@ public sealed class Keystone_FirstStrikeRune : Keystone_RelicBase
 
 	public override int ModifyCardPlayCount(CardModel card, Creature? target, int playCount)
 	{
+		ResolveSavedFirstAttackCards();
 		if (_hasDuplicatedFirstAttack || !IsOwnedAttack(card))
 		{
 			return playCount;
+		}
+
+		return playCount + 1;
+	}
+
+	public override Task AfterModifyingCardPlayCount(CardModel card)
+	{
+		ResolveSavedFirstAttackCards();
+		if (_hasDuplicatedFirstAttack || !IsOwnedAttack(card))
+		{
+			return Task.CompletedTask;
 		}
 
 		_hasDuplicatedFirstAttack = true;
 		_trackedFirstAttackCard = card;
 		_savedTrackedFirstAttackCard = null;
 		Status = RelicStatus.Active;
-		return playCount + 1;
+		Flash(Array.Empty<Creature>());
+		return Task.CompletedTask;
 	}
 
 	public override Task BeforeCardPlayed(CardPlay cardPlay)
@@ -403,7 +416,7 @@ public sealed class Keystone_FirstStrikeRune : Keystone_RelicBase
 		CardModel? cardSource)
 	{
 		Player? owner = Owner;
-		if (owner == null || dealer != owner.Creature || target.Side != CombatSide.Enemy)
+		if (owner == null || !IsOwnerDamageDealer(owner, dealer) || target.Side != CombatSide.Enemy)
 		{
 			return Task.CompletedTask;
 		}
@@ -476,6 +489,13 @@ public sealed class Keystone_FirstStrikeRune : Keystone_RelicBase
 		}
 
 		return started > finished;
+	}
+
+	private static bool IsOwnerDamageDealer(Player owner, Creature? dealer)
+	{
+		return dealer == owner.Creature
+			|| dealer == owner.Osty
+			|| (dealer?.IsPet == true && dealer.PetOwner == owner);
 	}
 
 	private void ResolveSavedFirstAttackCards()
@@ -717,6 +737,13 @@ public sealed class Keystone_UndyingGraspRune : Keystone_RelicBase
 	}
 }
 
+public sealed class Keystone_ConquerorTemporaryStrengthPower : TemporaryStrengthPower
+{
+	public override AbstractModel OriginModel => ModelDb.Relic<Keystone_ConquerorRune>();
+
+	protected override bool IsVisibleInternal => false;
+}
+
 public sealed class Keystone_ConquerorRune : Keystone_RelicBase
 {
 	private const int AttacksPerStrength = 2;
@@ -785,39 +812,37 @@ public sealed class Keystone_ConquerorRune : Keystone_RelicBase
 	public override async Task AfterCardPlayed(PlayerChoiceContext context, CardPlay cardPlay)
 	{
 		if (!IsOwnedAttack(cardPlay.Card) || Owner?.Creature.CombatState?.CurrentSide != CombatSide.Player)
-			{
-				return;
-			}
-
-			bool wasAtStrengthCap = _strengthGrantedThisTurn >= MaxStrengthPerTurn;
-			_attacksPlayedThisTurn++;
-			int targetStrength = Math.Min(_attacksPlayedThisTurn / AttacksPerStrength, MaxStrengthPerTurn);
-			while (_strengthGrantedThisTurn < targetStrength)
-		{
-			_strengthGrantedThisTurn++;
-			await Sts2Compat.ApplyPower<StrengthPower>(Owner!.Creature, 1m, Owner.Creature, cardPlay.Card);
-				Flash(Array.Empty<Creature>());
-			}
-
-			if (wasAtStrengthCap)
-			{
-				await CreatureCmd.Heal(Owner!.Creature, HealPerAttack, playAnim: true);
-			}
-
-		RefreshVisualState();
-	}
-
-	public override async Task AfterTurnEnd(PlayerChoiceContext choiceContext, CombatSide side)
-	{
-		if (side != CombatSide.Player || Owner?.Creature == null || _strengthGrantedThisTurn <= 0)
 		{
 			return;
 		}
 
-		int currentStrength = Owner.Creature.GetPowerAmount<StrengthPower>();
-		int updatedStrength = Math.Max(0, currentStrength - _strengthGrantedThisTurn);
-		await Sts2Compat.SetPowerAmount<StrengthPower>(Owner.Creature, updatedStrength, Owner.Creature, null);
+		bool wasAtStrengthCap = _strengthGrantedThisTurn >= MaxStrengthPerTurn;
+		_attacksPlayedThisTurn++;
+		int targetStrength = Math.Min(_attacksPlayedThisTurn / AttacksPerStrength, MaxStrengthPerTurn);
+		while (_strengthGrantedThisTurn < targetStrength)
+		{
+			_strengthGrantedThisTurn++;
+			await Sts2Compat.ApplyPower<Keystone_ConquerorTemporaryStrengthPower>(Owner!.Creature, 1m, Owner.Creature, cardPlay.Card);
+			Flash(Array.Empty<Creature>());
+		}
+
+		if (wasAtStrengthCap)
+		{
+			await CreatureCmd.Heal(Owner!.Creature, HealPerAttack, playAnim: true);
+		}
+
+		RefreshVisualState();
+	}
+
+	public override Task AfterTurnEnd(PlayerChoiceContext choiceContext, CombatSide side)
+	{
+		if (side != CombatSide.Player)
+		{
+			return Task.CompletedTask;
+		}
+
 		ResetTurnTracking();
+		return Task.CompletedTask;
 	}
 
 	private void ResetTurnTracking()
@@ -1333,9 +1358,33 @@ public sealed class Keystone_HailOfBladesRune : Keystone_RelicBase
 		}
 
 		_buffedAttacksThisTurn++;
-		cardPlay.Card.EnergyCost.AddThisCombat(-1, reduceOnly: true);
 		Flash(Array.Empty<Creature>());
 		return Task.CompletedTask;
+	}
+
+	public override bool TryModifyEnergyCostInCombat(CardModel card, decimal originalCost, out decimal modifiedCost)
+	{
+		modifiedCost = originalCost;
+		if (!ShouldDiscount(card) || originalCost <= 0m)
+		{
+			return false;
+		}
+
+		decimal discountedCost = Math.Max(0m, originalCost - 1m);
+		if (discountedCost == originalCost)
+		{
+			return false;
+		}
+
+		modifiedCost = discountedCost;
+		return true;
+	}
+
+	private bool ShouldDiscount(CardModel card)
+	{
+		return _buffedAttacksThisTurn < MaxBuffedAttacksPerTurn
+			&& IsOwnedAttack(card)
+			&& Owner?.Creature.CombatState?.CurrentSide == CombatSide.Player;
 	}
 
 	private void ResetTurnTracking()

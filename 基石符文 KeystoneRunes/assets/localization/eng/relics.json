@@ -56,10 +56,10 @@
   "keystoneUnsealedSpellbookRune.flavor": "The hard part is not finding answers. It is choosing which page to open first.",
 
   "KEYSTONE_HAIL_OF_BLADES_RUNE.title": "Hail of Blades",
-  "KEYSTONE_HAIL_OF_BLADES_RUNE.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play cost [blue]1[/blue] less for that combat.",
+  "KEYSTONE_HAIL_OF_BLADES_RUNE.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play cost [blue]1[/blue] less.",
   "KEYSTONE_HAIL_OF_BLADES_RUNE.flavor": "Open quickly, and they never get to settle.",
   "keystoneHailOfBladesRune.title": "Hail of Blades",
-  "keystoneHailOfBladesRune.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play cost [blue]1[/blue] less for that combat.",
+  "keystoneHailOfBladesRune.description": "In each combat, the first [blue]{Hits}[/blue] Attack cards you play cost [blue]1[/blue] less.",
   "keystoneHailOfBladesRune.flavor": "Open quickly, and they never get to settle.",
 
   "KEYSTONE_FLEET_FOOTWORK_RUNE.title": "Fleet Footwork",
