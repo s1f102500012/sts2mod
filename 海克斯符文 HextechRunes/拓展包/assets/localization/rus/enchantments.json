@@ -1,6 +1,10 @@
 {
   "EVOLUTION.title": "Эволюция",
   "EVOLUTION.description": "Эта карта получает [gold]Сжигается[/gold]. После розыгрыша Атаки навсегда увеличивает её урон на [blue]2[/blue]. После розыгрыша Навыка навсегда увеличивает его защиту на [blue]2[/blue]. После розыгрыша Таланта навсегда уменьшает его стоимость энергии на [blue]1[/blue].",
+  "ENTROPY_INCREASE.title": "Entropy Increase",
+  "ENTROPY_INCREASE.description": "After you next obtain a card, transform this card into a copy of it.",
+  "ENTROPY_DECREASE.title": "Entropy Decrease",
+  "ENTROPY_DECREASE.description": "After this card is played [blue]1[/blue] time, remove it from your deck at the end of combat.",
   "SPONSOR_COMPOSITE_ENCHANTMENT.title": "Совмещённые чары",
   "SPONSOR_COMPOSITE_ENCHANTMENT.description": "На этой карте несколько чар. Смотрите подсказки ниже для каждого отдельного эффекта."
 }

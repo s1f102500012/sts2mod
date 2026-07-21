@@ -1,6 +1,10 @@
 {
   "EVOLUTION.title": "Evolution",
   "EVOLUTION.description": "This card gains [gold]Exhaust[/gold]. After an Attack is played, permanently increase its damage by [blue]2[/blue]. After a Skill is played, permanently increase its Block by [blue]2[/blue]. After a Power is played, permanently reduce its Energy cost by [blue]1[/blue].",
+  "ENTROPY_INCREASE.title": "Entropy Increase",
+  "ENTROPY_INCREASE.description": "After you next obtain a card, transform this card into a copy of it.",
+  "ENTROPY_DECREASE.title": "Entropy Decrease",
+  "ENTROPY_DECREASE.description": "After this card is played [blue]1[/blue] time, remove it from your deck at the end of combat.",
   "SPONSOR_COMPOSITE_ENCHANTMENT.title": "Stacked Enchantments",
   "SPONSOR_COMPOSITE_ENCHANTMENT.description": "This card has multiple enchantments. See the tips below for each individual effect."
 }

@@ -1,6 +1,10 @@
 {
   "EVOLUTION.title": "进化",
   "EVOLUTION.description": "这张牌获得[gold]消耗[/gold]。攻击牌打出后伤害永久+[blue]2[/blue]，技能牌打出后格挡永久+[blue]2[/blue]，能力牌打出后耗能永久-[blue]1[/blue]。",
+  "ENTROPY_INCREASE.title": "熵增",
+  "ENTROPY_INCREASE.description": "你下一次获得卡牌后，此牌变化为那张牌的复制。",
+  "ENTROPY_DECREASE.title": "熵减",
+  "ENTROPY_DECREASE.description": "此牌打出[blue]1[/blue]次后，在本场战斗结束时将其从牌组中移除。",
   "SPONSOR_COMPOSITE_ENCHANTMENT.title": "复合附魔",
   "SPONSOR_COMPOSITE_ENCHANTMENT.description": "这张牌同时拥有多个附魔，具体效果请查看下方各个附魔提示。"
 }

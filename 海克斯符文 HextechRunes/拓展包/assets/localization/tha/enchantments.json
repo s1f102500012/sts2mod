@@ -1,6 +1,10 @@
 {
   "EVOLUTION.title": "มนตร์วิวัฒนาการ",
   "EVOLUTION.description": "การ์ดใบนี้ได้รับ [gold]สลาย[/gold] หลังเล่นการ์ดโจมตี เพิ่มความเสียหายของมันถาวร [blue]2[/blue] หลังเล่นการ์ดทักษะ เพิ่มบล็อกของมันถาวร [blue]2[/blue] หลังเล่นการ์ดพลัง ลดต้นทุนพลังงานของมันถาวร [blue]1[/blue]",
+  "ENTROPY_INCREASE.title": "Entropy Increase",
+  "ENTROPY_INCREASE.description": "After you next obtain a card, transform this card into a copy of it.",
+  "ENTROPY_DECREASE.title": "Entropy Decrease",
+  "ENTROPY_DECREASE.description": "After this card is played [blue]1[/blue] time, remove it from your deck at the end of combat.",
   "SPONSOR_COMPOSITE_ENCHANTMENT.title": "มนตร์ซ้อน",
   "SPONSOR_COMPOSITE_ENCHANTMENT.description": "การ์ดใบนี้มีมนตร์หลายชนิด ดูคำแนะนำด้านล่างสำหรับแต่ละเอฟเฟกต์"
 }

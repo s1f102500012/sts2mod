@@ -1,6 +1,10 @@
 {
   "EVOLUTION.title": "Evolução",
   "EVOLUTION.description": "Esta carta ganha [gold]Exaurir[/gold]. Depois que um Ataque é jogado, aumente permanentemente seu dano em [blue]2[/blue]. Depois que uma Habilidade é jogada, aumente permanentemente seu Bloqueio em [blue]2[/blue]. Depois que um Poder é jogado, reduza permanentemente seu custo de Energia em [blue]1[/blue].",
+  "ENTROPY_INCREASE.title": "Entropy Increase",
+  "ENTROPY_INCREASE.description": "After you next obtain a card, transform this card into a copy of it.",
+  "ENTROPY_DECREASE.title": "Entropy Decrease",
+  "ENTROPY_DECREASE.description": "After this card is played [blue]1[/blue] time, remove it from your deck at the end of combat.",
   "SPONSOR_COMPOSITE_ENCHANTMENT.title": "Encantamentos Empilhados",
   "SPONSOR_COMPOSITE_ENCHANTMENT.description": "Esta carta possui vários encantamentos. Veja as dicas abaixo para cada efeito individual."
 }

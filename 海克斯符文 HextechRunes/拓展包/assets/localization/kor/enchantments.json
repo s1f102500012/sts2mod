@@ -1,6 +1,10 @@
 {
   "EVOLUTION.title": "진화",
   "EVOLUTION.description": "이 카드는 [gold]소멸[/gold]을 얻습니다. 공격 카드를 플레이한 후 피해량이 영구히 [blue]2[/blue] 증가합니다. 스킬 카드를 플레이한 후 방어도가 영구히 [blue]2[/blue] 증가합니다. 파워 카드를 플레이한 후 에너지 비용이 영구히 [blue]1[/blue] 감소합니다.",
+  "ENTROPY_INCREASE.title": "Entropy Increase",
+  "ENTROPY_INCREASE.description": "After you next obtain a card, transform this card into a copy of it.",
+  "ENTROPY_DECREASE.title": "Entropy Decrease",
+  "ENTROPY_DECREASE.description": "After this card is played [blue]1[/blue] time, remove it from your deck at the end of combat.",
   "SPONSOR_COMPOSITE_ENCHANTMENT.title": "복합 인챈트",
   "SPONSOR_COMPOSITE_ENCHANTMENT.description": "이 카드는 여러 인챈트를 동시에 가지고 있습니다. 각 효과는 아래의 인챈트 설명을 확인하세요."
 }

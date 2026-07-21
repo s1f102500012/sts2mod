@@ -1,6 +1,10 @@
 {
   "EVOLUTION.title": "Evolución",
   "EVOLUTION.description": "Esta carta gana [gold]Agotar[/gold]. Tras jugar un Ataque, aumenta permanentemente su daño en [blue]2[/blue]. Tras jugar una Habilidad, aumenta permanentemente su Bloqueo en [blue]2[/blue]. Tras jugar un Poder, reduce permanentemente su coste de Energía en [blue]1[/blue].",
+  "ENTROPY_INCREASE.title": "Entropy Increase",
+  "ENTROPY_INCREASE.description": "After you next obtain a card, transform this card into a copy of it.",
+  "ENTROPY_DECREASE.title": "Entropy Decrease",
+  "ENTROPY_DECREASE.description": "After this card is played [blue]1[/blue] time, remove it from your deck at the end of combat.",
   "SPONSOR_COMPOSITE_ENCHANTMENT.title": "Encantamientos acumulados",
   "SPONSOR_COMPOSITE_ENCHANTMENT.description": "Esta carta tiene varios encantamientos. Consulta abajo las pistas de cada efecto."
 }

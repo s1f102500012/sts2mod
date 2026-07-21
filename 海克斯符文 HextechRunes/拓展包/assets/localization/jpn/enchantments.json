@@ -1,6 +1,10 @@
 {
   "EVOLUTION.title": "進化",
   "EVOLUTION.description": "このカードは[gold]廃棄[/gold]を得る。アタックをプレイした後、そのダメージを永久に[blue]2[/blue]増やす。スキルをプレイした後、そのブロックを永久に[blue]2[/blue]増やす。パワーをプレイした後、そのエナジーコストを永久に[blue]1[/blue]減らす。",
+  "ENTROPY_INCREASE.title": "Entropy Increase",
+  "ENTROPY_INCREASE.description": "After you next obtain a card, transform this card into a copy of it.",
+  "ENTROPY_DECREASE.title": "Entropy Decrease",
+  "ENTROPY_DECREASE.description": "After this card is played [blue]1[/blue] time, remove it from your deck at the end of combat.",
   "SPONSOR_COMPOSITE_ENCHANTMENT.title": "複合エンチャント",
   "SPONSOR_COMPOSITE_ENCHANTMENT.description": "このカードは複数のエンチャントを持つ。各効果は下のヒントを確認する。"
 }

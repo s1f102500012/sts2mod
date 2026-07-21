@@ -19,7 +19,7 @@ namespace HextechRunes;
 public sealed class MiracleEvent : EventModel
 {
 	private const string InitialPage = "INITIAL";
-	private const string LocTable = "events";
+	private const string EventLocTable = "events";
 	private const string PortraitPath = "res://images/events/doors_of_light_and_dark.png";
 
 	public override IEnumerable<string> GetAssetPaths(IRunState runState)
@@ -325,7 +325,7 @@ public sealed class MiracleEvent : EventModel
 
 	private Task Show(string pageKey, IReadOnlyList<EventOption> options)
 	{
-		SetEventState(new LocString(LocTable, $"{Id.Entry}.pages.{pageKey}.description"), options);
+		SetEventState(new LocString(EventLocTable, $"{Id.Entry}.pages.{pageKey}.description"), options);
 		return Task.CompletedTask;
 	}
 
@@ -336,6 +336,6 @@ public sealed class MiracleEvent : EventModel
 			await effect(Owner);
 		}
 
-		SetEventFinished(new LocString(LocTable, $"{Id.Entry}.pages.{pageKey}.resolution"));
+		SetEventFinished(new LocString(EventLocTable, $"{Id.Entry}.pages.{pageKey}.resolution"));
 	}
 }
