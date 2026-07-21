@@ -52,10 +52,10 @@
   "SURVIVOR_UPGRADE_RUNE.selectionScreenPrompt": "버릴 카드를 원하는 만큼 선택하세요.",
   "colorDiscoveryRune.selectionScreenPrompt": "손에 넣을 카드 1장을 선택하세요.",
   "COLOR_DISCOVERY_RUNE.selectionScreenPrompt": "손에 넣을 카드 1장을 선택하세요.",
-  "FEEL_THE_BURN_CARD.title": "타오름을 느껴라",
+  "FEEL_THE_BURN_CARD.title": "저주의 화염",
   "FEEL_THE_BURN_CARD.description": "모든 적의 모든 강화 효과를 제거합니다.\n[gold]화상[/gold] [blue]{HextechBurnPower}[/blue]을 부여합니다.",
   "FEEL_THE_BURN_CARD.flavor": "그들의 불을 꺼뜨린 뒤, 당신의 불을 지펴라.",
-  "OK_BOOMERANG_CARD.title": "OK 부메랑",
-  "OK_BOOMERANG_CARD.description": "모든 적에게 {Damage:diff()}의 피해를 [blue]{Hits}[/blue]번 줍니다.\n이 카드를 손으로 되돌립니다.",
+  "OK_BOOMERANG_CARD.title": "부메랑 투척",
+  "OK_BOOMERANG_CARD.description": "모든 적에게 {Damage:diff()}의 피해를 [blue]{Hits}[/blue]번 줍니다.\n이 카드를 다시 손으로 가져옵니다.",
   "OK_BOOMERANG_CARD.flavor": "농담처럼 날아가서, 빚쟁이처럼 돌아온다."
 }

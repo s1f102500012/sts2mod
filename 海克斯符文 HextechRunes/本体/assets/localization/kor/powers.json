@@ -1,7 +1,7 @@
 {
   "HEXTECH_BURN_POWER.title": "점화",
-  "HEXTECH_BURN_POWER.description": "현재 체력의 이 수치 퍼센트만큼 피해를 줍니다(최소 이 수치). 그 후 점화가 [blue]10%[/blue] 감소합니다.",
-  "HEXTECH_BURN_POWER.smartDescription": "현재 체력의 [blue]{Amount}%[/blue]만큼 피해를 줍니다(최소 [blue]{Amount}[/blue]). 그 후 점화가 [blue]10%[/blue] 감소합니다.",
+  "HEXTECH_BURN_POWER.description": "현재 체력의 이 수치 퍼센트만큼 피해를 줍니다(최소 이 수치). 그 후 점화 수치가 [blue]10%[/blue] 감소합니다.",
+  "HEXTECH_BURN_POWER.smartDescription": "현재 체력의 [blue]{Amount}%[/blue]만큼 피해를 줍니다(최소 [blue]{Amount}[/blue]). 그 후 점화 수치가 [blue]10%[/blue] 감소합니다.",
   "HEXTECH_ATTACK_REPLAY_POWER.title": "마술 트릭",
   "HEXTECH_ATTACK_REPLAY_POWER.description": "다음에 플레이하는 공격 카드가 이 수치만큼 반복됩니다.",
   "HEXTECH_ATTACK_REPLAY_POWER.smartDescription": "다음에 플레이하는 공격 카드가 [blue]{Amount}[/blue]번 반복됩니다.",

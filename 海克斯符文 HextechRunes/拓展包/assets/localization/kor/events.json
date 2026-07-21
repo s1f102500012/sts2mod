@@ -1,5 +1,5 @@
 {
-  "MIRACLE_EVENT.pages.INITIAL.description": "공허 속에서 문 하나가 나타납니다. 문의 너머에는 방 대신, 느리게 흐르는 [purple]별빛[/purple]의 강줄기와 어느 시대에도 속하지 않은 속삭임만이 있을 뿐입니다.\n\n신도여 - 기적은 [gold]관대[/gold]하며, 동시에 [red]탐욕[/red]스럽다. 기적에게 대가를 [gold]바치거나[/gold], 강제로 [gold]취하라[/gold]. 허나 모든 거래는 세상에 메아리를 남기는 법.\n\n네 개의 광륜이 각자 한 가지 욕망을 가리키며 당신 앞에서 피어오릅니다.",
+  "MIRACLE_EVENT.pages.INITIAL.description": "공허 속에서 문 하나가 나타납니다. 문의 너머에는 방 대신, 느리게 흐르는 [purple]별빛[/purple]의 강줄기와 어느 시대에도 속하지 않은 속삭임만이 있을 뿐입니다.\n\n신도여 - 신성은 [gold]관대[/gold]하며, 동시에 [red]탐욕[/red]스럽다. 신성에게 대가를 [gold]바치거나[/gold], 강제로 [gold]취하라[/gold]. 허나 모든 거래는 세상에 메아리를 남기는 법.\n\n네 개의 광륜이 각자 한 가지 욕망을 가리키며 당신 앞에서 피어오릅니다.",
   "MIRACLE_EVENT.pages.INITIAL.options.FORGE.title": "모루",
   "MIRACLE_EVENT.pages.INITIAL.options.FORGE.description": "[gold]모루[/gold]를 두고 거래합니다.",
   "MIRACLE_EVENT.pages.INITIAL.options.GOLD.title": "골드",
@@ -21,7 +21,7 @@
   "MIRACLE_EVENT.pages.FORGE_SACRIFICE.options.T3.title": "[blue]III[/blue]",
   "MIRACLE_EVENT.pages.FORGE_SACRIFICE.options.T3.description": "[red]-300[/red] 골드, [green]+3[/green] 모루.",
   "MIRACLE_EVENT.pages.FORGE_SACRIFICE.resolution": "당신의 손안에서 모루가 모습을 갖춥니다.",
-  "MIRACLE_EVENT.pages.FORGE_TAKE.description": "기적은 값없이 모루를 건넵니다. 그리고 앞으로 치를 가격을 조용히 올려둡니다.",
+  "MIRACLE_EVENT.pages.FORGE_TAKE.description": "신성은 값없이 모루를 건넵니다. 그리고 앞으로 치를 가격을 조용히 올려둡니다.",
   "MIRACLE_EVENT.pages.FORGE_TAKE.options.T1.title": "[blue]I[/blue]",
   "MIRACLE_EVENT.pages.FORGE_TAKE.options.T1.description": "[green]+1[/green] 모루. [gold]모루 가격[/gold] [red]+50[/red].",
   "MIRACLE_EVENT.pages.FORGE_TAKE.options.T2.title": "[blue]II[/blue]",
@@ -34,7 +34,7 @@
   "MIRACLE_EVENT.pages.GOLD_ROOT.options.SACRIFICE.description": "[gold]골드[/gold]를 지불하여 [green]모루 가격[/green]을 낮춥니다.",
   "MIRACLE_EVENT.pages.GOLD_ROOT.options.TAKE.title": "취하기",
   "MIRACLE_EVENT.pages.GOLD_ROOT.options.TAKE.description": "[gold]골드[/gold]를 얻습니다. [red]모루 가격이 증가합니다[/red].",
-  "MIRACLE_EVENT.pages.GOLD_SACRIFICE.description": "골드를 바치자, 기적이 모루의 가격을 낮춥니다.",
+  "MIRACLE_EVENT.pages.GOLD_SACRIFICE.description": "골드를 바치자, 신성이 모루의 가격을 낮춥니다.",
   "MIRACLE_EVENT.pages.GOLD_SACRIFICE.options.T1.title": "[blue]I[/blue]",
   "MIRACLE_EVENT.pages.GOLD_SACRIFICE.options.T1.description": "[red]-100[/red] 골드. [gold]모루 가격[/gold] [green]-25[/green].",
   "MIRACLE_EVENT.pages.GOLD_SACRIFICE.options.T2.title": "[blue]II[/blue]",
@@ -42,7 +42,7 @@
   "MIRACLE_EVENT.pages.GOLD_SACRIFICE.options.T3.title": "[blue]III[/blue]",
   "MIRACLE_EVENT.pages.GOLD_SACRIFICE.options.T3.description": "[red]-400[/red] 골드. [gold]모루 가격[/gold] [green]-100[/green].",
   "MIRACLE_EVENT.pages.GOLD_SACRIFICE.resolution": "골드는 강으로 돌아가고, 가격도 함께 내려갑니다.",
-  "MIRACLE_EVENT.pages.GOLD_TAKE.description": "기적은 골드를 내어줍니다. 그리고 모루의 가격을 올립니다.",
+  "MIRACLE_EVENT.pages.GOLD_TAKE.description": "신성은 골드를 내어줍니다. 그리고 모루의 가격을 올립니다.",
   "MIRACLE_EVENT.pages.GOLD_TAKE.options.T1.title": "[blue]I[/blue]",
   "MIRACLE_EVENT.pages.GOLD_TAKE.options.T1.description": "[green]+100[/green] 골드. [gold]모루 가격[/gold] [red]+25[/red].",
   "MIRACLE_EVENT.pages.GOLD_TAKE.options.T2.title": "[blue]II[/blue]",
@@ -86,6 +86,6 @@
   "MIRACLE_EVENT.pages.GIFT_SACRIFICE.resolution": "상자가 품고 있던 선물을 모두 드러냅니다.",
   "MIRACLE_EVENT.pages.GIFT_TAKE.resolution": "도박을 하지 않기로 한 당신은 [green]50[/green] 골드를 가져갑니다.",
   "MIRACLE_EVENT.title": "기적",
-  "MIRACLE_EVENT.common.BACK.title": "Go Back",
-  "MIRACLE_EVENT.common.BACK.description": "Return to the previous choice."
+  "MIRACLE_EVENT.common.BACK.title": "돌아간다",
+  "MIRACLE_EVENT.common.BACK.description": "이전 선택지로 돌아갑니다."
 }

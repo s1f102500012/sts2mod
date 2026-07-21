@@ -5,7 +5,7 @@
   "REGRET_RUNE.title": "운명의 메아리",
   "REGRET_RUNE.description": "전투 시작 시 [gold]힘[/gold]과 [gold]민첩[/gold]을 [blue]2[/blue]씩 얻습니다. 죽을 때 최대 체력의 [blue]30%[/blue]로 부활하고, 손이 가득 찰 때까지 카드를 뽑으며, 이번 턴 동안 모든 카드의 비용이 [blue]0[/blue]이 됩니다. 모든 적에게 [gold]약화[/gold]와 [gold]취약[/gold]을 [blue]2[/blue] 부여하고, [gold]불가침[/gold]을 [blue]1[/blue] 얻습니다. 등반 당 최대 [blue]7[/blue]번 부활할 수 있습니다.",
   "REGRET_RUNE.flavor": "스폰서 아이템: 운명은 가끔 한 발짝 물러서지만 장부는 기억합니다.",
-  "GASTRITIS_RUNE.title": "스웨이옌",
+  "GASTRITIS_RUNE.title": "위염입니다",
   "GASTRITIS_RUNE.description": "자신보다 체력이 높은 적에게 피해를 줄 때 피해가 [blue]50%[/blue] 증가하고, 체력을 [blue]2[/blue] 회복하며 카드를 [blue]1[/blue]장 뽑습니다.",
   "GASTRITIS_RUNE.flavor": "후원자 아이템: 위가 아파도 강한 놈은 씹어서 삼킨다.",
   "STARLIGHT_SPARKLE_RUNE.title": "반짝이는 별빛",
