@@ -38,6 +38,7 @@ for TARGET in "${TARGETS[@]}"; do
     --project "$ROOT/tests/HextechRunes.Tests/HextechRunes.Tests.csproj" \
     --configuration Release \
     -p:HextechSts2Target="$TARGET" \
+	-p:HextechSponsorSts2Target="$TARGET" \
     -p:GameDataDir="$GAME_DATA_DIR"
 done
 

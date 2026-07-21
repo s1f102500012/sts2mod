@@ -21,6 +21,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/HextechRunes.csproj" />
+	<ProjectReference Include="../../../HextechRunesSponsorPack/src/HextechRunesSponsorPack.csproj" />
   </ItemGroup>
 
   <ItemGroup>
