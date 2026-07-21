@@ -25,6 +25,7 @@ public sealed class BrokenSwordRelic : IntegratedStrategyEventRelic
 		return true;
 	}
 
+#if STS2_109_OR_NEWER
 	public override CardLocation ModifyCardPlayResultLocation(
 		CardModel card,
 		bool isAutoPlay,
@@ -39,6 +40,23 @@ public sealed class BrokenSwordRelic : IntegratedStrategyEventRelic
 		Flash();
 		return cardLocation with { pileType = PileType.Exhaust };
 	}
+#else
+	public override (PileType, CardPilePosition) ModifyCardPlayResultPileTypeAndPosition(
+		CardModel card,
+		bool isAutoPlay,
+		ResourceInfo resources,
+		PileType pileType,
+		CardPilePosition position)
+	{
+		if (!ShouldAffect(card) || pileType == PileType.None)
+		{
+			return (pileType, position);
+		}
+
+		Flash();
+		return (PileType.Exhaust, position);
+	}
+#endif
 
 	private bool ShouldAffect(CardModel card)
 	{

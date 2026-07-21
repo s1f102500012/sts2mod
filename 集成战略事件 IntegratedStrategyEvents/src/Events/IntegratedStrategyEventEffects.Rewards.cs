@@ -29,10 +29,12 @@ internal static partial class IntegratedStrategyEventEffects
 	// 这里在发放后核对遗物列表，未入账则重抽一次并留下可定位的日志。
 	private static async Task ObtainRandomRelicVerified(Player owner, Func<Player, RelicModel> pull)
 	{
-		int before = CountLiveRelics(owner);
+		HashSet<RelicModel> relicsBefore = owner.Relics
+			.Where(static relic => !relic.HasBeenRemovedFromState)
+			.ToHashSet<RelicModel>(ReferenceEqualityComparer.Instance);
 		RelicModel relic = pull(owner);
 		await RelicCmd.Obtain(relic, owner);
-		if (CountLiveRelics(owner) > before)
+		if (HasNewLiveRelic(owner, relicsBefore))
 		{
 			return;
 		}
@@ -42,7 +44,7 @@ internal static partial class IntegratedStrategyEventEffects
 			$"{owner.NetId}; retrying once with a fresh pull.");
 		RelicModel retryRelic = pull(owner);
 		await RelicCmd.Obtain(retryRelic, owner);
-		if (CountLiveRelics(owner) <= before)
+		if (!HasNewLiveRelic(owner, relicsBefore))
 		{
 			Log.Error(
 				$"{ModInfo.LogPrefix} Random relic reward retry {retryRelic.Id.Entry} also failed for " +
@@ -50,9 +52,11 @@ internal static partial class IntegratedStrategyEventEffects
 		}
 	}
 
-	private static int CountLiveRelics(Player owner)
+	private static bool HasNewLiveRelic(Player owner, HashSet<RelicModel> relicsBefore)
 	{
-		return owner.Relics.Count(static relic => !relic.HasBeenRemovedFromState);
+		return owner.Relics.Any(relic =>
+			!relic.HasBeenRemovedFromState &&
+			!relicsBefore.Contains(relic));
 	}
 
 	public static async Task ObtainRandomRelics(Player owner, int count)

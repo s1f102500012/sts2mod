@@ -6,10 +6,25 @@
     <AssemblyName>IntegratedStrategyEvents</AssemblyName>
     <RootNamespace>IntegratedStrategyEvents</RootNamespace>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <GameDataPath>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64</GameDataPath>
-    <RitsuLibHintPath>/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295/lib/0.109.0/STS2-RitsuLib.dll</RitsuLibHintPath>
-    <RitsuLibHintPath Condition="!Exists('$(RitsuLibHintPath)')">/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/mods/STS2-RitsuLib/lib/0.109.0/STS2-RitsuLib.dll</RitsuLibHintPath>
+    <Version>0.5.4</Version>
+    <AssemblyVersion>0.5.4.0</AssemblyVersion>
+    <FileVersion>0.5.4.0</FileVersion>
+    <InformationalVersion>0.5.4</InformationalVersion>
+    <IntegratedStrategySts2Target Condition="'$(IntegratedStrategySts2Target)' == ''">0.107.1</IntegratedStrategySts2Target>
+    <VersionedRefsRoot>$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups</VersionedRefsRoot>
+    <OfficialGameDataPath>$(VersionedRefsRoot)/$(IntegratedStrategySts2Target)/game-refs</OfficialGameDataPath>
+    <GameDataPath Condition="'$(GameDataPath)' == ''">$(OfficialGameDataPath)</GameDataPath>
+    <RitsuLibRoot Condition="'$(RitsuLibRoot)' == ''">/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295</RitsuLibRoot>
+    <RitsuLibHintPath Condition="'$(RitsuLibHintPath)' == ''">$(RitsuLibRoot)/lib/$(IntegratedStrategySts2Target)/STS2-RitsuLib.dll</RitsuLibHintPath>
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IntegratedStrategySts2Target)' == '0.109.0'">
+    <DefineConstants>$(DefineConstants);STS2_109_OR_NEWER</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="IntegratedStrategyEventsCompatibilityTarget" Value="$(IntegratedStrategySts2Target)" />
+  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="sts2">

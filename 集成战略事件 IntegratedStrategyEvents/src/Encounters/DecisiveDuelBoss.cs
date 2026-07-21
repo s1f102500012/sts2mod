@@ -175,6 +175,7 @@ public abstract class DecisiveDuelBoss : MonsterModel
 				VfxCmd.PlayOnCreatureCenters(nonPlayerTargets, AttackVfxPath);
 			}
 
+#if STS2_109_OR_NEWER
 			await CreatureCmd.Damage(
 				new BlockingPlayerChoiceContext(),
 				nonPlayerTargets,
@@ -183,6 +184,15 @@ public abstract class DecisiveDuelBoss : MonsterModel
 				Creature,
 				null,
 				null);
+#else
+			await CreatureCmd.Damage(
+				new BlockingPlayerChoiceContext(),
+				nonPlayerTargets,
+				damage,
+				ValueProp.Move,
+				Creature,
+				null);
+#endif
 		}
 	}
 

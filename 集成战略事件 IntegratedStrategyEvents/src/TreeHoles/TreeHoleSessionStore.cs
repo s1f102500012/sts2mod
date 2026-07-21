@@ -12,6 +12,7 @@ internal sealed class TreeHoleSessionStore
 	private readonly HashSet<RunState> _pendingFinaleEntries = [];
 	private readonly HashSet<RunState> _terminalRewardsProceeded = [];
 	private readonly HashSet<RunState> _pendingArchitectCompletions = [];
+	private readonly HashSet<RunState> _pendingMapRoomResumes = [];
 	private readonly HashSet<RunState> _suppressCompletionUntilTerminalProceed = [];
 
 	public bool IsActive(RunState state)
@@ -151,10 +152,27 @@ internal sealed class TreeHoleSessionStore
 		return _pendingArchitectCompletions.Remove(state);
 	}
 
+	public void AddPendingMapRoomResume(RunState state)
+	{
+		_pendingMapRoomResumes.Add(state);
+	}
+
+	public bool HasPendingMapRoomResume(RunState state)
+	{
+		return _pendingMapRoomResumes.Contains(state);
+	}
+
+	public bool RemovePendingMapRoomResume(RunState state)
+	{
+		return _pendingMapRoomResumes.Remove(state);
+	}
+
 	public void ClearForRunStarted(RunState state)
 	{
 		_pendingRestoreSnapshots.TryGetValue(state, out TreeHoleRestoreSnapshot? pendingRestoreSnapshot);
 		bool suppressCompletionUntilTerminalProceed = _suppressCompletionUntilTerminalProceed.Contains(state);
+		bool pendingArchitectCompletion = _pendingArchitectCompletions.Contains(state);
+		bool pendingMapRoomResume = _pendingMapRoomResumes.Contains(state);
 		_treeHoleSessions.Clear();
 		_finaleSessions.Clear();
 		_pendingRestoreSnapshots.Clear();
@@ -168,6 +186,15 @@ internal sealed class TreeHoleSessionStore
 		_pendingFinaleEntries.Clear();
 		_terminalRewardsProceeded.Clear();
 		_pendingArchitectCompletions.Clear();
+		if (pendingArchitectCompletion)
+		{
+			_pendingArchitectCompletions.Add(state);
+		}
+		_pendingMapRoomResumes.Clear();
+		if (pendingMapRoomResume)
+		{
+			_pendingMapRoomResumes.Add(state);
+		}
 		_suppressCompletionUntilTerminalProceed.Clear();
 		if (suppressCompletionUntilTerminalProceed)
 		{

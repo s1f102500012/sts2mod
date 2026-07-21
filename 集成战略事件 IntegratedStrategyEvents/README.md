@@ -1,6 +1,6 @@
 # 集成战略事件
 
-RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by Arknights Integrated Strategies. (前置依赖: STS2-RitsuLib, Workshop 3747602295)
+RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by Arknights Integrated Strategies. 同一个模组包支持 STS2 0.107.1 与 0.109.0，并依赖 RitsuLib 0.4.60（Workshop 3747602295）。
 
 ## Structure
 
@@ -37,7 +37,8 @@ RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by 
 - `src/UI/IntegratedStrategyEventLayout*.cs`: split event layout implementation for patch entry, layout application, shared event access, baseline caching, geometry, and node width application.
 - `assets/IntegratedStrategyEvents.json`: manifest.
 - `assets/images/events/`: imported event portrait images. Use 16:9 PNGs when possible.
-- `tools/build_and_deploy.sh`: builds, packs, and deploys the three-file mod.
+- `loader/`: stable root loader that selects a separately compiled implementation from `lib/<game-version>/`.
+- `tools/build_and_deploy.sh`: builds both game-version variants, packs resources, validates the bundle, and deploys it.
 - `tools/validate_event_structure.sh`: checks that event flows, definitions, and assets stay separated.
 
 ## Adding Events
@@ -51,7 +52,7 @@ RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by 
 7. Add the new event type to `IntegratedStrategyContentCatalog.Events.cs`.
 8. Add act restrictions in `IntegratedStrategyEventSpawnRules.Acts.cs` and resource/deck gates in `IntegratedStrategyEventSpawnRules.Gates.cs` when the event should not be globally eligible.
 9. Keep `event_options.txt`, `event_descriptions.txt`, and `event_refresh_conditions.txt` in sync as human review summaries.
-10. Run `tools/validate_event_structure.sh`, then `tools/build_and_deploy.sh`.
+10. Run `tools/validate_event_structure.sh`, then `tools/build_and_deploy.sh`; both 0.107.1 and 0.109.0 variants must compile.
 
 ## Adding Event Relics
 

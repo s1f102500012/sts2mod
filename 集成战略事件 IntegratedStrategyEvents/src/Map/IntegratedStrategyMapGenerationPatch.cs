@@ -17,9 +17,12 @@ internal static class IntegratedStrategyMapLengthPatch
 {
 	private const int ExtraRooms = 1;
 
-	private static void Postfix(ref int __result)
+	private static void Postfix(ActModel __instance, ref int __result)
 	{
-		__result += ExtraRooms;
+		if (__instance.GetType().Assembly == typeof(ActModel).Assembly)
+		{
+			__result += ExtraRooms;
+		}
 	}
 }
 
@@ -96,6 +99,66 @@ internal static class IntegratedStrategyFirstEventPatch
 			return false;
 		}
 
+		if (IntegratedStrategyTreeHoleController.IsAtEternalDustFirstEventPoint(runState))
+		{
+			if (!IntegratedStrategyEventReplay.TryRestoreSavedCurrentEvent(
+					__instance,
+					runState,
+					static eventModel => eventModel is ReconstructionEvent,
+					"saved Eternal Dust reconstruction event"))
+			{
+				int reconstructionIndex = __instance.eventsVisited % __instance.events.Count;
+				RoomSet.SwapToOrCreateAtIndex<EventModel, ReconstructionEvent>(__instance.events, reconstructionIndex);
+			}
+
+			return false;
+		}
+
+		if (IntegratedStrategyTreeHoleController.IsAtEternalDustSecondEventPoint(runState))
+		{
+			if (!IntegratedStrategyEventReplay.TryRestoreSavedCurrentEvent(
+					__instance,
+					runState,
+					static eventModel => eventModel is ExplorerSmallStepEvent,
+					"saved Eternal Dust explorer event"))
+			{
+				int explorerStepIndex = __instance.eventsVisited % __instance.events.Count;
+				RoomSet.SwapToOrCreateAtIndex<EventModel, ExplorerSmallStepEvent>(__instance.events, explorerStepIndex);
+			}
+
+			return false;
+		}
+
+		if (IntegratedStrategyTreeHoleController.IsAtAbyssalJungleSublimationEventPoint(runState))
+		{
+			if (!IntegratedStrategyEventReplay.TryRestoreSavedCurrentEvent(
+					__instance,
+					runState,
+					static eventModel => eventModel is SublimationEvent,
+					"saved Abyssal Jungle sublimation event"))
+			{
+				int sublimationIndex = __instance.eventsVisited % __instance.events.Count;
+				RoomSet.SwapToOrCreateAtIndex<EventModel, SublimationEvent>(__instance.events, sublimationIndex);
+			}
+
+			return false;
+		}
+
+		if (IntegratedStrategyTreeHoleController.IsAtAbyssalJungleOdeEventPoint(runState))
+		{
+			if (!IntegratedStrategyEventReplay.TryRestoreSavedCurrentEvent(
+					__instance,
+					runState,
+					static eventModel => eventModel is OdeEvent,
+					"saved Abyssal Jungle ode event"))
+			{
+				int odeIndex = __instance.eventsVisited % __instance.events.Count;
+				RoomSet.SwapToOrCreateAtIndex<EventModel, OdeEvent>(__instance.events, odeIndex);
+			}
+
+			return false;
+		}
+
 		if (IntegratedStrategyTreeHoleController.IsActive(runState) &&
 			IntegratedStrategyEventReplay.TryRestoreSavedCurrentEvent(
 				__instance,
@@ -112,34 +175,6 @@ internal static class IntegratedStrategyFirstEventPatch
 				IntegratedStrategyEventReplay.IsAnyManagedForcedEvent,
 				"saved forced event"))
 		{
-			return false;
-		}
-
-		if (IntegratedStrategyTreeHoleController.IsAtEternalDustFirstEventPoint(runState))
-		{
-			int reconstructionIndex = __instance.eventsVisited % __instance.events.Count;
-			RoomSet.SwapToOrCreateAtIndex<EventModel, ReconstructionEvent>(__instance.events, reconstructionIndex);
-			return false;
-		}
-
-		if (IntegratedStrategyTreeHoleController.IsAtEternalDustSecondEventPoint(runState))
-		{
-			int explorerStepIndex = __instance.eventsVisited % __instance.events.Count;
-			RoomSet.SwapToOrCreateAtIndex<EventModel, ExplorerSmallStepEvent>(__instance.events, explorerStepIndex);
-			return false;
-		}
-
-		if (IntegratedStrategyTreeHoleController.IsAtAbyssalJungleSublimationEventPoint(runState))
-		{
-			int sublimationIndex = __instance.eventsVisited % __instance.events.Count;
-			RoomSet.SwapToOrCreateAtIndex<EventModel, SublimationEvent>(__instance.events, sublimationIndex);
-			return false;
-		}
-
-		if (IntegratedStrategyTreeHoleController.IsAtAbyssalJungleOdeEventPoint(runState))
-		{
-			int odeIndex = __instance.eventsVisited % __instance.events.Count;
-			RoomSet.SwapToOrCreateAtIndex<EventModel, OdeEvent>(__instance.events, odeIndex);
 			return false;
 		}
 
@@ -212,6 +247,7 @@ internal static class IntegratedStrategyFirstEventPatch
 		// 秘境节点保留树洞事件；结局分支顺延到二层第一个非秘境事件节点。
 		return runState.CurrentActIndex == SecondActIndex &&
 			!IntegratedStrategyTreeHoleController.IsActive(runState) &&
+			!IntegratedStrategySecretMapNodeController.ShouldSkipMapMutation(runState, runState.Map) &&
 			IsAtUnknownMapPoint(runState) &&
 			!IntegratedStrategySecretMapNodeController.IsAtSecretNode(runState) &&
 			!HasVisitedOrdinaryEventInCurrentAct(runState);
@@ -235,7 +271,8 @@ internal static class IntegratedStrategyFirstEventPatch
 			runState.MapPointHistory[runState.CurrentActIndex].Any(static entry =>
 				entry.MapPointType == MapPointType.Unknown &&
 				entry.Rooms.Any(static room => room.RoomType == RoomType.Event &&
-					!IntegratedStrategySecretMapNodeController.IsSecretNodeForcedEventId(room.ModelId)));
+					(room.ModelId == null ||
+						!IntegratedStrategySecretMapNodeController.IsSecretNodeForcedEventId(room.ModelId))));
 	}
 
 	private enum FirstEventBranch

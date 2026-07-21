@@ -4,67 +4,76 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FILE_STEM="IntegratedStrategyEvents"
-DIST="$ROOT/dist"
-OUTPUT="${1:-$DIST/$FILE_STEM.zip}"
+VARIANT_MANIFEST_NAME="integrated-strategy-events-variants.manifest"
+DIST_DIR="$ROOT/dist"
+PACKAGE_ROOT="$ROOT/.build/package"
+PACKAGE_DIR="$PACKAGE_ROOT/$FILE_STEM"
+ZIP_PATH="${1:-$DIST_DIR/$FILE_STEM.zip}"
 EXPECTED_ENTRIES_FILE=""
 ACTUAL_ENTRIES_FILE=""
-STAGING=""
 
-cleanup_temp() {
-  [[ -z "$EXPECTED_ENTRIES_FILE" || ! -f "$EXPECTED_ENTRIES_FILE" ]] || rm -f "$EXPECTED_ENTRIES_FILE"
-  [[ -z "$ACTUAL_ENTRIES_FILE" || ! -f "$ACTUAL_ENTRIES_FILE" ]] || rm -f "$ACTUAL_ENTRIES_FILE"
-  [[ -z "$STAGING" || ! -d "$STAGING" ]] || rm -rf "$STAGING"
+if [[ "$ZIP_PATH" != /* ]]; then
+	ZIP_PATH="$(pwd)/$ZIP_PATH"
+fi
+
+cleanup_temp_files() {
+	[[ -z "$EXPECTED_ENTRIES_FILE" || ! -f "$EXPECTED_ENTRIES_FILE" ]] || rm -f "$EXPECTED_ENTRIES_FILE"
+	[[ -z "$ACTUAL_ENTRIES_FILE" || ! -f "$ACTUAL_ENTRIES_FILE" ]] || rm -f "$ACTUAL_ENTRIES_FILE"
 }
+trap cleanup_temp_files EXIT
 
-trap cleanup_temp EXIT
-
-case "$OUTPUT" in
-  /*) ;;
-  *) OUTPUT="$PWD/$OUTPUT" ;;
-esac
-
-for ext in json pck dll; do
-  if [[ ! -f "$DIST/$FILE_STEM.$ext" ]]; then
-    print -u2 "Missing release artifact: $DIST/$FILE_STEM.$ext"
-    exit 1
-  fi
+for required in \
+	"$DIST_DIR/$FILE_STEM.json" \
+	"$DIST_DIR/$FILE_STEM.pck" \
+	"$DIST_DIR/$FILE_STEM.dll" \
+	"$DIST_DIR/$VARIANT_MANIFEST_NAME" \
+	"$DIST_DIR/lib/0.107.1/$FILE_STEM.dll" \
+	"$DIST_DIR/lib/0.107.1/compat-target.txt" \
+	"$DIST_DIR/lib/0.109.0/$FILE_STEM.dll" \
+	"$DIST_DIR/lib/0.109.0/compat-target.txt"; do
+	if [[ ! -f "$required" ]]; then
+		print -u2 "Missing release artifact: $required"
+		exit 1
+	fi
 done
 
-STAGING="$(mktemp -d "${TMPDIR:-/tmp}/integrated-strategy-events-release.XXXXXX")"
+rm -rf "$PACKAGE_ROOT"
+mkdir -p "$PACKAGE_DIR"
+rsync -a --exclude '*.zip' "$DIST_DIR/" "$PACKAGE_DIR/"
+find "$PACKAGE_ROOT" -name "__MACOSX" -type d -prune -exec rm -rf {} +
+find "$PACKAGE_ROOT" -name ".DS_Store" -type f -delete
+find "$PACKAGE_ROOT" -name "._*" -type f -delete
 
-mkdir -p "$STAGING/$FILE_STEM"
-cp "$DIST/$FILE_STEM.json" "$STAGING/$FILE_STEM/$FILE_STEM.json"
-cp "$DIST/$FILE_STEM.pck" "$STAGING/$FILE_STEM/$FILE_STEM.pck"
-cp "$DIST/$FILE_STEM.dll" "$STAGING/$FILE_STEM/$FILE_STEM.dll"
+mkdir -p "$(dirname "$ZIP_PATH")"
+rm -f "$ZIP_PATH"
+(
+	cd "$PACKAGE_ROOT"
+	COPYFILE_DISABLE=1 zip -r -X "$ZIP_PATH" "$FILE_STEM" \
+		-x "__MACOSX/*" "*/__MACOSX/*" ".DS_Store" "*/.DS_Store" "._*" "*/._*"
+)
 
-find "$STAGING" -name "__MACOSX" -type d -prune -exec rm -rf {} +
-find "$STAGING" -name ".DS_Store" -type f -delete
-find "$STAGING" -name "._*" -type f -delete
-
-mkdir -p "$(dirname "$OUTPUT")"
-rm -f "$OUTPUT"
-(cd "$STAGING" && COPYFILE_DISABLE=1 /usr/bin/zip -X -r "$OUTPUT" "$FILE_STEM" \
-  -x "__MACOSX/*" "*/__MACOSX/*" ".DS_Store" "*/.DS_Store" "._*" "*/._*")
-
-if unzip -l "$OUTPUT" | rg -q '(__MACOSX|/[.]_|[.]DS_Store)'; then
-  print -u2 "Package still contains macOS metadata: $OUTPUT"
-  exit 1
+if unzip -l "$ZIP_PATH" | rg -q '(__MACOSX|/[.]_|[.]DS_Store)'; then
+	print -u2 "Package contains macOS metadata: $ZIP_PATH"
+	exit 1
 fi
 
 EXPECTED_ENTRIES_FILE="$(mktemp)"
 ACTUAL_ENTRIES_FILE="$(mktemp)"
 printf "%s\n" \
-  "$FILE_STEM/$FILE_STEM.dll" \
-  "$FILE_STEM/$FILE_STEM.json" \
-  "$FILE_STEM/$FILE_STEM.pck" \
-  | LC_ALL=C sort > "$EXPECTED_ENTRIES_FILE"
-unzip -Z1 "$OUTPUT" \
-  | rg -v '/$' \
-  | LC_ALL=C sort > "$ACTUAL_ENTRIES_FILE"
+	"$FILE_STEM/$FILE_STEM.dll" \
+	"$FILE_STEM/$FILE_STEM.json" \
+	"$FILE_STEM/$FILE_STEM.pck" \
+	"$FILE_STEM/$VARIANT_MANIFEST_NAME" \
+	"$FILE_STEM/lib/0.107.1/$FILE_STEM.dll" \
+	"$FILE_STEM/lib/0.107.1/compat-target.txt" \
+	"$FILE_STEM/lib/0.109.0/$FILE_STEM.dll" \
+	"$FILE_STEM/lib/0.109.0/compat-target.txt" \
+	| LC_ALL=C sort > "$EXPECTED_ENTRIES_FILE"
+unzip -Z1 "$ZIP_PATH" | rg -v '/$' | LC_ALL=C sort > "$ACTUAL_ENTRIES_FILE"
 
 if ! diff -u "$EXPECTED_ENTRIES_FILE" "$ACTUAL_ENTRIES_FILE" >&2; then
-  print -u2 "Package contains unexpected files: $OUTPUT"
-  exit 1
+	print -u2 "Package contains unexpected files: $ZIP_PATH"
+	exit 1
 fi
 
-echo "Created $OUTPUT"
+echo "Packaged multi-version release zip: $ZIP_PATH"

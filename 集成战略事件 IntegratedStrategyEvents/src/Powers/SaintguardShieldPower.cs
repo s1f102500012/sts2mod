@@ -25,6 +25,7 @@ public sealed class SaintguardShieldPower : PowerModel, IModPowerAssetOverrides
 
 	public string? CustomBigIconPath => RampartPowerBigIconPath;
 
+#if STS2_109_OR_NEWER
 	public override decimal ModifyDamageAdditive(
 		Creature? target,
 		decimal amount,
@@ -32,10 +33,20 @@ public sealed class SaintguardShieldPower : PowerModel, IModPowerAssetOverrides
 		Creature? dealer,
 		CardModel? cardSource,
 		CardPlay? cardPlay)
+#else
+	public override decimal ModifyDamageAdditive(
+		Creature? target,
+		decimal amount,
+		ValueProp props,
+		Creature? dealer,
+		CardModel? cardSource)
+#endif
 	{
 		_ = dealer;
 		_ = cardSource;
+#if STS2_109_OR_NEWER
 		_ = cardPlay;
+#endif
 		if (target != Owner || amount <= 0m || Amount <= 0 || props.HasFlag(ValueProp.Unpowered))
 		{
 			return 0m;

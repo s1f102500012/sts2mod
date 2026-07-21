@@ -25,6 +25,10 @@ public static class ModEntry
 
 	public static void Initialize()
 	{
+		IntegratedStrategyTreeHoleSaveStateStore.Initialize();
+#if !STS2_109_OR_NEWER
+		InjectSavedPropertyCaches();
+#endif
 		RegisterRelics();
 		RegisterCards();
 		RegisterActEvents();
@@ -40,8 +44,12 @@ public static class ModEntry
 		Log.Info($"{ModInfo.LogPrefix} Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}.");
 	}
 
-	// 0.109 起 net-id 规范化被官方收编：ModelIdSerializationCache.Init 会从 ModelDb.All
-	// 确定性排序建缓存，ProphecyProjectionRelic 的 SavedProperty 不再需要手动注入。
+#if !STS2_109_OR_NEWER
+	private static void InjectSavedPropertyCaches()
+	{
+		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(ProphecyProjectionRelic));
+	}
+#endif
 
 	private static void RegisterRelics()
 	{

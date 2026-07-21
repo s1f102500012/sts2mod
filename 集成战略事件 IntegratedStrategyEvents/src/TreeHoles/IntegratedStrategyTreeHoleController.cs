@@ -87,9 +87,11 @@ internal static class IntegratedStrategyTreeHoleController
 		TreeHoleSessionManager.QueueRestoreFromSave(save, state);
 	}
 
-	public static bool TryRestoreSavedSessionForCurrentRun(ActMap map)
+	public static bool TryRestoreSavedSessionForCurrentRun(
+		ActMap map,
+		bool allowMapRebuild = true)
 	{
-		return TreeHoleSessionManager.TryRestoreSavedSessionForCurrentRun(map);
+		return TreeHoleSessionManager.TryRestoreSavedSessionForCurrentRun(map, allowMapRebuild);
 	}
 
 	public static bool IsCurrentTreeHoleMap(ActMap map)

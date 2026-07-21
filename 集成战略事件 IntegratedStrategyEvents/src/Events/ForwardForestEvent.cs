@@ -35,6 +35,7 @@ public sealed partial class ForwardForestEvent : IntegratedStrategyEventModel
 	private async Task ClimbIntoTreeHole()
 	{
 		await LoseMaxHp(TreeTopMaxHpLoss);
+		Finish(InitialPage);
 		await IntegratedStrategyTreeHoleController.EnterFromEvent(OwnerOrThrow);
 	}
 

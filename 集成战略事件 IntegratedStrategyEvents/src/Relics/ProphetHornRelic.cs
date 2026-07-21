@@ -37,6 +37,7 @@ public sealed class ProphetHornRelic : IntegratedStrategyEventRelic
 	{
 		if (actIndex != TargetActIndex ||
 			map is ProphetHornActMap ||
+			IntegratedStrategySecretMapNodeController.ShouldSkipMapMutation(runState, map) ||
 			(!allowSavedMapReplacement && map is SavedActMap) ||
 			!IsActiveInRun(runState))
 		{

@@ -86,13 +86,12 @@ internal static class IntegratedStrategyModelIdSerializationWarningHooks
 			foreach (Mod mod in ModManager.Mods)
 			{
 				if (mod.state != ModLoadState.Loaded
-					|| !string.Equals(mod.manifest?.id, ModInfo.ModId, StringComparison.Ordinal)
-					|| mod.assemblies == null)
+					|| !string.Equals(mod.manifest?.id, ModInfo.ModId, StringComparison.Ordinal))
 				{
 					continue;
 				}
 
-				foreach (Type type in mod.assemblies.SelectMany(static assembly => assembly.GetTypes()))
+				foreach (Type type in GetModAssemblies(mod).SelectMany(static assembly => assembly.GetTypes()))
 				{
 					if (!type.IsAbstract
 						&& !type.IsInterface
@@ -111,5 +110,14 @@ internal static class IntegratedStrategyModelIdSerializationWarningHooks
 		}
 
 		return false;
+	}
+
+	private static IEnumerable<Assembly> GetModAssemblies(Mod mod)
+	{
+#if STS2_109_OR_NEWER
+		return mod.assemblies ?? [];
+#else
+		return mod.assembly == null ? [] : [mod.assembly];
+#endif
 	}
 }

@@ -49,6 +49,12 @@ internal class IntegratedStrategyRadiantApexFinaleActMap : ActMap, IIntegratedSt
 		restSitePoint.AddChildPoint(BossMapPoint);
 	}
 
+	public static bool IsCombatCoord(MapCoord? coord)
+	{
+		return coord is
+			{ col: CenterColumn, row: FirstCombatRow or SecondCombatRow };
+	}
+
 	private MapPoint CreateGridPoint(int col, int row, MapPointType pointType)
 	{
 		MapPoint point = CreateSpecialPoint(col, row, pointType);

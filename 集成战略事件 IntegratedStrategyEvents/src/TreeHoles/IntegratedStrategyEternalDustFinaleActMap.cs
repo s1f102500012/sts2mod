@@ -38,6 +38,16 @@ internal sealed class IntegratedStrategyEternalDustFinaleActMap : ActMap, IInteg
 		SecondEventMapPoint.AddChildPoint(BossMapPoint);
 	}
 
+	public static bool IsFirstEventCoord(MapCoord? coord)
+	{
+		return coord is { col: CenterColumn, row: FirstEventRow };
+	}
+
+	public static bool IsSecondEventCoord(MapCoord? coord)
+	{
+		return coord is { col: CenterColumn, row: SecondEventRow };
+	}
+
 	private MapPoint CreateGridPoint(int col, int row, MapPointType pointType)
 	{
 		MapPoint point = CreateSpecialPoint(col, row, pointType);

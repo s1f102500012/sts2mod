@@ -5,12 +5,14 @@ using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Runs.History;
+using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Saves.Runs;
 
 namespace IntegratedStrategyEvents.TreeHoles;
 
 internal static class TreeHoleRunAccessor
 {
+	private static readonly AsyncLocal<TreeHoleResumeRoom> ResumeRoomForSave = new();
 	private static readonly MethodInfo? RunManagerClearScreensMethod =
 		AccessTools.Method(typeof(RunManager), "ClearScreens");
 	private static readonly MethodInfo? RunManagerFadeInMethod =
@@ -56,6 +58,35 @@ internal static class TreeHoleRunAccessor
 		}
 
 		await runManager.EnterRoom(room);
+	}
+
+	public static async Task PersistCurrentRunTransition(
+		RunManager runManager,
+		string transitionDescription,
+		TreeHoleResumeRoom resumeRoom = TreeHoleResumeRoom.Map)
+	{
+		TreeHoleResumeRoom previousResumeRoom = ResumeRoomForSave.Value;
+		ResumeRoomForSave.Value = resumeRoom;
+		try
+		{
+			SerializableRun stagedSave = runManager.ToSave(null);
+			runManager.CombatReplayWriter.RecordInitialState(stagedSave);
+			await SaveManager.Instance.SaveRun(null);
+			Log.Info($"{ModInfo.LogPrefix} Completed persistence request for {transitionDescription}.");
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"{ModInfo.LogPrefix} Failed to persist {transitionDescription}: {ex}");
+		}
+		finally
+		{
+			ResumeRoomForSave.Value = previousResumeRoom;
+		}
+	}
+
+	internal static TreeHoleResumeRoom GetRequestedResumeRoomForSave()
+	{
+		return ResumeRoomForSave.Value;
 	}
 
 	public static bool TryWinRun(RunManager runManager, out Task task)

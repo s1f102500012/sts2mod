@@ -36,6 +36,11 @@ internal sealed class IntegratedStrategyAbyssalJungleFinaleActMap : ActMap, IInt
 		restSitePoint.AddChildPoint(BossMapPoint);
 	}
 
+	public static bool IsEventCoord(MapCoord? coord)
+	{
+		return coord is { col: CenterColumn, row: EventRow };
+	}
+
 	private MapPoint CreateGridPoint(int col, int row, MapPointType pointType)
 	{
 		MapPoint point = CreateSpecialPoint(col, row, pointType);

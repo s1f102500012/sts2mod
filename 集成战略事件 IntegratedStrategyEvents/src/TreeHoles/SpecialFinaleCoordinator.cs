@@ -12,7 +12,6 @@ using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Random;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
-using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Saves.Runs;
 using MegaCrit.Sts2.Core.TestSupport;
 
@@ -24,46 +23,35 @@ internal static class SpecialFinaleCoordinator
 	{
 		return TreeHoleSessionManager.TryGetFinaleSession(state, out EndlessFinaleSession session) &&
 			session.Kind == SpecialFinaleKind.EternalDust &&
-			session.FinaleMap is IntegratedStrategyEternalDustFinaleActMap eternalDustMap &&
-			state.CurrentMapCoord.HasValue &&
-			state.CurrentMapCoord.Value.Equals(eternalDustMap.FirstEventMapPoint.coord);
+			IntegratedStrategyEternalDustFinaleActMap.IsFirstEventCoord(state.CurrentMapCoord);
 	}
 
 	public static bool IsAtEternalDustSecondEventPoint(RunState state)
 	{
 		return TreeHoleSessionManager.TryGetFinaleSession(state, out EndlessFinaleSession session) &&
 			session.Kind == SpecialFinaleKind.EternalDust &&
-			session.FinaleMap is IntegratedStrategyEternalDustFinaleActMap eternalDustMap &&
-			state.CurrentMapCoord.HasValue &&
-			state.CurrentMapCoord.Value.Equals(eternalDustMap.SecondEventMapPoint.coord);
+			IntegratedStrategyEternalDustFinaleActMap.IsSecondEventCoord(state.CurrentMapCoord);
 	}
 
 	public static bool IsAtRadiantApexCombatPoint(RunState state)
 	{
 		return TreeHoleSessionManager.TryGetFinaleSession(state, out EndlessFinaleSession session) &&
 			session.Kind == SpecialFinaleKind.RadiantApex &&
-			session.FinaleMap is IntegratedStrategyRadiantApexFinaleActMap radiantApexMap &&
-			state.CurrentMapCoord.HasValue &&
-			(state.CurrentMapCoord.Value.Equals(radiantApexMap.FirstCombatMapPoint.coord) ||
-			 state.CurrentMapCoord.Value.Equals(radiantApexMap.SecondCombatMapPoint.coord));
+			IntegratedStrategyRadiantApexFinaleActMap.IsCombatCoord(state.CurrentMapCoord);
 	}
 
 	public static bool IsAtAbyssalJungleSublimationEventPoint(RunState state)
 	{
 		return TreeHoleSessionManager.TryGetFinaleSession(state, out EndlessFinaleSession session) &&
 			session.Kind == SpecialFinaleKind.AbyssalJungle &&
-			session.FinaleMap is IntegratedStrategyAbyssalJungleFinaleActMap abyssalJungleMap &&
-			state.CurrentMapCoord.HasValue &&
-			state.CurrentMapCoord.Value.Equals(abyssalJungleMap.EventMapPoint.coord);
+			IntegratedStrategyAbyssalJungleFinaleActMap.IsEventCoord(state.CurrentMapCoord);
 	}
 
 	public static bool IsAtAbyssalJungleOdeEventPoint(RunState state)
 	{
 		return TreeHoleSessionManager.TryGetFinaleSession(state, out EndlessFinaleSession session) &&
 			session.Kind == SpecialFinaleKind.AbyssalJungleIsharmla &&
-			session.FinaleMap is IntegratedStrategyAbyssalJungleFinaleActMap abyssalJungleMap &&
-			state.CurrentMapCoord.HasValue &&
-			state.CurrentMapCoord.Value.Equals(abyssalJungleMap.EventMapPoint.coord);
+			IntegratedStrategyAbyssalJungleFinaleActMap.IsEventCoord(state.CurrentMapCoord);
 	}
 
 	public static bool IsAtProphetHornFragmentEventPoint(RunState state)
@@ -414,7 +402,9 @@ internal static class SpecialFinaleCoordinator
 			Log.Info($"{ModInfo.LogPrefix} Entering {session.DestinationActName} finale act.");
 			await runManager.EnterRoom(new MapRoom());
 			TreeHoleFinaleMusicCoordinator.PlayAfterFinaleEntry(finaleKind);
-			await PersistActiveTemporaryMapRun(session.DestinationActName);
+			await TreeHoleRunAccessor.PersistCurrentRunTransition(
+				runManager,
+				$"{session.DestinationActName} temporary map entry");
 
 			await TreeHoleRunAccessor.FadeIn(runManager, showTransition: true);
 		}
@@ -456,6 +446,8 @@ internal static class SpecialFinaleCoordinator
 				return;
 			}
 
+			await TreeHoleEntryCoordinator.WaitForEventOptionSettlement(state, destinationActName);
+
 			if (TestMode.IsOff && NGame.Instance != null)
 			{
 				await NGame.Instance.Transition.RoomFadeOut();
@@ -485,7 +477,9 @@ internal static class SpecialFinaleCoordinator
 
 			Log.Info($"{ModInfo.LogPrefix} Entering {destinationActName} Prophet Horn fragment.");
 			await TreeHoleRunAccessor.EnterRoomInternal(runManager, new MapRoom());
-			await PersistActiveTemporaryMapRun(destinationActName);
+			await TreeHoleRunAccessor.PersistCurrentRunTransition(
+				runManager,
+				$"{destinationActName} temporary map entry");
 			await TreeHoleRunAccessor.FadeIn(runManager, showTransition: true);
 		}
 		finally
@@ -507,20 +501,30 @@ internal static class SpecialFinaleCoordinator
 		TreeHoleRunAccessor.ClearScreens(runManager);
 		TreeHoleSessionManager.RestoreOriginalMapFromFinale(state, session);
 		await runManager.EnterRoom(new MapRoom());
+		await TreeHoleRunAccessor.PersistCurrentRunTransition(
+			runManager,
+			$"return from {session.DestinationActName} finale");
 		await TreeHoleRunAccessor.FadeIn(runManager, showTransition: true);
 	}
 
-	private static async Task PersistActiveTemporaryMapRun(string destinationActName)
+	internal static async Task PersistArchitectHandoffAfterEnterNextAct(
+		RunManager runManager,
+		RunState expectedState,
+		Task enterNextActTask)
 	{
-		try
+		await enterNextActTask;
+		if (!ReferenceEquals(runManager.DebugOnlyGetState(), expectedState) ||
+			!TreeHoleSessionManager.HasPendingArchitectCompletion(expectedState) ||
+			expectedState.CurrentRoom is not EventRoom { CanonicalEvent: TheArchitect })
 		{
-			await SaveManager.Instance.SaveRun(null);
-			Log.Info($"{ModInfo.LogPrefix} Persisted {destinationActName} temporary map entry.");
+			Log.Warn($"{ModInfo.LogPrefix} Could not persist the finale Architect handoff because the room changed.");
+			return;
 		}
-		catch (Exception ex)
-		{
-			Log.Warn($"{ModInfo.LogPrefix} Failed to persist {destinationActName} temporary map entry: {ex}");
-		}
+
+		await TreeHoleRunAccessor.PersistCurrentRunTransition(
+			runManager,
+			"special finale Architect handoff",
+			TreeHoleResumeRoom.Architect);
 	}
 
 	private static async Task HealPlayersToFull(RunState state)
@@ -757,10 +761,16 @@ internal static class SpecialFinaleCoordinator
 			return false;
 		}
 
-		TreeHoleSessionManager.RemovePendingArchitectCompletion(state);
-		completionTask = task;
+		completionTask = FinishArchitectCompletion(state, task);
 		Log.Info($"{ModInfo.LogPrefix} Completing run from endless finale Architect handoff.");
 		return true;
+	}
+
+	private static async Task FinishArchitectCompletion(RunState state, Task completionTask)
+	{
+		await completionTask;
+		TreeHoleSessionManager.RemovePendingArchitectCompletion(state);
+		IntegratedStrategyTreeHoleSaveStateStore.Clear(state);
 	}
 
 	private static bool IsBaseArchitectOption(EventOption option)

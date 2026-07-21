@@ -22,7 +22,11 @@ internal static class TreeHoleSeedFactory
 
 	public static uint CreateRadiantApexCombatNodeSeed(RunState state)
 	{
+#if STS2_109_OR_NEWER
 		uint foldedRunSeed = unchecked((uint)(state.Rng.Seed ^ (state.Rng.Seed >> 32)));
+#else
+		uint foldedRunSeed = state.Rng.Seed;
+#endif
 		return unchecked(foldedRunSeed ^
 			(uint)state.CurrentActIndex * 0x9e3779b9u ^
 			(uint)state.ActFloor * 0x85ebca6bu ^

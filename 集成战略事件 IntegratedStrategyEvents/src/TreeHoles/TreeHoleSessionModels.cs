@@ -58,6 +58,13 @@ internal enum SpecialFinaleKind
 	DesireHall
 }
 
+internal enum TreeHoleResumeRoom
+{
+	None,
+	Map,
+	Architect
+}
+
 internal sealed record TreeHoleSaveSnapshot(
 	TreeHoleSaveKind Kind,
 	int CurrentActIndex,
@@ -83,6 +90,7 @@ internal sealed record TreeHoleRestoreSnapshot(
 	string ParentActId,
 	int CurrentActFloor,
 	MapCoord? CurrentMapCoord,
+	SerializableActMap? TemporaryMap,
 	SerializableActMap OriginalMap,
 	IReadOnlyList<MapCoord> OriginalVisitedMapCoords,
 	IReadOnlyList<int> OriginalMapPointHistoryCounts,

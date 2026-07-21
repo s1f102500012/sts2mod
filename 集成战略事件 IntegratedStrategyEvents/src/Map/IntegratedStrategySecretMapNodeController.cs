@@ -341,15 +341,20 @@ internal static class IntegratedStrategySecretMapNodeController
 	private static readonly Assembly VanillaMapAssembly = typeof(ActMap).Assembly;
 	private static readonly Assembly SelfAssembly = typeof(IntegratedStrategySecretMapNodeController).Assembly;
 
-	private static bool ShouldSkipMap(RunState state, ActMap map)
+	internal static bool ShouldSkipMapMutation(IRunState runState, ActMap map)
 	{
 		// 秘境节点只出现在正常大地图上：
 		// 1) 本模组的树洞/终局/断章临时层由标记接口+会话判定排除；
 		// 2) 其他模组的脚本化/临时地图类型（非原版、非本模组程序集）默认排除（玩家反馈）；
 		// 3) 其他模组也可通过 IntegratedStrategyEventsInterop.RegisterSecretNodeSkipPredicate 显式声明排除。
-		return IntegratedStrategyTreeHoleController.IsTemporaryMap(state, map) ||
+		return IntegratedStrategyTreeHoleController.IsTemporaryMap(runState, map) ||
 			IsExternalScriptedMap(map) ||
 			IntegratedStrategyEventsInterop.ShouldSkipSecretNodes(map);
+	}
+
+	private static bool ShouldSkipMap(RunState state, ActMap map)
+	{
+		return ShouldSkipMapMutation(state, map);
 	}
 
 	private static bool IsExternalScriptedMap(ActMap map)
@@ -557,7 +562,11 @@ internal static class IntegratedStrategyTreeHoleEarlyRestorePatch
 	[HarmonyPriority(Priority.First)]
 	private static void Prefix(IRunState runState, ActMap map, int actIndex)
 	{
-		IntegratedStrategyTreeHoleController.TryRestoreSavedSessionForCurrentRun(map);
+		// 此时 GenerateMap 的返回值尚未赋给 RunState.Map；需要重建的旧树洞图留到
+		// NMapScreen.SetMap 后处理，避免这里写入的替代地图随后被原版覆盖。
+		IntegratedStrategyTreeHoleController.TryRestoreSavedSessionForCurrentRun(
+			map,
+			allowMapRebuild: false);
 	}
 }
 

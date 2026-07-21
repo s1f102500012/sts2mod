@@ -1,5 +1,6 @@
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
+using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves;
 using MegaCrit.Sts2.Core.Saves.Runs;
@@ -9,19 +10,39 @@ namespace IntegratedStrategyEvents.TreeHoles;
 [HarmonyPatch(typeof(RunManager), nameof(RunManager.ToSave))]
 internal static class IntegratedStrategyTreeHoleSavePatch
 {
+	[HarmonyBefore(ModInfo.RitsuLibCoreHarmonyId)]
 	private static void Postfix(SerializableRun __result)
 	{
 		RunState? state = RunManager.Instance.DebugOnlyGetState();
 		if (state == null)
 		{
-			IntegratedStrategyTreeHoleSaveStateStore.Clear();
 			return;
 		}
 
 		TreeHoleSaveSnapshot? snapshot = IntegratedStrategyTreeHoleController.GetSaveSnapshot(state);
+		TreeHoleResumeRoom resumeRoom = TreeHoleRunAccessor.GetRequestedResumeRoomForSave();
+		if (TreeHoleSessionManager.HasPendingArchitectCompletion(state))
+		{
+			resumeRoom = TreeHoleResumeRoom.Architect;
+		}
+		else if (resumeRoom == TreeHoleResumeRoom.None && state.CurrentRoom is MapRoom)
+		{
+			resumeRoom = TreeHoleResumeRoom.Map;
+		}
+
 		if (snapshot == null)
 		{
-			IntegratedStrategyTreeHoleSaveStateStore.Clear();
+			if (resumeRoom != TreeHoleResumeRoom.None)
+			{
+				IntegratedStrategyTreeHoleSaveStateStore.SaveResumeRoom(
+					state,
+					__result,
+					resumeRoom,
+					state.Map);
+				return;
+			}
+
+			IntegratedStrategyTreeHoleSaveStateStore.RemoveFromSave(state);
 			return;
 		}
 
@@ -36,7 +57,7 @@ internal static class IntegratedStrategyTreeHoleSavePatch
 			.Select(static history => history.ToList())
 			.ToList();
 		__result.MapDrawings = null;
-		IntegratedStrategyTreeHoleSaveStateStore.Save(__result, snapshot);
+		IntegratedStrategyTreeHoleSaveStateStore.Save(state, __result, snapshot, resumeRoom);
 
 		Log.Info($"{ModInfo.LogPrefix} Saved active tree-hole run at the temporary map location.");
 	}
@@ -45,6 +66,7 @@ internal static class IntegratedStrategyTreeHoleSavePatch
 [HarmonyPatch(typeof(RunState), nameof(RunState.FromSerializable))]
 internal static class IntegratedStrategyTreeHoleLoadPatch
 {
+	[HarmonyAfter(ModInfo.RitsuLibCoreHarmonyId)]
 	private static void Postfix(SerializableRun save, RunState __result)
 	{
 		IntegratedStrategyTreeHoleController.QueueRestoreFromSave(save, __result);

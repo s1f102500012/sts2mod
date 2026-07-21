@@ -170,7 +170,27 @@ internal static class TreeHoleSessionManager
 
 	public static void QueueRestoreFromSave(SerializableRun save, RunState state)
 	{
-		TreeHoleRestoreSnapshot? snapshot = IntegratedStrategyTreeHoleSaveStateStore.Load(save);
+		if (IntegratedStrategyTreeHoleSaveStateStore.TryGetResumeRoom(
+				save,
+				state,
+				out TreeHoleResumeRoom resumeRoom,
+				out _))
+		{
+			if (resumeRoom == TreeHoleResumeRoom.Architect)
+			{
+				SessionStore.AddPendingArchitectCompletion(state);
+				Log.Info($"{ModInfo.LogPrefix} Queued the finale Architect room resume from save.");
+				return;
+			}
+
+			if (resumeRoom == TreeHoleResumeRoom.Map)
+			{
+				SessionStore.AddPendingMapRoomResume(state);
+				Log.Info($"{ModInfo.LogPrefix} Queued a map-room resume from save.");
+			}
+		}
+
+		TreeHoleRestoreSnapshot? snapshot = IntegratedStrategyTreeHoleSaveStateStore.Load(save, state);
 		if (snapshot == null)
 		{
 			return;
@@ -186,7 +206,9 @@ internal static class TreeHoleSessionManager
 		Log.Info($"{ModInfo.LogPrefix} Queued {snapshot.Kind} tree-hole restore from save.");
 	}
 
-	public static bool TryRestoreSavedSessionForCurrentRun(ActMap map)
+	public static bool TryRestoreSavedSessionForCurrentRun(
+		ActMap map,
+		bool allowMapRebuild = true)
 	{
 		RunState? state = RunManager.Instance.DebugOnlyGetState();
 		if (state == null || !SessionStore.TryGetPendingRestore(state, out TreeHoleRestoreSnapshot snapshot))
@@ -196,15 +218,22 @@ internal static class TreeHoleSessionManager
 
 		ActMap sessionMap = map;
 		bool rebuiltSessionMap = false;
+		bool sessionMapMatches = MatchesSavedTemporaryMap(sessionMap, snapshot);
 		if (snapshot.Kind == TreeHoleSaveKind.TreeHole &&
-			!MapContainsCoord(sessionMap, snapshot.TerminalCoord) &&
+			!sessionMapMatches &&
 			snapshot.TreeHoleMapSeed != 0)
 		{
+			if (!allowMapRebuild)
+			{
+				return false;
+			}
+
 			sessionMap = IntegratedStrategyTreeHoleActMap.Create(new Rng(
 				snapshot.TreeHoleMapSeed,
-				"integrated_strategy_tree_hole_map_restore"));
+				TreeHoleSeedFactory.TreeHoleMapRngName));
 			state.Map = sessionMap;
 			rebuiltSessionMap = true;
+			sessionMapMatches = MatchesSavedTemporaryMap(sessionMap, snapshot);
 		}
 
 		// 幕身份校验优先按保存的 ActModel ID（第三方模组增删临时幕会使序号漂移），
@@ -212,16 +241,23 @@ internal static class TreeHoleSessionManager
 		bool actMatches = !string.IsNullOrEmpty(snapshot.ParentActId)
 			? string.Equals(state.Act.Id.Entry, snapshot.ParentActId, StringComparison.Ordinal)
 			: state.CurrentActIndex == snapshot.CurrentActIndex;
-		if (!actMatches || !MapContainsCoord(sessionMap, snapshot.TerminalCoord))
+		if (!actMatches ||
+			!sessionMapMatches ||
+			!MapContainsCoord(sessionMap, snapshot.TerminalCoord))
 		{
 			Log.Warn($"{ModInfo.LogPrefix} Ignored stale tree-hole restore snapshot.");
 			SessionStore.RemovePendingRestore(state);
+			SessionStore.RemovePendingMapRoomResume(state);
 			return false;
 		}
 
 		ActMap originalMap = new SavedActMap(snapshot.OriginalMap);
 		List<IReadOnlyList<MapPointHistoryEntry>> originalHistory =
-			CopyHistoryByCounts(state.MapPointHistory, snapshot.OriginalMapPointHistoryCounts);
+			CopyHistoryForParentAct(
+				state.MapPointHistory,
+				snapshot.OriginalMapPointHistoryCounts,
+				snapshot.CurrentActIndex,
+				state.CurrentActIndex);
 
 		if (snapshot.Kind == TreeHoleSaveKind.TreeHole)
 		{
@@ -392,6 +428,16 @@ internal static class TreeHoleSessionManager
 		return SessionStore.RemovePendingArchitectCompletion(state);
 	}
 
+	public static bool HasPendingMapRoomResume(RunState state)
+	{
+		return SessionStore.HasPendingMapRoomResume(state);
+	}
+
+	public static bool RemovePendingMapRoomResume(RunState state)
+	{
+		return SessionStore.RemovePendingMapRoomResume(state);
+	}
+
 	public static void OnRunStarted(RunState state)
 	{
 		SessionStore.ClearForRunStarted(state);
@@ -425,12 +471,12 @@ internal static class TreeHoleSessionManager
 		RequestRestoreOriginalMap(state, session);
 	}
 
-	internal static Task RestoreOriginalMapFromSyncedAction(Player owner)
+	internal static async Task RestoreOriginalMapFromSyncedAction(Player owner)
 	{
 		if (owner.RunState is not RunState state)
 		{
 			Log.Warn($"{ModInfo.LogPrefix} Tried to return from a tree-hole without a run state.");
-			return Task.CompletedTask;
+			return;
 		}
 
 		if (!SessionStore.TryGetTreeHoleSession(state, out TreeHoleSession session))
@@ -441,17 +487,32 @@ internal static class TreeHoleSessionManager
 				TryRestoreSavedSessionForCurrentRun(currentMap) &&
 				SessionStore.TryGetTreeHoleSession(state, out session))
 			{
-				RestoreOriginalMap(state, session);
-				return Task.CompletedTask;
+				await RestoreOriginalMapAndPersist(state, session);
+				return;
 			}
 
 			SessionStore.RemovePendingTreeHoleReturn(state);
 			Log.Warn($"{ModInfo.LogPrefix} Ignored a tree-hole return request because no session was active.");
-			return Task.CompletedTask;
+			return;
 		}
 
+		await RestoreOriginalMapAndPersist(state, session);
+	}
+
+	private static async Task RestoreOriginalMapAndPersist(
+		RunState state,
+		TreeHoleSession session)
+	{
+		RunManager runManager = RunManager.Instance;
 		RestoreOriginalMap(state, session);
-		return Task.CompletedTask;
+		if (state.CurrentRoom is not MapRoom)
+		{
+			await runManager.EnterRoom(new MapRoom());
+		}
+
+		await TreeHoleRunAccessor.PersistCurrentRunTransition(
+			runManager,
+			$"return from {session.DestinationActName} tree-hole");
 	}
 
 	public static void RestoreOriginalMapForArchitect(RunState state, EndlessFinaleSession session)
@@ -544,6 +605,70 @@ internal static class TreeHoleSessionManager
 			map.StartingMapPoint.coord.Equals(coord) ||
 			map.BossMapPoint.coord.Equals(coord) ||
 			map.SecondBossMapPoint?.coord.Equals(coord) == true;
+	}
+
+	private static bool MatchesSavedTemporaryMap(
+		ActMap map,
+		TreeHoleRestoreSnapshot snapshot)
+	{
+		SerializableActMap? expected = snapshot.TemporaryMap ?? CreateLegacyTemporaryMap(snapshot);
+		if (expected == null)
+		{
+			return false;
+		}
+
+		SerializableActMap actual = SerializableActMap.FromActMap(map);
+		if (actual.GridWidth < expected.GridWidth ||
+			actual.GridHeight < expected.GridHeight ||
+			!SamePointCoord(actual.StartingPoint, expected.StartingPoint) ||
+			!SamePointCoord(actual.BossPoint, expected.BossPoint) ||
+			!ContainsExpectedPointCoord(actual.SecondBossPoint, expected.SecondBossPoint) ||
+			!ContainsAllCoords(actual.StartMapPointCoords, expected.StartMapPointCoords))
+		{
+			return false;
+		}
+
+		Dictionary<MapCoord, SerializableMapPoint> actualPoints = (actual.Points ?? [])
+			.ToDictionary(static point => point.Coord);
+		foreach (SerializableMapPoint expectedPoint in expected.Points ?? [])
+		{
+			if (!actualPoints.TryGetValue(expectedPoint.Coord, out SerializableMapPoint? actualPoint) ||
+				!ContainsAllCoords(actualPoint.ChildCoords, expectedPoint.ChildCoords))
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	private static SerializableActMap? CreateLegacyTemporaryMap(TreeHoleRestoreSnapshot snapshot)
+	{
+		return IntegratedStrategyTreeHoleSaveStateStore.CreateLegacyTemporaryMap(
+			snapshot.Kind,
+			snapshot.TreeHoleMapSeed);
+	}
+
+	private static bool SamePointCoord(
+		SerializableMapPoint? left,
+		SerializableMapPoint? right)
+	{
+		return left != null && right != null && left.Coord.Equals(right.Coord);
+	}
+
+	private static bool ContainsExpectedPointCoord(
+		SerializableMapPoint? actual,
+		SerializableMapPoint? expected)
+	{
+		return expected == null || actual != null && actual.Coord.Equals(expected.Coord);
+	}
+
+	private static bool ContainsAllCoords(
+		IReadOnlyCollection<MapCoord>? actual,
+		IReadOnlyCollection<MapCoord>? expected)
+	{
+		return expected == null || expected.Count == 0 ||
+			actual != null && expected.All(actual.Contains);
 	}
 
 	public static void RefreshLocationSynchronizers(RunState state)
@@ -658,19 +783,28 @@ internal static class TreeHoleSessionManager
 		return true;
 	}
 
-	private static List<IReadOnlyList<MapPointHistoryEntry>> CopyHistoryByCounts(
+	private static List<IReadOnlyList<MapPointHistoryEntry>> CopyHistoryForParentAct(
 		IReadOnlyList<IReadOnlyList<MapPointHistoryEntry>> source,
-		IReadOnlyList<int> counts)
+		IReadOnlyList<int> counts,
+		int savedParentActIndex,
+		int currentParentActIndex)
 	{
-		List<IReadOnlyList<MapPointHistoryEntry>> result = [];
-		for (int actIndex = 0; actIndex < counts.Count; actIndex++)
+		List<IReadOnlyList<MapPointHistoryEntry>> result = source
+			.Select(static history => (IReadOnlyList<MapPointHistoryEntry>)history.ToList())
+			.ToList();
+		if (savedParentActIndex < 0 ||
+			savedParentActIndex >= counts.Count ||
+			currentParentActIndex < 0 ||
+			currentParentActIndex >= source.Count)
 		{
-			IReadOnlyList<MapPointHistoryEntry> sourceHistory =
-				actIndex < source.Count ? source[actIndex] : [];
-			int takeCount = Math.Min(Math.Max(counts[actIndex], 0), sourceHistory.Count);
-			result.Add(sourceHistory.Take(takeCount).ToList());
+			return result;
 		}
 
+		IReadOnlyList<MapPointHistoryEntry> parentHistory = source[currentParentActIndex];
+		int parentHistoryCount = Math.Min(
+			Math.Max(counts[savedParentActIndex], 0),
+			parentHistory.Count);
+		result[currentParentActIndex] = parentHistory.Take(parentHistoryCount).ToList();
 		return result;
 	}
 }

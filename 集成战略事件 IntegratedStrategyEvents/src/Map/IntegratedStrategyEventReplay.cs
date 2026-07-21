@@ -170,7 +170,15 @@ internal static class IntegratedStrategyEventReplay
 
 		if (TryGetTemporaryMapHistoryOffset(runState, out int offset))
 		{
-			int temporaryHistoryIndex = offset + row;
+			// 临时图的隐藏起点会加入 VisitedMapCoords，但不会生成 MapPointHistory；
+			// 当前房间对应“已访问临时坐标数 - 起点 - 1”的历史偏移。
+			int visitedTemporaryRoomCount = runState.VisitedMapCoords.Count - 1;
+			if (visitedTemporaryRoomCount <= 0)
+			{
+				return false;
+			}
+
+			int temporaryHistoryIndex = offset + visitedTemporaryRoomCount - 1;
 			if (temporaryHistoryIndex < offset || temporaryHistoryIndex >= actHistory.Count)
 			{
 				return false;

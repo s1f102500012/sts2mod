@@ -38,6 +38,7 @@ public sealed class PetalRelic : IntegratedStrategyEventRelic
 		if (actIndex != TargetActIndex ||
 			map is PetalActMap ||
 			map is ProphetHornActMap ||
+			IntegratedStrategySecretMapNodeController.ShouldSkipMapMutation(runState, map) ||
 			(!allowSavedMapReplacement && map is SavedActMap) ||
 			!IsActiveInRun(runState))
 		{
