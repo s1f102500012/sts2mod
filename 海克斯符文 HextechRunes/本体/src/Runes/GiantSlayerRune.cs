@@ -2,12 +2,16 @@ namespace HextechRunes;
 
 public sealed class GiantSlayerRune : HextechRelicBase
 {
+	internal const int EnemyMaxHpPerPercent = 8;
+	internal const decimal DamagePerStepPercent = 0.01m;
+	internal const decimal MaximumBonusPercent = 0.5m;
+
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
 		new CardsVar(2),
-		new DynamicVar("HpGap", 6m),
-		new DynamicVar("DamagePerStepPercent", 0.01m),
-		new DynamicVar("MaxBonusPercent", 0.5m),
+		new DynamicVar("EnemyMaxHpPerPercent", EnemyMaxHpPerPercent),
+		new DynamicVar("DamagePerStepPercent", DamagePerStepPercent),
+		new DynamicVar("MaxBonusPercent", MaximumBonusPercent),
 		new DynamicVar("Scale", 0.65m)
 	];
 
@@ -42,14 +46,21 @@ public sealed class GiantSlayerRune : HextechRelicBase
 			return 1m;
 		}
 
-		int hpGap = target.MaxHp - Owner.Creature.MaxHp;
-		if (hpGap <= 0)
-		{
-			return 1m;
-		}
+		return ResolveDamageMultiplier(
+			target.MaxHp,
+			DynamicVars["EnemyMaxHpPerPercent"].IntValue,
+			DynamicVars["DamagePerStepPercent"].BaseValue,
+			DynamicVars["MaxBonusPercent"].BaseValue);
+	}
 
-		int steps = hpGap / DynamicVars["HpGap"].IntValue;
-		decimal bonus = Math.Min(steps * DynamicVars["DamagePerStepPercent"].BaseValue, DynamicVars["MaxBonusPercent"].BaseValue);
-		return 1m + bonus;
+	internal static decimal ResolveDamageMultiplier(
+		int enemyMaxHp,
+		int hpPerStep = EnemyMaxHpPerPercent,
+		decimal damagePerStep = DamagePerStepPercent,
+		decimal maximumBonus = MaximumBonusPercent)
+	{
+		int steps = Math.Max(0, enemyMaxHp) / Math.Max(1, hpPerStep);
+		decimal bonus = Math.Min(steps * damagePerStep, maximumBonus);
+		return 1m + Math.Max(0m, bonus);
 	}
 }

@@ -6,7 +6,7 @@ internal interface IHextechMaxHpBaseHolder
 	int BaseMaxHp { get; set; }
 }
 
-/// <summary>乘法类最大生命系数符文(巨人化 ×1.35 / 星界躯体 ×1.5),互相之间按乘积复合。</summary>
+/// <summary>最大生命系数海克斯；各自内部线性叠层，不同海克斯之间按乘积复合。</summary>
 internal interface IHextechMaxHpScalingRune : IHextechMaxHpBaseHolder
 {
 	decimal MaxHpScale { get; }
@@ -19,7 +19,7 @@ internal interface IHextechPercentHpForge : IHextechMaxHpBaseHolder
 }
 
 /// <summary>
-/// 最大生命系数管线:实际最大生命 = 主符文基础值 × 乘法系数乘积 × (1 + Σ锻造器百分比)。
+/// 最大生命系数管线:实际最大生命 = 基础值 × 各海克斯独立乘区 × (1 + Σ生命锻造器百分比)。
 /// Gain/Lose/SetMaxHp 由 HextechCombatHooks.MaxHp 拦截,先改基础值再按系数换算实际值,
 /// 保证后续所有最大生命增减按系数放大,顶栏"生命系数"面板同源显示。
 /// </summary>
@@ -32,22 +32,28 @@ internal static class HextechMaxHpScaling
 
 	public static decimal GetScale(Player player)
 	{
-		decimal scale = 1m;
-		decimal forgePercent = 0m;
+		List<decimal> runeScales = [];
+		List<decimal> forgePercents = [];
 		foreach (RelicModel relic in player.Relics)
 		{
 			switch (relic)
 			{
 				case IHextechPercentHpForge forge:
-					forgePercent += forge.MaxHpPercentTotal;
+					forgePercents.Add(forge.MaxHpPercentTotal);
 					break;
 				case IHextechMaxHpScalingRune rune:
-					scale *= rune.MaxHpScale;
+					runeScales.Add(rune.MaxHpScale);
 					break;
 			}
 		}
 
-		return scale * (1m + forgePercent / 100m);
+		return CombineScales(runeScales, forgePercents);
+	}
+
+	internal static decimal CombineScales(IEnumerable<decimal> runeScales, IEnumerable<decimal> forgePercents)
+	{
+		return runeScales.Aggregate(1m, static (total, runeScale) => total * runeScale)
+			* (1m + forgePercents.Sum() / 100m);
 	}
 
 	public static int GetScaledMaxHp(Player player, IHextechMaxHpBaseHolder primary)

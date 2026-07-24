@@ -1,8 +1,22 @@
 namespace HextechRunes;
 
-public sealed class GoldenSpatulaRune : HextechRelicBase, IHextechSharedCombatVictoryRune
+public sealed class GoldenSpatulaRune : HextechRelicBase, IHextechSharedCombatVictoryRune, IHextechMaxHpScalingRune
 {
+	private int _baseMaxHp;
 	private int _stacks;
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public int SavedBaseMaxHp
+	{
+		get => _baseMaxHp;
+		set => _baseMaxHp = Math.Max(0, value);
+	}
+
+	public int BaseMaxHp
+	{
+		get => _baseMaxHp;
+		set => _baseMaxHp = Math.Max(1, value);
+	}
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int SavedStacks
@@ -27,6 +41,18 @@ public sealed class GoldenSpatulaRune : HextechRelicBase, IHextechSharedCombatVi
 
 	public decimal SustainMultiplier => StackMultiplier;
 
+	public decimal MaxHpScale => StackMultiplier;
+
+	public override Task AfterRoomEntered(AbstractRoom room)
+	{
+		if (Owner != null && HextechMaxHpScaling.GetPrimary(Owner) is { } primary)
+		{
+			HextechMaxHpScaling.EnsureBaseInitialized(Owner, primary, assumeAlreadyScaled: true);
+		}
+
+		return Task.CompletedTask;
+	}
+
 	public override Task AfterCombatVictory(CombatRoom room)
 	{
 		if (IsNetworkMultiplayer())
@@ -44,12 +70,11 @@ public sealed class GoldenSpatulaRune : HextechRelicBase, IHextechSharedCombatVi
 			return;
 		}
 
-		int previousStacks = _stacks;
-		SavedStacks = previousStacks + 1;
+		IHextechMaxHpBaseHolder primary = HextechMaxHpScaling.GetPrimary(Owner) ?? this;
+		HextechMaxHpScaling.EnsureBaseInitialized(Owner, primary, assumeAlreadyScaled: true);
+		SavedStacks++;
 		Flash(Array.Empty<Creature>());
-		decimal hpGainPercent = TotalBonusPercentFor(_stacks) - TotalBonusPercentFor(previousStacks);
-		int hpGain = Math.Max(1, FloorToInt(Owner.Creature.MaxHp * hpGainPercent / 100m));
-		await CreatureCmd.GainMaxHp(Owner.Creature, hpGain);
+		await HextechMaxHpScaling.ReapplyScale(Owner);
 	}
 
 	public override decimal ModifyDamageMultiplicativeCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)

@@ -8,11 +8,11 @@ internal sealed class ProteinShakeEnemyHex : HextechEnemyHexEffect
 
 	internal override decimal ModifyBlockMultiplicative(HextechEnemyHexContext context, Creature target, decimal block, ValueProp props, CardModel? cardSource, CardPlay? cardPlay)
 	{
-		return HextechMonsterSustainHelper.GetProteinShakeSustainMultiplier(target);
+		return HextechMonsterSustainHelper.GetProteinShakeSustainMultiplier(target, context.ScalingPlayerCount);
 	}
 
 	internal override decimal ModifyEnemyHealAmount(HextechEnemyHexContext context, Creature creature, decimal amount)
 	{
-		return amount * HextechMonsterSustainHelper.GetProteinShakeSustainMultiplier(creature);
+		return amount * HextechMonsterSustainHelper.GetProteinShakeSustainMultiplier(creature, context.ScalingPlayerCount);
 	}
 }

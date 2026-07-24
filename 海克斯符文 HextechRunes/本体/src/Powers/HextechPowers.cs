@@ -45,9 +45,8 @@ public sealed class HextechBurnPower : HextechPowerBase
 		int hpLoss = Math.Max(stacks, percentHpLoss);
 		int stackLoss = Math.Max(1, (int)Math.Ceiling(stacks * StackDecayPercent));
 		Flash();
-		try
+		await RunWithDamageResolutionGuard(async () =>
 		{
-			_resolveDepth++;
 			ValueProp valueProps = ValueProp.Unpowered;
 			if (!blockable)
 			{
@@ -55,11 +54,7 @@ public sealed class HextechBurnPower : HextechPowerBase
 			}
 
 			await CreatureCmd.Damage(choiceContext, Owner, hpLoss, valueProps, null, null);
-		}
-		finally
-		{
-			_resolveDepth--;
-		}
+		});
 
 		if (Owner.IsAlive)
 		{
@@ -68,6 +63,19 @@ public sealed class HextechBurnPower : HextechPowerBase
 		else
 		{
 			await Cmd.CustomScaledWait(0.1f, 0.25f);
+		}
+	}
+
+	internal static async Task RunWithDamageResolutionGuard(Func<Task> action)
+	{
+		_resolveDepth++;
+		try
+		{
+			await action();
+		}
+		finally
+		{
+			_resolveDepth = Math.Max(0, _resolveDepth - 1);
 		}
 	}
 }
@@ -163,6 +171,10 @@ public sealed class HextechAttackReplayPower : PowerModel
 public sealed class HextechPlayerSlowPower : HextechPowerBase
 {
 	internal const decimal CardPlaySlowIncrease = 9m;
+	internal const decimal LegacySnailCombatStartAmount = -90m;
+	internal const decimal PlayerCombatStartAmount = 0m;
+	internal const decimal EnemyCombatStartAmount = 0m;
+	internal const int RoundStartAmount = 0;
 	private int _cardsPlayedThisTurn;
 
 	public int SavedCardsPlayedThisTurn
@@ -171,13 +183,62 @@ public sealed class HextechPlayerSlowPower : HextechPowerBase
 		set => _cardsPlayedThisTurn = Math.Max(0, value);
 	}
 
-	public override PowerType Type => Amount < 0m ? PowerType.Buff : PowerType.Debuff;
+	public override PowerType Type => PowerType.Buff;
 
 	public override PowerStackType StackType => PowerStackType.Counter;
 
 	public override bool AllowNegative => true;
 
 	public override int DisplayAmount => (int)decimal.Round(Amount, 0, MidpointRounding.AwayFromZero);
+
+	internal static async Task ApplyAtZero(
+		Creature target,
+		Creature? applier,
+		CardModel? cardSource)
+	{
+		HextechPlayerSlowPower? existing = target.GetPower<HextechPlayerSlowPower>();
+		if (existing != null)
+		{
+			existing.SetAmount(0, silent: true);
+			return;
+		}
+
+		// PowerCmd.Apply(0) 会直接跳过。先用 1 层种子完成正规应用，再归零以保留实例。
+		// 这项系数状态统一按 Buff 处理，不参与“施加负面效果”类响应。
+		HextechPlayerSlowPower? applied = await HextechPowerCmdCompat.Apply<HextechPlayerSlowPower>(
+			target,
+			1m,
+			applier,
+			cardSource,
+			silent: true);
+		applied?.SetAmount(0, silent: true);
+	}
+
+	internal static decimal NormalizeEnemyReductionAmount(decimal amount)
+	{
+		return decimal.Abs(amount);
+	}
+
+	internal void NormalizeEnemyReductionAmount()
+	{
+		decimal normalized = NormalizeEnemyReductionAmount(Amount);
+		if (normalized != Amount)
+		{
+			SetAmount((int)normalized, silent: true);
+		}
+	}
+
+	internal static void ResetEnemyHexSlowForRound(IEnumerable<Creature> creatures)
+	{
+		foreach (Creature creature in creatures)
+		{
+			HextechPlayerSlowPower? slow = creature.GetPower<HextechPlayerSlowPower>();
+			if (slow != null && slow.Amount != RoundStartAmount)
+			{
+				slow.SetAmount(RoundStartAmount, silent: true);
+			}
+		}
+	}
 
 	public override Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
 	{
@@ -189,17 +250,6 @@ public sealed class HextechPlayerSlowPower : HextechPowerBase
 		return Task.CompletedTask;
 	}
 
-	public override async Task AfterCardPlayed(PlayerChoiceContext context, CardPlay cardPlay)
-	{
-		if (cardPlay.Card.Owner?.Creature != Owner)
-		{
-			return;
-		}
-
-		SavedCardsPlayedThisTurn++;
-		await HextechPowerCmdCompat.Apply<HextechPlayerSlowPower>(Owner, CardPlaySlowIncrease, Owner, cardPlay.Card, silent: true);
-	}
-
 	public override decimal ModifyDamageMultiplicativeCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
 	{
 		if (target != Owner || Amount == 0m || (props & ValueProp.Unpowered) != 0)
@@ -207,7 +257,10 @@ public sealed class HextechPlayerSlowPower : HextechPowerBase
 			return 1m;
 		}
 
-		decimal multiplier = 1m + Amount / 100m;
+		decimal signedAmount = Owner.Side == CombatSide.Enemy
+			? -NormalizeEnemyReductionAmount(Amount)
+			: Amount;
+		decimal multiplier = 1m + signedAmount / 100m;
 		return Math.Max(0m, multiplier);
 	}
 

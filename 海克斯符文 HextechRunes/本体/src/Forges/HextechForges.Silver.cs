@@ -196,31 +196,37 @@ public sealed class SilverHpForge : HextechForgeBase, IHextechPercentHpForge
 	}
 }
 
-public sealed class SilverAttackForge : HextechForgeBase
+public sealed class SilverAttackForge : HextechForgeBase, IHextechDamageCoefficientForge
 {
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
 		new DynamicVar("DamageMultiplier", 1.05m)
 	];
 
+	public decimal DamageBonusFractionTotal => StackedMultiplier(DynamicVars["DamageMultiplier"].BaseValue) - 1m;
+
 	public override decimal ModifyDamageMultiplicativeCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
 	{
-		return IsDamageFromOwnerToEnemyOrPreview(target, dealer, cardSource) ? StackedMultiplier(DynamicVars["DamageMultiplier"].BaseValue) : 1m;
+		return Owner != null && IsDamageFromOwnerToEnemyOrPreview(target, dealer, cardSource)
+			? HextechForgeCoefficientHelper.GetDamageMultiplier(Owner, this)
+			: 1m;
 	}
 }
 
-public sealed class SilverProtectionForge : HextechForgeBase
+public sealed class SilverProtectionForge : HextechForgeBase, IHextechSustainCoefficientForge
 {
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
 		new DynamicVar("SustainMultiplier", 1.05m)
 	];
 
-	public decimal SustainMultiplier => StackedMultiplier(DynamicVars["SustainMultiplier"].BaseValue);
+	public decimal SustainBonusFractionTotal => StackedMultiplier(DynamicVars["SustainMultiplier"].BaseValue) - 1m;
 
 	public override decimal ModifyBlockMultiplicative(Creature target, decimal block, ValueProp props, CardModel? cardSource, CardPlay? cardPlay)
 	{
-		return target == Owner?.Creature ? SustainMultiplier : 1m;
+		return Owner != null && target == Owner.Creature
+			? HextechForgeCoefficientHelper.GetSustainMultiplier(Owner, this)
+			: 1m;
 	}
 }
 

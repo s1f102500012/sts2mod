@@ -1,8 +1,22 @@
 namespace HextechRunes;
 
-public sealed class NineDragonPowerRune : HextechRelicBase
+public sealed class NineDragonPowerRune : HextechRelicBase, IHextechMaxHpScalingRune
 {
+	private int _baseMaxHp;
 	private int _stacks;
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public int SavedBaseMaxHp
+	{
+		get => _baseMaxHp;
+		set => _baseMaxHp = Math.Max(0, value);
+	}
+
+	public int BaseMaxHp
+	{
+		get => _baseMaxHp;
+		set => _baseMaxHp = Math.Max(1, value);
+	}
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int SavedStacks
@@ -32,10 +46,17 @@ public sealed class NineDragonPowerRune : HextechRelicBase
 
 	public decimal SustainMultiplier => 1m + _stacks * DynamicVars["StackBonusPercent"].BaseValue / 100m;
 
+	public decimal MaxHpScale => SustainMultiplier;
+
 	internal float BodyScaleDelta => _stacks * (float)(DynamicVars["StackBonusPercent"].BaseValue / 100m);
 
 	public override Task AfterRoomEntered(AbstractRoom room)
 	{
+		if (Owner != null && HextechMaxHpScaling.GetPrimary(Owner) is { } primary)
+		{
+			HextechMaxHpScaling.EnsureBaseInitialized(Owner, primary, assumeAlreadyScaled: true);
+		}
+
 		Grow();
 		return Task.CompletedTask;
 	}
@@ -57,10 +78,11 @@ public sealed class NineDragonPowerRune : HextechRelicBase
 			return;
 		}
 
+		IHextechMaxHpBaseHolder primary = HextechMaxHpScaling.GetPrimary(Owner) ?? this;
+		HextechMaxHpScaling.EnsureBaseInitialized(Owner, primary, assumeAlreadyScaled: true);
 		SavedStacks++;
 		Flash();
-		int hpGain = Math.Max(1, FloorToInt(Owner.Creature.MaxHp * DynamicVars["StackBonusPercent"].BaseValue / 100m));
-		await CreatureCmd.GainMaxHp(Owner.Creature, hpGain);
+		await HextechMaxHpScaling.ReapplyScale(Owner);
 		Grow();
 	}
 

@@ -1,8 +1,22 @@
 namespace HextechRunes;
 
-public sealed class TankEngineRune : HextechRelicBase, IHextechSharedCombatVictoryRune
+public sealed class TankEngineRune : HextechRelicBase, IHextechSharedCombatVictoryRune, IHextechMaxHpScalingRune
 {
+	private int _baseMaxHp;
 	private int _stacks;
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public int SavedBaseMaxHp
+	{
+		get => _baseMaxHp;
+		set => _baseMaxHp = Math.Max(0, value);
+	}
+
+	public int BaseMaxHp
+	{
+		get => _baseMaxHp;
+		set => _baseMaxHp = Math.Max(1, value);
+	}
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int SavedStacks
@@ -25,6 +39,8 @@ public sealed class TankEngineRune : HextechRelicBase, IHextechSharedCombatVicto
 		new DynamicVar("ScalePercent", 6m)
 	];
 
+	public decimal MaxHpScale => 1m + _stacks * DynamicVars["HpGainPercent"].BaseValue;
+
 	internal float BodyScaleDelta => _stacks * (float)(DynamicVars["ScalePercent"].BaseValue / 100m);
 
 	public override Task AfterObtained()
@@ -35,6 +51,11 @@ public sealed class TankEngineRune : HextechRelicBase, IHextechSharedCombatVicto
 
 	public override Task AfterRoomEntered(AbstractRoom room)
 	{
+		if (Owner != null && HextechMaxHpScaling.GetPrimary(Owner) is { } primary)
+		{
+			HextechMaxHpScaling.EnsureBaseInitialized(Owner, primary, assumeAlreadyScaled: true);
+		}
+
 		Grow();
 		return Task.CompletedTask;
 	}
@@ -56,10 +77,11 @@ public sealed class TankEngineRune : HextechRelicBase, IHextechSharedCombatVicto
 			return;
 		}
 
+		IHextechMaxHpBaseHolder primary = HextechMaxHpScaling.GetPrimary(Owner) ?? this;
+		HextechMaxHpScaling.EnsureBaseInitialized(Owner, primary, assumeAlreadyScaled: true);
 		SavedStacks++;
 		Flash(Array.Empty<Creature>());
-		int hpGain = Math.Max(1, FloorToInt(Owner.Creature.MaxHp * DynamicVars["HpGainPercent"].BaseValue));
-		await CreatureCmd.GainMaxHp(Owner.Creature, hpGain);
+		await HextechMaxHpScaling.ReapplyScale(Owner);
 		Grow();
 	}
 

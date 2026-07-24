@@ -123,7 +123,8 @@ internal enum MonsterHexKind
     Exoskeleton = 108,         // 升级：外骨骼虫（旧 GhostForm=72）
     TestSubject = 109,         // 升级：实验体（旧 SymphonyOfWar=82）
 
-    // 2026-07-02 新增的独立敌方海克斯（无对应我方 rune）：
+    // 以下为独立敌方海克斯（多数无对应我方 rune,个别如珠光护手为我方符文的敌方版）。
+    // 枚举值 append-only:net-id/存档兼容依赖数值,只在尾部追加,勿重排勿复用旧值。
     LeafSlime = 110,           // 升级：树叶史莱姆（白银）
     ShrinkerBeetle = 111,      // 升级：缩小甲虫（白银）
     Inklet = 112,              // 升级：墨宝（白银）
@@ -131,11 +132,18 @@ internal enum MonsterHexKind
     Vantom = 114,              // 升级：墨影幻灵（黄金）
     Aeonglass = 115,           // 升级：永世沙漏（棱彩）
 
-    // 2026-07-05 新增的独立敌方海克斯（无对应我方 rune）：
     TheLost = 116,             // 升级：失落之物（白银）
     TheForgotten = 117,        // 升级：遗忘之物（白银）
     SlimedBerserker = 118,     // 升级：史莱姆狂战士（黄金）
     GlobeHead = 119,           // 升级：电球头（黄金）
     Myte = 120,                // 升级：异螨（黄金）
-    Byrdonis = 121             // 升级：多尼斯异鸟（棱彩）
+    Byrdonis = 121,            // 升级：多尼斯异鸟（棱彩）
+
+    JeweledGauntlet = 122,     // 珠光护手（棱彩）
+    FossilStalker = 123,       // 升级：化石追踪者（黄金）
+    TungstenRod = 124,         // 升级：钨合金棍（黄金）
+
+    AncientStatue = 125,       // 升级：旧日雕像（棱彩）
+    HundredRefinements = 126,  // 百炼成钢（黄金）
+    VitalitySurge = 127        // 生机迸发（黄金）
 }

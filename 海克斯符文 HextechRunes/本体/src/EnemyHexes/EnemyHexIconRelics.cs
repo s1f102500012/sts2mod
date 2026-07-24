@@ -108,6 +108,30 @@ public sealed class MyteHex : HextechRelicBase
 	public override bool IsAvailableForPlayer(Player player) => false;
 }
 
+/// <summary>升级：化石追踪者</summary>
+public sealed class FossilStalkerHex : HextechRelicBase
+{
+	public override bool IsAvailableForPlayer(Player player) => false;
+}
+
+/// <summary>升级：钨合金棍</summary>
+public sealed class TungstenRodHex : HextechRelicBase
+{
+	public override bool IsAvailableForPlayer(Player player) => false;
+}
+
+/// <summary>百炼成钢</summary>
+public sealed class HundredRefinementsHex : HextechRelicBase
+{
+	public override bool IsAvailableForPlayer(Player player) => false;
+}
+
+/// <summary>升级：旧日雕像</summary>
+public sealed class AncientStatueHex : HextechRelicBase
+{
+	public override bool IsAvailableForPlayer(Player player) => false;
+}
+
 /// <summary>升级：多尼斯异鸟</summary>
 public sealed class ByrdonisHex : HextechRelicBase
 {

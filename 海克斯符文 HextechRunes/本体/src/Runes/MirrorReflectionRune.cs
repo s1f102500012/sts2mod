@@ -15,7 +15,7 @@ public sealed class MirrorReflectionRune : HextechRelicBase
 
 		List<CardPileAddResult> results = new();
 		List<CardModel> cards = Owner.Deck.Cards
-			.Where(static card => !card.IsBasicStrikeOrDefend && card.Type != CardType.Curse)
+			.Where(ShouldDuplicate)
 			.ToList();
 		if (cards.Count == 0)
 		{
@@ -31,5 +31,10 @@ public sealed class MirrorReflectionRune : HextechRelicBase
 		}
 
 		CardCmd.PreviewCardPileAdd(results, 2f);
+	}
+
+	internal static bool ShouldDuplicate(CardModel card)
+	{
+		return !card.IsBasicStrikeOrDefend;
 	}
 }

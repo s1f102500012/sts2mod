@@ -50,12 +50,12 @@ internal static class HextechRuneConfiguration
 	[
 		typeof(AstralBodyRune)
 	];
-	// 设计审查批次:咔咔!(代价先付收益小)/和平主义者(非亡灵自废输出)/佩尔的慵懒(不可读),转为默认禁用。
+	// 设计审查批次:咔咔!(代价先付收益小)/和平主义者(非亡灵自废输出),转为默认禁用。
+	// 佩尔的慵懒已在内容注册表中正式退役，不再属于可配置内容。
 	private static readonly Type[] Version19DefaultDisabledRuneTypes =
 	[
 		typeof(KakaRune),
-		typeof(PacifistRune),
-		typeof(SnailFormRune)
+		typeof(PacifistRune)
 	];
 	// 小猪存钱罐(鼓励挨打赚钱与防御方向相悖)转为默认禁用。
 	private static readonly Type[] Version20DefaultDisabledRuneTypes =

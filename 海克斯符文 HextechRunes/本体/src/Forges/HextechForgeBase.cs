@@ -36,12 +36,7 @@ public abstract class HextechForgeBase : HextechRelicBase
 
 	protected decimal StackedMultiplier(decimal value)
 	{
-		if (StackAmount <= 1)
-		{
-			return value;
-		}
-
-		return (decimal)Math.Pow((double)value, StackAmount);
+		return 1m + (value - 1m) * StackAmount;
 	}
 
 	public void AddForgeStack(bool flash = true)

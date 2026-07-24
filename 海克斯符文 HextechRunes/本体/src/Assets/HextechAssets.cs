@@ -64,12 +64,36 @@ internal static class HextechAssets
 
     public const string MikaelsBlessingAoeRunePath = "res://HextechRunes/images/effects/milio_base_r_aoe_rune.png";
 
-    // 慢炖日炎光环的地面纹路层:复用 Milio AOE 圈纹理(橙红 modulate)。
-    public const string SlowCookAuraRunePath = "res://HextechRunes/images/effects/milio_base_r_aoe_rune.png";
+    public const string SlowCookHeatGlowPath = "res://HextechRunes/images/effects/slow_cook/heat_glow.png";
 
-    public static string? TryGetCustomRelicIconPath(RelicModel relic)
-    {
-        if (HextechCatalog.IsHextechEnemyHexIconRelic(relic))
+    public const string SlowCookAoeGradientPath = "res://HextechRunes/images/effects/slow_cook/aoe_gradient.png";
+
+    public const string SlowCookAoeGradientSubtlePath = "res://HextechRunes/images/effects/slow_cook/aoe_gradient_subtle.png";
+
+    public const string SlowCookAoeEdgePath = "res://HextechRunes/images/effects/slow_cook/aoe_edge.png";
+
+    public const string SlowCookAoePolarPath = "res://HextechRunes/images/effects/slow_cook/aoe_polar.png";
+
+    public const string SlowCookEdgeAccentPath = "res://HextechRunes/images/effects/slow_cook/edge_accent.png";
+
+    public const string SlowCookGroundRingPath = "res://HextechRunes/images/effects/slow_cook/ground_ring.png";
+
+    public const string SlowCookFlameNoisePath = "res://HextechRunes/images/effects/slow_cook/flame_noise.png";
+
+    public const string SlowCookInnerFirePath = "res://HextechRunes/images/effects/slow_cook/inner_fire.png";
+
+    public const string SlowCookInnerFireBPath = "res://HextechRunes/images/effects/slow_cook/inner_fire_b.png";
+
+    public const string SlowCookFlarePath = "res://HextechRunes/images/effects/slow_cook/flare.png";
+
+	public static string? TryGetCustomRelicIconPath(RelicModel relic)
+	{
+		if (relic is HundredRefinementsHex)
+		{
+			return $"res://{ModInfo.Id}/images/relics/hundredRefinementsRune.png";
+		}
+
+		if (HextechCatalog.IsHextechEnemyHexIconRelic(relic))
         {
             ModelId id = relic.CanonicalInstance?.Id ?? relic.Id;
             return $"res://{ModInfo.Id}/images/relics/{ToImageFileStem(id.Entry)}.png";

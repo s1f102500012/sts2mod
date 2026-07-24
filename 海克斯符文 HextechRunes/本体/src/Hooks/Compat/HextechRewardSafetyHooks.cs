@@ -284,9 +284,9 @@ internal static class HextechRewardSafetyHooks
 		DoubleVisionRune.TrackCardPileAdd(card, newPileType, clonedBy, ref __result);
 	}
 
-	private static void RelicCmdObtainPrefix(Player player, out object? __state)
+	private static void RelicCmdObtainPrefix(RelicModel relic, Player player, out object? __state)
 	{
-		__state = DoubleVisionRune.BeginDirectRelicReward(player);
+		__state = DoubleVisionRune.BeginDirectRelicReward(relic, player);
 	}
 
 	private static void RelicCmdObtainPostfix(object? __state, ref Task<RelicModel> __result)

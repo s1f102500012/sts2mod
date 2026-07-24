@@ -4,8 +4,8 @@ public sealed class SnailFormRune : HextechRelicBase
 {
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new DynamicVar("InitialSlow", -90m),
-		new DynamicVar("TurnStartSlow", -90m),
+		new DynamicVar("InitialSlow", HextechPlayerSlowPower.LegacySnailCombatStartAmount),
+		new DynamicVar("TurnStartSlow", HextechPlayerSlowPower.LegacySnailCombatStartAmount),
 		new DynamicVar("CardSlowGain", HextechPlayerSlowPower.CardPlaySlowIncrease)
 	];
 
@@ -42,5 +42,21 @@ public sealed class SnailFormRune : HextechRelicBase
 
 		Flash();
 		await HextechPowerCmdCompat.Apply<HextechPlayerSlowPower>(Owner.Creature, delta, Owner.Creature, null);
+	}
+
+	public override async Task AfterCardPlayed(PlayerChoiceContext context, CardPlay cardPlay)
+	{
+		if (Owner == null || cardPlay.Card.Owner?.Creature != Owner.Creature || Owner.Creature.IsDead)
+		{
+			return;
+		}
+
+		await HextechPowerCmdCompat.Apply<HextechPlayerSlowPower>(
+			context,
+			Owner.Creature,
+			DynamicVars["CardSlowGain"].BaseValue,
+			Owner.Creature,
+			cardPlay.Card,
+			silent: true);
 	}
 }

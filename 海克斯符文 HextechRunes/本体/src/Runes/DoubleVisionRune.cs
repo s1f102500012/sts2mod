@@ -160,9 +160,9 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 	}
 
-	internal static object? BeginDirectRelicReward(Player player)
+	internal static object? BeginDirectRelicReward(RelicModel relic, Player player)
 	{
-		return BeginEventRelicRecording(player) ?? (object?)BeginDirectCommandReward(player);
+		return BeginEventRelicRecording(relic, player) ?? (object?)BeginDirectCommandReward(player);
 	}
 
 	internal static Task<RelicModel> CompleteDirectRelicRewardAsync(Task<RelicModel> originalTask, object? duplicationState)
@@ -182,10 +182,11 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		return CompleteDirectRelicRewardAsync(originalTask, scope);
 	}
 
-	private static EventRelicRecordScope? BeginEventRelicRecording(Player player)
+	private static EventRelicRecordScope? BeginEventRelicRecording(RelicModel relic, Player player)
 	{
 		EventRelicTransaction? transaction = CurrentEventRelicTransaction.Value;
 		if (transaction == null
+			|| !transaction.IsAcceptingRecords
 			|| transaction.IsCommitting
 			|| IsCommandDuplicationSuppressed()
 			|| CombatManager.Instance.IsInProgress
@@ -203,12 +204,32 @@ public sealed class DoubleVisionRune : HextechRelicBase
 
 		int previousDepth = EventRelicObtainDepth.Value;
 		EventRelicObtainDepth.Value = previousDepth + 1;
-		return new EventRelicRecordScope(transaction, player, runes, previousDepth, previousDepth == 0);
+		return new EventRelicRecordScope(transaction, player, relic, runes, previousDepth, previousDepth == 0);
 	}
 
 	private static async Task<RelicModel> RecordEventRelicAsync(Task<RelicModel> originalTask, EventRelicRecordScope scope)
 	{
-		RelicModel obtained = await originalTask;
+		RelicModel obtained;
+		try
+		{
+			obtained = await originalTask;
+		}
+		catch (Exception originalException) when (
+			originalException is not OperationCanceledException
+			&& IsCustomRelic(scope.AttemptedRelic))
+		{
+			RelicModel? recovered = await TryRecoverExternalEventRelicObtain(scope, originalException);
+			if (recovered == null)
+			{
+				throw;
+			}
+
+			Log.Warn(
+				$"[{ModInfo.Id}][DoubleVision] Skipped duplication after recovering a failed custom event relic obtain: "
+				+ $"player={scope.Player.NetId} relic={(recovered.CanonicalInstance?.Id ?? recovered.Id).Entry}.");
+			return recovered;
+		}
+
 		if (!scope.IsOutermostObtain
 			|| obtained.Owner == null
 			|| obtained.Owner.Creature.IsDead
@@ -217,15 +238,80 @@ public sealed class DoubleVisionRune : HextechRelicBase
 			return obtained;
 		}
 
-		scope.Transaction.Record(new EventRelicIntent(scope.Player, obtained, scope.Runes));
+		if (!scope.Transaction.TryRecord(new EventRelicIntent(scope.Player, obtained, scope.Runes)))
+		{
+			Log.Warn(
+				$"[{ModInfo.Id}][DoubleVision] Skipped late event relic duplication after its option transaction closed: "
+				+ $"player={scope.Player.NetId} relic={(obtained.CanonicalInstance?.Id ?? obtained.Id).Entry}.");
+		}
+
 		return obtained;
+	}
+
+	private static bool IsCustomRelic(RelicModel relic)
+	{
+		return relic.GetType().Assembly != typeof(RelicModel).Assembly;
+	}
+
+	private static async Task<RelicModel?> TryRecoverExternalEventRelicObtain(
+		EventRelicRecordScope scope,
+		Exception originalException)
+	{
+		RelicModel relic = scope.AttemptedRelic;
+		Player player = scope.Player;
+		ModelId relicId = relic.CanonicalInstance?.Id ?? relic.Id;
+		Log.Warn(
+			$"[{ModInfo.Id}][DoubleVision] Custom event relic obtain failed; attempting a history-independent fallback: "
+			+ $"player={player.NetId} relic={relicId.Entry} type={relic.GetType().FullName} "
+			+ $"error={originalException.GetType().Name}: {originalException.Message}");
+
+		try
+		{
+			if (!player.Relics.Contains(relic))
+			{
+				relic.AssertMutable();
+				player.AddRelicInternal(relic);
+				if (!relic.IsStackable)
+				{
+					player.RelicGrabBag.Remove(relic);
+					player.RunState.SharedRelicGrabBag.Remove(relic);
+				}
+
+				relic.FloorAddedToDeck = player.RunState.TotalFloor;
+				try
+				{
+					await relic.AfterObtained();
+				}
+				catch (Exception afterObtainedException)
+				{
+					Log.Warn(
+						$"[{ModInfo.Id}][DoubleVision] Custom event relic fallback kept the relic but its pickup effect failed: "
+						+ $"player={player.NetId} relic={relicId.Entry} "
+						+ $"error={afterObtainedException.GetType().Name}: {afterObtainedException.Message}");
+				}
+			}
+
+			Log.Warn(
+				$"[{ModInfo.Id}][DoubleVision] Custom event relic fallback completed without duplicating run-history writes: "
+				+ $"player={player.NetId} relic={relicId.Entry}.");
+			return relic;
+		}
+		catch (Exception recoveryException)
+		{
+			Log.Warn(
+				$"[{ModInfo.Id}][DoubleVision] Custom event relic fallback failed; leaving the original exception intact: "
+				+ $"player={player.NetId} relic={relicId.Entry} "
+				+ $"error={recoveryException.GetType().Name}: {recoveryException.Message}");
+			return null;
+		}
 	}
 
 	internal static object? BeginEventOptionRelicTransaction(EventOption option)
 	{
 		if (option.IsProceed
 			|| RunManager.Instance.DebugOnlyGetState() is not RunState runState
-			|| runState.CurrentRoom is not EventRoom eventRoom)
+			|| runState.CurrentRoom is not EventRoom eventRoom
+			|| !runState.Players.Any(static player => GetEventActiveRunes(player).Count > 0))
 		{
 			return null;
 		}
@@ -258,11 +344,13 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		try
 		{
 			await originalTask;
+			transaction.CloseForRecording();
 			await transaction.CommitSequentially(CommitEventRelicIntent);
 			committedRewards = transaction.Count > 0;
 		}
 		finally
 		{
+			transaction.CloseForRecording();
 			bool canSaveFinishedAncientEvent = ReferenceEquals(
 					RunManager.Instance.DebugOnlyGetState(),
 					transaction.RunState)
@@ -293,7 +381,17 @@ public sealed class DoubleVisionRune : HextechRelicBase
 
 		foreach (DoubleVisionRune rune in intent.Runes)
 		{
-			await rune.DuplicateObtainedRelic(player, sourceRelic, syncReward: false);
+			try
+			{
+				await rune.DuplicateObtainedRelic(player, sourceRelic, syncReward: false);
+			}
+			catch (Exception exception)
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][DoubleVision] Skipped an event relic copy after the source reward completed: "
+					+ $"player={player.NetId} relic={(sourceRelic.CanonicalInstance?.Id ?? sourceRelic.Id).Entry} "
+					+ $"error={exception.GetType().Name}: {exception.Message}");
+			}
 		}
 	}
 
@@ -581,7 +679,7 @@ public sealed class DoubleVisionRune : HextechRelicBase
 
 	private async Task DuplicateObtainedRelic(Player player, RelicModel sourceRelic, bool syncReward = true)
 	{
-		// 复视不复制海克斯模组自己的符文/遗物/锻造(只对原版遗物生效):自定义内容的获得→转化→联机同步流程
+		// 复视不复制海克斯模组自己的符文/遗物/锻造；原版及已注册的外部遗物仍按其模型 ID 复制。
 		// 复杂且对多人敏感,重复获得易引发分叉/卡死(玩家实测黑屏的一类来源)。按需求收窄复视作用域为原版遗物。
 		// 判据取并,覆盖本体 + 拓展包(HextechRunesSponsorPack)且不硬引用拓展包程序集:
 		//   ① 继承 HextechRelicBase 的——本体+拓展包的符文、以及 HextechForgeBase 锻造;
@@ -610,7 +708,19 @@ public sealed class DoubleVisionRune : HextechRelicBase
 			return;
 		}
 
-		RelicModel copy = ModelDb.GetById<RelicModel>(sourceRelic.CanonicalInstance?.Id ?? sourceRelic.Id).ToMutable();
+		ModelId sourceId = sourceRelic.CanonicalInstance?.Id ?? sourceRelic.Id;
+		RelicModel? canonical = sourceId == ModelId.none
+			? null
+			: ModelDb.GetByIdOrNull<RelicModel>(sourceId);
+		if (canonical == null)
+		{
+			Log.Warn(
+				$"[{ModInfo.Id}][DoubleVision] Skipped relic duplication because its model is not registered: "
+				+ $"player={player.NetId} relic={sourceId.Entry} type={sourceRelic.GetType().FullName}.");
+			return;
+		}
+
+		RelicModel copy = canonical.ToMutable();
 		RelicModel obtained = await RunWithCommandDuplicationSuppressed(
 			() => RelicCmd.Obtain(copy, player));
 		if (LocalContext.IsMe(player))
@@ -1034,9 +1144,21 @@ public sealed class DoubleVisionRune : HextechRelicBase
 
 		public bool IsCommitting { get; private set; }
 
+		public bool IsAcceptingRecords => _transaction.IsAcceptingRecords;
+
 		public void Record(EventRelicIntent intent)
 		{
 			_transaction.Record(intent);
+		}
+
+		public bool TryRecord(EventRelicIntent intent)
+		{
+			return _transaction.TryRecord(intent);
+		}
+
+		public void CloseForRecording()
+		{
+			_transaction.CloseForRecording();
 		}
 
 		public async Task CommitSequentially(Func<EventRelicIntent, Task> commit)
@@ -1103,6 +1225,7 @@ public sealed class DoubleVisionRune : HextechRelicBase
 	private sealed record EventRelicRecordScope(
 		EventRelicTransaction Transaction,
 		Player Player,
+		RelicModel AttemptedRelic,
 		IReadOnlyList<DoubleVisionRune> Runes,
 		int PreviousObtainDepth,
 		bool IsOutermostObtain);

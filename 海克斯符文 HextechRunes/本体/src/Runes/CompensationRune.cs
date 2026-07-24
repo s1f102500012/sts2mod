@@ -40,7 +40,8 @@ public sealed class CompensationRune : HextechRelicBase
 			|| target != Owner.Creature
 			|| Owner.Creature.IsDead
 			|| amount <= 0m
-			|| !IsNecrobinderPlayer(Owner))
+			|| !IsNecrobinderPlayer(Owner)
+			|| !IsInActiveCombat(Owner))
 		{
 			return amount;
 		}
@@ -63,7 +64,7 @@ public sealed class CompensationRune : HextechRelicBase
 
 	public override async Task AfterDamageReceived(PlayerChoiceContext choiceContext, Creature target, DamageResult result, ValueProp props, Creature? dealer, CardModel? cardSource)
 	{
-		if (Owner == null || target != Owner.Creature)
+		if (Owner == null || target != Owner.Creature || !IsInActiveCombat(Owner))
 		{
 			return;
 		}
@@ -92,6 +93,19 @@ public sealed class CompensationRune : HextechRelicBase
 		{
 			rune.ClearPendingCompensationsForCommand(commandId);
 		}
+	}
+
+	internal static bool IsActiveCombatContext(bool combatInProgress, bool currentRoomIsCombat, bool combatStateMatchesRun)
+	{
+		return combatInProgress && currentRoomIsCombat && combatStateMatchesRun;
+	}
+
+	private static bool IsInActiveCombat(Player owner)
+	{
+		return IsActiveCombatContext(
+			CombatManager.Instance?.IsInProgress == true,
+			owner.RunState.CurrentRoom is CombatRoom,
+			ReferenceEquals(owner.Creature.CombatState?.RunState, owner.RunState));
 	}
 
 	private void EnqueuePendingCompensation(long commandId, Creature target, decimal amount, Creature? dealer, CardModel? cardSource)

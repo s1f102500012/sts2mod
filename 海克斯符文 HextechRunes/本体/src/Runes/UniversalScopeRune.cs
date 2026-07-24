@@ -44,7 +44,12 @@ public abstract class UniversalScopeRuneBase : HextechRelicBase
 		Flash();
 		if (cardPlay.Card.Pile?.Type == PileType.Play)
 		{
+			// 多级“升级：打击/防御”牌在移出 Play 堆时会经过完整的 AfterCardChangedPiles
+			// 链。部分原版/第三方改牌逻辑会在这条链里按 canonical 状态重算牌，导致升级层数
+			// 回落。先快照，等移牌(含满手时落入弃牌堆)彻底完成后只补回丢失的层数。
+			int capturedUpgradeLevel = cardPlay.Card.CurrentUpgradeLevel;
 			await CardPileCmd.Add(cardPlay.Card, PileType.Hand, CardPilePosition.Bottom, this);
+			CardTransformUpgradeHelper.RestoreUpgradeLevel(cardPlay.Card, capturedUpgradeLevel);
 		}
 
 		if (resourceSpend.Energy > 0m)

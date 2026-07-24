@@ -30,7 +30,27 @@ public sealed class DrainRune : HextechRelicBase
 			return;
 		}
 
-		Flash(enemies);
-		await PowerCmd.Apply<DoomPower>(enemies, amount * DynamicVars["DoomMultiplier"].BaseValue, Owner.Creature, null);
+		Creature target = enemies[FindHighestCurrentHpIndex(enemies.Select(static enemy => enemy.CurrentHp).ToArray())];
+		Flash([target]);
+		await PowerCmd.Apply<DoomPower>(target, amount * DynamicVars["DoomMultiplier"].BaseValue, Owner.Creature, null);
+	}
+
+	internal static int FindHighestCurrentHpIndex(IReadOnlyList<int> currentHpValues)
+	{
+		if (currentHpValues.Count == 0)
+		{
+			throw new ArgumentException("At least one current HP value is required.", nameof(currentHpValues));
+		}
+
+		int highestIndex = 0;
+		for (int i = 1; i < currentHpValues.Count; i++)
+		{
+			if (currentHpValues[i] > currentHpValues[highestIndex])
+			{
+				highestIndex = i;
+			}
+		}
+
+		return highestIndex;
 	}
 }

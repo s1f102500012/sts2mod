@@ -21,6 +21,11 @@ internal static class HextechPlayerCoefficientHelper
 
 	public static decimal GetHealingMultiplier(Player player)
 	{
+		if (NearDeathFeastRune.ShouldPreventSustain(player.Creature))
+		{
+			return 0m;
+		}
+
 		decimal multiplier = 1m;
 		if (player.GetRelic<OverflowRune>() != null)
 		{
@@ -57,20 +62,7 @@ internal static class HextechPlayerCoefficientHelper
 			multiplier *= proteinShakeRune.SustainMultiplier;
 		}
 
-		if (player.GetRelic<ProtectionForge>() is ProtectionForge protectionForge)
-		{
-			multiplier *= protectionForge.SustainMultiplier;
-		}
-
-		if (player.GetRelic<SilverProtectionForge>() is SilverProtectionForge silverProtectionForge)
-		{
-			multiplier *= silverProtectionForge.SustainMultiplier;
-		}
-
-		if (player.GetRelic<GoldProtectionForge>() is GoldProtectionForge goldProtectionForge)
-		{
-			multiplier *= goldProtectionForge.SustainMultiplier;
-		}
+		multiplier *= HextechForgeCoefficientHelper.GetSustainMultiplier(player);
 
 		if (player.GetRelic<MoreTheMerrierRune>() is MoreTheMerrierRune moreTheMerrierRune)
 		{
@@ -122,25 +114,7 @@ internal static class HextechPlayerCoefficientHelper
 
 	private static decimal GetHealthMultiplier(Player player)
 	{
-		// 巨人化/星界躯体等最大生命系数符文统一取 HextechMaxHpScaling 乘积。
-		decimal multiplier = HextechMaxHpScaling.GetScale(player);
-
-		if (player.GetRelic<GoldenSpatulaRune>() is GoldenSpatulaRune goldenSpatulaRune)
-		{
-			multiplier *= goldenSpatulaRune.SustainMultiplier;
-		}
-
-		if (player.GetRelic<NineDragonPowerRune>() is NineDragonPowerRune nineDragonPowerRune)
-		{
-			multiplier *= nineDragonPowerRune.SustainMultiplier;
-		}
-
-		if (player.GetRelic<TankEngineRune>() is TankEngineRune tankEngineRune)
-		{
-			multiplier *= 1m + tankEngineRune.DisplayAmount * tankEngineRune.DynamicVars["HpGainPercent"].BaseValue;
-		}
-
-		return multiplier;
+		return HextechMaxHpScaling.GetScale(player);
 	}
 
 	private static decimal GetDamageMultiplier(Player player)

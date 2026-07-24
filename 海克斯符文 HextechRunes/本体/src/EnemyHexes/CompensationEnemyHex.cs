@@ -31,7 +31,7 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 		if (target.Side != CombatSide.Enemy
 			|| target.CombatState?.RunState != context.RunState
 			|| target.IsDead
-			|| ShouldSkipDamageReplacement(target, props, dealer, cardSource)
+			|| ShouldSkipDamageReplacement()
 			|| amount <= 0m)
 		{
 			return amount;
@@ -43,15 +43,14 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 			return amount;
 		}
 
-		int poison = CalculateReplacementPoison(amount);
-		if (poison <= 0)
+		(decimal immediateDamage, int nextTurnDamage) = SplitDamage(amount);
+		if (nextTurnDamage <= 0)
 		{
 			return amount;
 		}
 
-		bool shouldConsumeSlippery = target.GetPowerAmount<SlipperyPower>() > 0m;
-		EnqueuePendingCompensation(commandId, target, poison, dealer, cardSource, shouldConsumeSlippery);
-		return 0m;
+		EnqueuePendingCompensation(commandId, target, nextTurnDamage, dealer, cardSource);
+		return immediateDamage;
 	}
 
 	internal override async Task AfterEnemyDamageReceivedAny(HextechEnemyHexContext context, Creature target, DamageResult result, Creature? dealer, CardModel? cardSource)
@@ -68,14 +67,9 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 			return;
 		}
 
-		if (compensation.ShouldConsumeSlippery && target.GetPower<SlipperyPower>() is SlipperyPower slippery)
-		{
-			await PowerCmd.Decrement(slippery);
-		}
-
 		Creature applier = compensation.Dealer is { IsAlive: true } ? compensation.Dealer : target;
 		await HextechCombatHooks.RunWithCompensationReplacementGuard(
-			() => PowerCmd.Apply<PoisonPower>(target, compensation.Amount, applier, compensation.CardSource));
+			() => PowerCmd.Apply<HextechNextTurnDamagePower>(target, compensation.Amount, applier, compensation.CardSource));
 	}
 
 	internal static void ClearPendingCompensations(long commandId)
@@ -92,34 +86,29 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 		}
 	}
 
-	internal static int CalculateReplacementPoison(decimal damage)
+	internal static (decimal ImmediateDamage, int NextTurnDamage) SplitDamage(decimal damage)
 	{
-		return damage <= 0m
-			? 0
-			: Math.Max(1, (int)Math.Min(Math.Floor(damage / 3m), 999999999m));
+		if (damage <= 0m)
+		{
+			return (damage, 0);
+		}
+
+		int nextTurnDamage = (int)Math.Min(Math.Floor(damage / 2m), 999999999m);
+		return (damage - nextTurnDamage, nextTurnDamage);
 	}
 
-	internal static bool ShouldSkipDamageReplacement(Creature target, ValueProp props, Creature? dealer, CardModel? cardSource)
+	internal static bool ShouldSkipDamageReplacement()
 	{
 		// 血肉戏法(Sleight of Flesh)在玩家给敌人施加 debuff 时会对该敌人造成一次伤害。
-		// 这次伤害不能再被代偿吸收转毒,否则「血肉戏法伤害 → 代偿毒(debuff) → 血肉戏法响应 → …」
+		// 这次伤害不能再被代偿延期,否则「血肉戏法伤害 → 下回合伤害(debuff) → 血肉戏法响应 → …」
 		// 会无限递归直至栈溢出。源头切断这条边:代偿在血肉戏法响应期间不替换伤害。
-		// 与「代偿施加毒时抑制血肉戏法响应」(RunWithCompensationReplacementGuard)构成双向防护。
+		// 与「代偿施加下回合伤害时抑制血肉戏法响应」(RunWithCompensationReplacementGuard)构成双向防护。
 		return HextechCombatHooks.IsResolvingOutbreakPowerPoisonResponse
 			|| HextechCombatHooks.IsResolvingSleightOfFleshPowerDebuffResponse
-			|| (IsPoisonDamageSignature(props, dealer, cardSource)
-				&& target.GetPowerAmount<PoisonPower>() > 0m);
+			|| HextechNextTurnDamagePower.IsResolvingDamage;
 	}
 
-	internal static bool IsPoisonDamageSignature(ValueProp props, Creature? dealer, CardModel? cardSource)
-	{
-		return dealer == null
-			&& cardSource == null
-			&& (props & ValueProp.Unblockable) != 0
-			&& (props & ValueProp.Unpowered) != 0;
-	}
-
-	private void EnqueuePendingCompensation(long commandId, Creature target, decimal amount, Creature? dealer, CardModel? cardSource, bool shouldConsumeSlippery)
+	private void EnqueuePendingCompensation(long commandId, Creature target, decimal amount, Creature? dealer, CardModel? cardSource)
 	{
 		for (int i = _pendingCompensations.Count - 1; i >= 0; i--)
 		{
@@ -130,15 +119,14 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 				{
 					Amount = pending.Amount + amount,
 					Dealer = dealer ?? pending.Dealer,
-					CardSource = cardSource ?? pending.CardSource,
-					ShouldConsumeSlippery = pending.ShouldConsumeSlippery || shouldConsumeSlippery
+					CardSource = cardSource ?? pending.CardSource
 				};
 				EffectsWithPendingCompensation.Add(this);
 				return;
 			}
 		}
 
-		_pendingCompensations.Add(new PendingCompensation(commandId, target, amount, dealer, cardSource, shouldConsumeSlippery));
+		_pendingCompensations.Add(new PendingCompensation(commandId, target, amount, dealer, cardSource));
 		EffectsWithPendingCompensation.Add(this);
 	}
 
@@ -188,5 +176,5 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 		}
 	}
 
-	private sealed record PendingCompensation(long CommandId, Creature Target, decimal Amount, Creature? Dealer, CardModel? CardSource, bool ShouldConsumeSlippery);
+	private sealed record PendingCompensation(long CommandId, Creature Target, decimal Amount, Creature? Dealer, CardModel? CardSource);
 }

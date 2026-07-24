@@ -1,5 +1,5 @@
 {
-  "generatedFrom": "HextechRunes + HextechRunesSponsorPack zhs relics.json (0.8.4 补全)",
+  "generatedFrom": "HextechRunes + HextechRunesSponsorPack zhs relics.json (0.8.8 补全)",
   "runes": {
     "JUDICATOR_RUNE": "裁决使",
     "SLAP_RUNE": "扇巴掌",
@@ -437,7 +437,14 @@
     "GOLD_PROTECTION_FORGE": "防护锻造器",
     "SILVER_HP_FORGE": "血量锻造器",
     "GOLD_HP_FORGE": "血量锻造器",
-    "GASTRITIS_RUNE": "是胃炎"
+    "GASTRITIS_RUNE": "是胃炎",
+    "CREATIVE_AI_UPGRADE_RUNE": "升级：创造性AI",
+    "LINGERING_MIGHT_RUNE": "余威",
+    "MYRIAD_SWORDS_RUNE": "万剑归宗",
+    "PRISMATIC_EGG_RUNE": "棱彩蛋",
+    "SOUL_UPGRADE_RUNE": "升级：灵魂",
+    "TWILIGHT_VEIL_RUNE": "薄暮法衣",
+    "ABYSSAL_CONTRACT_RUNE": "深渊契约"
   },
   "monsterHexes": {
     "Slap": "扇巴掌",
@@ -560,7 +567,13 @@
     "SlimedBerserker": "升级：史莱姆狂战士",
     "GlobeHead": "升级：电球头",
     "Myte": "升级：异螨",
-    "Byrdonis": "升级：多尼斯异鸟"
+    "Byrdonis": "升级：多尼斯异鸟",
+    "JeweledGauntlet": "珠光护手",
+    "FossilStalker": "升级：化石追踪者",
+    "TungstenRod": "升级：钨合金棍",
+    "AncientStatue": "升级：旧日雕像",
+    "HundredRefinements": "百炼成钢",
+    "VitalitySurge": "生机迸发"
   },
   "characters": {
     "IRONCLAD": "战士",

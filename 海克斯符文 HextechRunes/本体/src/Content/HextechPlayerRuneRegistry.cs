@@ -111,6 +111,7 @@ internal static class HextechPlayerRuneRegistry
         Rune<SowUpgradeRune>(HextechRarityTier.Silver, characterPool: PlayerRuneCharacterPool.Necrobinder, characterOrder: 32, tagKey: "OUTPUT"),
         Rune<ReapUpgradeRune>(HextechRarityTier.Silver, characterPool: PlayerRuneCharacterPool.Necrobinder, characterOrder: 33, tagKey: "OUTPUT"),
         Rune<ReprogramRune>(HextechRarityTier.Silver, characterPool: PlayerRuneCharacterPool.Defect, characterOrder: 24, tagKey: "COMPREHENSIVE"),
+        Rune<CreativeAiUpgradeRune>(HextechRarityTier.Silver, characterPool: PlayerRuneCharacterPool.Defect, characterOrder: 28, tagKey: "RANDOM"),
         Rune<NeurosurgeUpgradeRune>(HextechRarityTier.Silver, characterPool: PlayerRuneCharacterPool.Necrobinder, characterOrder: 34, tagKey: "DOOM"),
 
         Rune<JudicatorRune>(HextechRarityTier.Gold, tagKey: "OUTPUT"),
@@ -137,7 +138,8 @@ internal static class HextechPlayerRuneRegistry
         Rune<ArchmageRune>(HextechRarityTier.Gold, tagKey: "RESOURCE"),
         Rune<NatureIsHealingRune>(HextechRarityTier.Gold, tagKey: "SURVIVAL"),
         Rune<PorcupineRune>(HextechRarityTier.Gold, flags: PlayerRuneFlags.Disabled, tagKey: "SURVIVAL"),
-        Rune<SnailFormRune>(HextechRarityTier.Gold, flags: PlayerRuneFlags.Disabled, tagKey: "SURVIVAL"),
+        // 已退役：不进候选池、配置菜单或图鉴；模型与效果实现继续保留，仅用于旧存档。
+        Rune<SnailFormRune>(HextechRarityTier.Gold, flags: PlayerRuneFlags.Retired, tagKey: "SURVIVAL"),
         Rune<ColorDiscoveryRune>(HextechRarityTier.Gold, tagKey: "COMPREHENSIVE"),
         Rune<HattrickRune>(HextechRarityTier.Gold, tagKey: "COMPREHENSIVE"),
         Rune<AnthonyBiasRune>(HextechRarityTier.Gold, tagKey: "COMPREHENSIVE"),
@@ -352,7 +354,7 @@ internal static class HextechPlayerRuneRegistry
         Rune<NightmareRune>(HextechRarityTier.Prismatic, characterPool: PlayerRuneCharacterPool.Defect, characterOrder: 31, tagKey: "ORB"),
         Rune<ExtremeSpeedRune>(HextechRarityTier.Prismatic, characterPool: PlayerRuneCharacterPool.Silent, characterOrder: 26, tagKey: "RESOURCE"),
         Rune<SoulUpgradeRune>(HextechRarityTier.Prismatic, characterPool: PlayerRuneCharacterPool.Necrobinder, characterOrder: 35, tagKey: "SUMMON"),
-        Rune<PrismaticEggRune>(HextechRarityTier.Prismatic, tagKey: "RANDOM")
+        Rune<PrismaticEggRune>(HextechRarityTier.Prismatic, flags: PlayerRuneFlags.ThirdActExcluded, tagKey: "RANDOM")
 	];
 
 	private static PlayerRuneRegistration Rune<TRune>(

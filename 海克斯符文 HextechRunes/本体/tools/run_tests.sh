@@ -3,6 +3,20 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VARIANT_MANIFEST_NAME="hextech-runes-variants.manifest"
+TEST_PROJECT="$ROOT/tests/HextechRunes.Tests/HextechRunes.Tests.csproj"
+TEST_DLL="$ROOT/tests/HextechRunes.Tests/bin/Release/net9.0/HextechRunes.Tests.dll"
+
+# 测试工程同时直接引用本体、并通过拓展包间接引用本体。默认并行 MSBuild
+# 在这张菱形工程图上偶尔会卡在子节点 IPC 重连；固定单节点即可稳定构建。
+BUILD_STABILITY_ARGS=(
+  -m:1
+  -nodeReuse:false
+  -p:UseSharedCompilation=false
+  -p:NuGetAudit=false
+  -p:RestoreIgnoreFailedSources=true
+)
+export DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE="${DOTNET_CLI_WORKLOAD_UPDATE_NOTIFY_DISABLE:-true}"
+export DOTNET_SKIP_FIRST_TIME_EXPERIENCE="${DOTNET_SKIP_FIRST_TIME_EXPERIENCE:-1}"
 
 grep -Fq '<AssemblyName>HextechRunes.Loader</AssemblyName>' "$ROOT/loader/HextechRunes.Loader.csproj"
 grep -Fq '[ModInitializer(nameof(Initialize))]' "$ROOT/loader/LoaderBootstrap.cs"
@@ -21,7 +35,7 @@ if [[ -n "${HEXTECH_STS2_TARGET:-}" ]]; then
   TARGETS=("$HEXTECH_STS2_TARGET")
 else
   TARGETS=()
-  for candidate in 0.107.1 0.108.0 0.109.0; do
+  for candidate in 0.107.1 0.109.0; do
     if [[ -f "$ROOT/versioned-dll-backups/$candidate/game-refs/sts2.dll" ]]; then
       TARGETS+=("$candidate")
     fi
@@ -33,18 +47,22 @@ fi
 
 for TARGET in "${TARGETS[@]}"; do
   GAME_DATA_DIR="${HEXTECH_GAME_DATA_DIR:-"$ROOT/versioned-dll-backups/$TARGET/game-refs"}"
-  echo "== Running tests against STS2 $TARGET =="
-  dotnet run \
-    --project "$ROOT/tests/HextechRunes.Tests/HextechRunes.Tests.csproj" \
+  echo "== Building tests against STS2 $TARGET =="
+  dotnet build \
+    "$TEST_PROJECT" \
     --configuration Release \
+    "${BUILD_STABILITY_ARGS[@]}" \
     -p:HextechSts2Target="$TARGET" \
-	-p:HextechSponsorSts2Target="$TARGET" \
+    -p:HextechSponsorSts2Target="$TARGET" \
     -p:GameDataDir="$GAME_DATA_DIR"
+  echo "== Running tests against STS2 $TARGET =="
+  dotnet "$TEST_DLL"
 done
 
 dotnet build \
   "$ROOT/loader/HextechRunes.Loader.csproj" \
   --configuration Release \
+  "${BUILD_STABILITY_ARGS[@]}" \
   -p:GameDataDir="$ROOT/versioned-dll-backups/0.107.1/game-refs"
 
 if [[ -f "$ROOT/dist/$VARIANT_MANIFEST_NAME" ]]; then

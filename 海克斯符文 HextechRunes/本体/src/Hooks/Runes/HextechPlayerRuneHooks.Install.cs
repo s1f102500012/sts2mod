@@ -38,6 +38,7 @@ internal static partial class HextechPlayerRuneHooks
 
 	private static void InstallUpgradeRuneHooks(Harmony harmony)
 	{
+		TryInstallRuneHook<CreativeAiUpgradeRune>("creative AI upgraded generated powers", () => InstallCreativeAiUpgradeHooks(harmony));
 		TryInstallRuneHook<SurvivorUpgradeRune>("survivor upgraded play", () => InstallSurvivorUpgradeHooks(harmony));
 		TryInstallRuneHook<CompactUpgradeRune>("compact upgraded play", () => InstallCompactUpgradeHooks(harmony));
 		TryInstallRuneHook<WhirlwindUpgradeRune>("whirlwind upgraded x value", () => InstallWhirlwindUpgradeHooks(harmony));
@@ -48,6 +49,13 @@ internal static partial class HextechPlayerRuneHooks
 		TryInstallRuneHook<VoltaicUpgradeRune>("voltaic upgraded play", () => InstallVoltaicUpgradeHooks(harmony));
 		TryInstallRuneHook<GrandFinaleUpgradeRune>("grand finale upgraded play", () => InstallGrandFinaleUpgradeHooks(harmony));
 		TryInstallRuneHook<CrashLandingUpgradeRune>("crash landing upgraded play", () => InstallCrashLandingUpgradeHooks(harmony));
+	}
+
+	private static void InstallCreativeAiUpgradeHooks(Harmony harmony)
+	{
+		harmony.Patch(
+			RequireMethod(typeof(CreativeAiPower), nameof(CreativeAiPower.BeforeHandDraw), BindingFlags.Instance | BindingFlags.Public, typeof(Player), typeof(PlayerChoiceContext), typeof(HextechCombatState)),
+			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(CreativeAiBeforeHandDrawPrefix)));
 	}
 
 	private static void TryInstallSharedCardTagHooks(Harmony harmony)

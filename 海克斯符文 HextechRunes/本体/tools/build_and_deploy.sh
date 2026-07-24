@@ -180,7 +180,7 @@ if [[ "${HEXTECH_UPDATE_LATEST:-1}" != "0" ]]; then
 			--server-identity "Natsuki.HextechRunes.official" \
 			--game-version "$target" \
 			--dll-path "$DIST/lib/$target/$FILE_STEM.dll" \
-			--output-fingerprint "$DIST/build-fingerprint-$target.json"
+			--output-fingerprint "$BUILD_ROOT/fingerprints/build-fingerprint-$target.json"
 	done
 else
 	echo "Skipped latest-version.json fingerprint update (HEXTECH_UPDATE_LATEST=0)."

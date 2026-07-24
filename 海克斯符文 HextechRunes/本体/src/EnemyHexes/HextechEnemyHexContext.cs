@@ -8,6 +8,8 @@ internal readonly struct HextechEnemyHexContext(HextechMayhemModifier modifier)
 
 	internal HextechMayhemCombatTrackingState Tracking => modifier.CombatTracking;
 
+	internal int ScalingPlayerCount => Math.Clamp(RunState.Players.Count, 1, 16);
+
 	internal bool IsActive(MonsterHexKind kind)
 	{
 		return modifier.HasActiveMonsterHex(kind);

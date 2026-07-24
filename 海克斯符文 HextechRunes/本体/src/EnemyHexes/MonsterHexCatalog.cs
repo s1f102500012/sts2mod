@@ -74,6 +74,14 @@ internal static class MonsterHexCatalog
 			[MonsterHexKind.Inklet] = new[] { ("Stacks1", 1), ("Stacks2", 2), ("Stacks3", 3) },
 		};
 
+	private static readonly IReadOnlyDictionary<MonsterHexKind, (string Var, int Base)> PlayerCountScaledThresholds =
+		new Dictionary<MonsterHexKind, (string, int)>
+		{
+			[MonsterHexKind.HeavyHitter] = ("HpPerPercent", 15),
+			[MonsterHexKind.VitalitySurge] = ("HpPerPercent", 20),
+			[MonsterHexKind.ProteinShake] = ("HpPerPercent", 5),
+		};
+
 	public static string GetEnemyHexDescriptionFormatted(MonsterHexKind hex)
 	{
 		RelicModel relic = GetIconRelicForMonsterHex(hex);
@@ -88,6 +96,10 @@ internal static class MonsterHexCatalog
 				{
 					locString.Add(varName, baseValue * playerCount);
 				}
+			}
+			if (PlayerCountScaledThresholds.TryGetValue(hex, out (string Var, int Base) scaledThreshold))
+			{
+				locString.Add(scaledThreshold.Var, scaledThreshold.Base * GetScalingPlayerCount());
 			}
 
 			return locString.GetFormattedText();
@@ -118,12 +130,22 @@ internal static class MonsterHexCatalog
 
 		if (hex == MonsterHexKind.Compensation)
 		{
-			return [mainTip, HoverTipFactory.FromPower<PoisonPower>()];
+			return [mainTip, HoverTipFactory.FromPower<HextechNextTurnDamagePower>()];
 		}
 
 		if (hex == MonsterHexKind.SolidTime)
 		{
 			return [mainTip, HoverTipFactory.FromPower<HextechGalvanicPower>()];
+		}
+
+		if (hex == MonsterHexKind.FossilStalker)
+		{
+			return [mainTip, HoverTipFactory.FromPower<SuckPower>()];
+		}
+
+		if (hex is MonsterHexKind.AncientStatue or MonsterHexKind.HundredRefinements)
+		{
+			return [mainTip, HoverTipFactory.FromPower<HextechPlayerSlowPower>()];
 		}
 
 		return [mainTip];

@@ -13,6 +13,7 @@ using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
+using MegaCrit.Sts2.Core.MonsterMoves.Intents;
 using MegaCrit.Sts2.Core.Saves.Runs;
 using MegaCrit.Sts2.Core.ValueProps;
 using System.Text.Json;
@@ -75,7 +76,19 @@ internal static partial class Program
 			new(nameof(UnconfirmedRuneSelectionCancelsInsteadOfDefaultingToFirstOption), UnconfirmedRuneSelectionCancelsInsteadOfDefaultingToFirstOption),
 			new(nameof(DestructivePickupRunesAreExcludedFromRandomRewards), DestructivePickupRunesAreExcludedFromRandomRewards),
 			new(nameof(SearingAttackRuneGrantsUpgradedCard), SearingAttackRuneGrantsUpgradedCard),
+			new(nameof(CreativeAiUpgradeRuneUpgradesGeneratedPowerCards), CreativeAiUpgradeRuneUpgradesGeneratedPowerCards),
 			new(nameof(FortuneForgeRewardScalesByStacks), FortuneForgeRewardScalesByStacks),
+			new(nameof(PrismaticEggIsExcludedFromThirdAct), PrismaticEggIsExcludedFromThirdAct),
+			new(nameof(MirrorReflectionCopiesCursesButNotBasicCards), MirrorReflectionCopiesCursesButNotBasicCards),
+			new(nameof(DrainTargetsFirstEnemyWithHighestCurrentHp), DrainTargetsFirstEnemyWithHighestCurrentHp),
+			new(nameof(FeyMagicUsesThreeCostWithoutTurnLimit), FeyMagicUsesThreeCostWithoutTurnLimit),
+			new(nameof(GiantSlayerScalesFromEnemyMaxHp), GiantSlayerScalesFromEnemyMaxHp),
+			new(nameof(MyriadSwordsUsesShuffleTriggerInsteadOfTurnEnd), MyriadSwordsUsesShuffleTriggerInsteadOfTurnEnd),
+			new(nameof(SovereignBladeVfxSyncUsesVanillaForgeScale), SovereignBladeVfxSyncUsesVanillaForgeScale),
+			new(nameof(SlowCookVfxUsesDedicatedPressureCookerTextures), SlowCookVfxUsesDedicatedPressureCookerTextures),
+			new(nameof(CoefficientRunesStackAdditivelyWithinTheirOwnSector), CoefficientRunesStackAdditivelyWithinTheirOwnSector),
+			new(nameof(CoefficientForgesShareOneAdditiveSector), CoefficientForgesShareOneAdditiveSector),
+			new(nameof(MaxHpCoefficientSectorsMultiply), MaxHpCoefficientSectorsMultiply),
 			new(nameof(NightmareHooksEveryDarkOrbPassiveTrigger), NightmareHooksEveryDarkOrbPassiveTrigger),
 			new(nameof(NightmareEffectRunsOnceAfterEachPassiveTask), NightmareEffectRunsOnceAfterEachPassiveTask),
 			new(nameof(DiceManiacForgeRarityModifierKeepsDefaultWeightsWithoutRune), DiceManiacForgeRarityModifierKeepsDefaultWeightsWithoutRune),
@@ -113,6 +126,7 @@ internal static partial class Program
 			new(nameof(PlayerRuneMetadataPreservesCharacterOrder), PlayerRuneMetadataPreservesCharacterOrder),
 			new(nameof(PlayerRuneMetadataClassifiesConfigStates), PlayerRuneMetadataClassifiesConfigStates),
 			new(nameof(WellLaidPlansUpgradeRuneIsRetiredButSaveCompatible), WellLaidPlansUpgradeRuneIsRetiredButSaveCompatible),
+			new(nameof(SnailFormRuneIsRetiredButSaveCompatible), SnailFormRuneIsRetiredButSaveCompatible),
 			new(nameof(PlayerRuneMetadataCatalogOutputsMatchCatalogQueries), PlayerRuneMetadataCatalogOutputsMatchCatalogQueries),
 			new(nameof(PlayerRuneMetadataFallbacksAreStable), PlayerRuneMetadataFallbacksAreStable),
 			new(nameof(ForgeMetadataHasUniqueTypes), ForgeMetadataHasUniqueTypes),
@@ -121,12 +135,28 @@ internal static partial class Program
 			new(nameof(MonsterHexMetadataHasUniqueKinds), MonsterHexMetadataHasUniqueKinds),
 			new(nameof(MonsterHexMetadataMatchesContentRegistrySlices), MonsterHexMetadataMatchesContentRegistrySlices),
 			new(nameof(MonsterHexMetadataKeepsDisabledKindsOutOfRarityPools), MonsterHexMetadataKeepsDisabledKindsOutOfRarityPools),
+			new(nameof(EnemyFossilStalkerUsesExpectedSuckTiers), EnemyFossilStalkerUsesExpectedSuckTiers),
+			new(nameof(EnemyTungstenRodReducesEachHpLossByTier), EnemyTungstenRodReducesEachHpLossByTier),
+			new(nameof(EnemySlowHexesUseExpectedBaselinesAndTiers), EnemySlowHexesUseExpectedBaselinesAndTiers),
+			new(nameof(EnemyHeavyHitterScalesDamageEveryFifteenMaxHp), EnemyHeavyHitterScalesDamageEveryFifteenMaxHp),
+			new(nameof(EnemyVitalitySurgeScalesAllSustainFromMaxHp), EnemyVitalitySurgeScalesAllSustainFromMaxHp),
+			new(nameof(EnemyMaxHpCoefficientThresholdsScaleWithPlayerCount), EnemyMaxHpCoefficientThresholdsScaleWithPlayerCount),
+			new(nameof(EnemyCuttingEdgeAlchemistHalvesSuccessfulPotionRolls), EnemyCuttingEdgeAlchemistHalvesSuccessfulPotionRolls),
+			new(nameof(EnemyJeweledGauntletUsesExpectedStrengthTierChances), EnemyJeweledGauntletUsesExpectedStrengthTierChances),
+			new(nameof(EnemyJeweledGauntletOnlyRepeatsStandardIntentTypes), EnemyJeweledGauntletOnlyRepeatsStandardIntentTypes),
+			new(nameof(EnemyJeweledGauntletDuplicatesWholeIntentGroup), EnemyJeweledGauntletDuplicatesWholeIntentGroup),
+			new(nameof(EnemyJeweledGauntletNeverRepeatsIntoFinalKnowledgeDemonCurse), EnemyJeweledGauntletNeverRepeatsIntoFinalKnowledgeDemonCurse),
+			new(nameof(EnemyJeweledGauntletSkipsTheInsatiableOpeningMove), EnemyJeweledGauntletSkipsTheInsatiableOpeningMove),
+			new(nameof(EnemyJeweledGauntletSkipsMonsterRevivalMoves), EnemyJeweledGauntletSkipsMonsterRevivalMoves),
 			new(nameof(MonsterInteractionPolicyPreservesStructuralMonsterBuffs), MonsterInteractionPolicyPreservesStructuralMonsterBuffs),
 			new(nameof(PersonalHiveSafetyRejectsPlayerSideCopies), PersonalHiveSafetyRejectsPlayerSideCopies),
-			new(nameof(EnemyCompensationPoisonUsesOneThirdRoundedDownWithMinimum), EnemyCompensationPoisonUsesOneThirdRoundedDownWithMinimum),
-			new(nameof(EnemyCompensationSkipsPoisonDamageSignature), EnemyCompensationSkipsPoisonDamageSignature),
+			new(nameof(EnemyCompensationDefersHalfDamageRoundedDown), EnemyCompensationDefersHalfDamageRoundedDown),
+			new(nameof(PlayerCompensationRequiresActiveCombatContext), PlayerCompensationRequiresActiveCombatContext),
+			new(nameof(NextTurnDamageUsesTurnStartSnapshot), NextTurnDamageUsesTurnStartSnapshot),
+			new(nameof(NextTurnDamageDoesNotRetriggerCompensation), NextTurnDamageDoesNotRetriggerCompensation),
 			new(nameof(EnemyCompensationSkipsOutbreakPoisonResponse), EnemyCompensationSkipsOutbreakPoisonResponse),
 			new(nameof(EnemyCompensationSkipsSleightOfFleshResponse), EnemyCompensationSkipsSleightOfFleshResponse),
+			new(nameof(UniversalScopeUpgradeRestorationKeepsCapturedLevels), UniversalScopeUpgradeRestorationKeepsCapturedLevels),
 			new(nameof(ColorlessCardHelperTreatsRegentGeneratedCardsAsColorless), ColorlessCardHelperTreatsRegentGeneratedCardsAsColorless),
 			new(nameof(IllusoryWeaponPenNibPrefixesCanReturnSkippedTask), IllusoryWeaponPenNibPrefixesCanReturnSkippedTask),
 			new(nameof(AttackCommandCompatibilityRestoresNullExecuteResult), AttackCommandCompatibilityRestoresNullExecuteResult),
@@ -137,6 +167,7 @@ internal static partial class Program
 			new(nameof(CompensationReplacementSuppressesSleightOfFleshResponse), CompensationReplacementSuppressesSleightOfFleshResponse),
 			new(nameof(EventRewardTransactionCommitsSequentially), EventRewardTransactionCommitsSequentially),
 			new(nameof(EventRewardTransactionRejectsLateRecordsAndSecondCommit), EventRewardTransactionRejectsLateRecordsAndSecondCommit),
+			new(nameof(EventRewardTransactionTryRecordSkipsLateAsyncRewards), EventRewardTransactionTryRecordSkipsLateAsyncRewards),
 			new(nameof(DoubleVisionDustyTomeSinglePlayerCopiesRelicWithoutAncientCardEffect), DoubleVisionDustyTomeSinglePlayerCopiesRelicWithoutAncientCardEffect),
 			new(nameof(DoubleVisionDustyTomeSaveLoadPreservesAncientCard), DoubleVisionDustyTomeSaveLoadPreservesAncientCard),
 			new(nameof(DoubleVisionDustyTomeEventMultiplayerRunsOnEveryPeerWithoutBroadcast), DoubleVisionDustyTomeEventMultiplayerRunsOnEveryPeerWithoutBroadcast),
@@ -888,6 +919,15 @@ internal static partial class Program
 		Equal(16m, card.DynamicVars.Damage.BaseValue, "granted Searing Attack damage");
 	}
 
+	private static void CreativeAiUpgradeRuneUpgradesGeneratedPowerCards()
+	{
+		CreativeAi card = CreateMutableTestModel<CreativeAi>();
+
+		Expect(CreativeAiUpgradeRune.UpgradeGeneratedCard(card), "Creative AI should generate an upgraded Power card");
+		Equal(1, card.CurrentUpgradeLevel, "Creative AI generated card upgrade level");
+		Expect(!CreativeAiUpgradeRune.UpgradeGeneratedCard(card), "an already upgraded generated card should not be upgraded twice");
+	}
+
 	private static void FortuneForgeRewardScalesByStacks()
 	{
 		FortuneForge forge = CreateMutableTestModel<FortuneForge>();
@@ -895,6 +935,138 @@ internal static partial class Program
 
 		forge.SavedStackCount = 2;
 		Equal(200, forge.ExtraGoldRewardAmount, "two-stack Fortune Forge reward");
+	}
+
+	private static void PrismaticEggIsExcludedFromThirdAct()
+	{
+		Expect(
+			HextechContentRegistry.PlayerRuneMetadata.HasFlag(typeof(PrismaticEggRune), PlayerRuneFlags.ThirdActExcluded),
+			"Prismatic Egg should not appear in the third act rune pool");
+	}
+
+	private static void MirrorReflectionCopiesCursesButNotBasicCards()
+	{
+		Expect(MirrorReflectionRune.ShouldDuplicate(CreateMutableTestModel<Clumsy>()), "Mirror Reflection should duplicate Curse cards");
+		Expect(!MirrorReflectionRune.ShouldDuplicate(CreateMutableTestModel<StrikeIronclad>()), "Mirror Reflection should not duplicate basic Strike cards");
+		Expect(!MirrorReflectionRune.ShouldDuplicate(CreateMutableTestModel<DefendIronclad>()), "Mirror Reflection should not duplicate basic Defend cards");
+	}
+
+	private static void DrainTargetsFirstEnemyWithHighestCurrentHp()
+	{
+		Equal(1, DrainRune.FindHighestCurrentHpIndex([ 8, 25, 25, 12 ]), "Drain should target the first enemy tied for highest current HP");
+		Equal(0, DrainRune.FindHighestCurrentHpIndex([ 30 ]), "Drain should target the only hittable enemy");
+	}
+
+	private static void FeyMagicUsesThreeCostWithoutTurnLimit()
+	{
+		Equal(3, FeyMagicRune.MinimumCardCost, "Fey Magic minimum card cost");
+
+		MethodInfo[] declaredMethods = typeof(FeyMagicRune).GetMethods(
+			BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+		Expect(declaredMethods.Any(method => method.Name == "AfterDamageGiven"), "Fey Magic should trigger after each qualifying damage event");
+		Expect(declaredMethods.All(method => method.Name != "BeforeSideTurnStart"), "Fey Magic should not keep a per-turn trigger reset");
+	}
+
+	private static void GiantSlayerScalesFromEnemyMaxHp()
+	{
+		Equal(1m, GiantSlayerRune.ResolveDamageMultiplier(0), "zero-HP fallback multiplier");
+		Equal(1m, GiantSlayerRune.ResolveDamageMultiplier(7), "below first eight-HP step multiplier");
+		Equal(1.01m, GiantSlayerRune.ResolveDamageMultiplier(8), "first eight-HP step multiplier");
+		Equal(1.49m, GiantSlayerRune.ResolveDamageMultiplier(399), "multiplier before cap");
+		Equal(1.5m, GiantSlayerRune.ResolveDamageMultiplier(400), "fifty-percent cap multiplier");
+		Equal(1.5m, GiantSlayerRune.ResolveDamageMultiplier(9999), "multiplier remains capped");
+	}
+
+	private static void MyriadSwordsUsesShuffleTriggerInsteadOfTurnEnd()
+	{
+		MethodInfo[] declaredMethods = typeof(MyriadSwordsRune).GetMethods(
+			BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+
+		Expect(declaredMethods.Any(method => method.Name == "AfterShuffle"), "Myriad Swords should trigger after the owner's draw pile is shuffled");
+		Expect(declaredMethods.All(method => method.Name != "BeforeTurnEnd"), "Myriad Swords should no longer trigger at turn end");
+	}
+
+	private static void SovereignBladeVfxSyncUsesVanillaForgeScale()
+	{
+		Expect(Math.Abs(0.9f - HextechSovereignBladeVfxSync.GetNormalScaleForDamage(0)) < 0.0001f, "zero-damage blade scale");
+		Expect(Math.Abs(0.955f - HextechSovereignBladeVfxSync.GetNormalScaleForDamage(10)) < 0.0001f, "base blade scale");
+		Expect(Math.Abs(2f - HextechSovereignBladeVfxSync.GetNormalScaleForDamage(200)) < 0.0001f, "fully scaled blade");
+		Expect(Math.Abs(2f - HextechSovereignBladeVfxSync.GetNormalScaleForDamage(999)) < 0.0001f, "blade scale cap");
+	}
+
+	private static void SlowCookVfxUsesDedicatedPressureCookerTextures()
+	{
+		string[] slowCookPaths =
+		[
+			HextechAssets.SlowCookHeatGlowPath,
+			HextechAssets.SlowCookAoeGradientPath,
+			HextechAssets.SlowCookAoeGradientSubtlePath,
+			HextechAssets.SlowCookAoeEdgePath,
+			HextechAssets.SlowCookAoePolarPath,
+			HextechAssets.SlowCookEdgeAccentPath,
+			HextechAssets.SlowCookGroundRingPath,
+			HextechAssets.SlowCookFlameNoisePath,
+			HextechAssets.SlowCookInnerFirePath,
+			HextechAssets.SlowCookInnerFireBPath,
+			HextechAssets.SlowCookFlarePath
+		];
+
+		Expect(
+			slowCookPaths.All(static path => path.StartsWith("res://HextechRunes/images/effects/slow_cook/", StringComparison.Ordinal)),
+			"Slow Cook VFX should load only its dedicated Pressure Cooker textures");
+		Expect(
+			slowCookPaths.All(static path => path != HextechAssets.MikaelsBlessingAoeRunePath),
+			"Slow Cook VFX must not reuse Mikael's Blessing texture");
+		Equal(slowCookPaths.Length, slowCookPaths.Distinct(StringComparer.Ordinal).Count(), "Slow Cook VFX texture paths");
+		Equal(800f, SlowCookAuraVisual.ResolveWidth(160f), "Slow Cook aura width for a normal player hitbox");
+		Equal(800f, SlowCookAuraVisual.ResolveWidth(500f), "Slow Cook aura width should not be reduced by hitbox scaling");
+		Expect(
+			SlowCookAuraVisual.FlowShaderCode.Contains("anchored_gradient", StringComparison.Ordinal),
+			"Slow Cook aura should retain a stationary coverage sample while its texture details move");
+		Expect(
+			SlowCookAuraVisual.FlowShaderCode.Contains("intensity = min(intensity, 0.90)", StringComparison.Ordinal),
+			"Slow Cook aura should cap per-layer brightness spikes");
+	}
+
+	private static void CoefficientRunesStackAdditivelyWithinTheirOwnSector()
+	{
+		TankEngineRune tankEngine = CreateMutableTestModel<TankEngineRune>();
+		tankEngine.SavedStacks = 3;
+		Equal(1.18m, tankEngine.MaxHpScale, "three Tank Engine stacks should be 6% + 6% + 6%");
+
+		FeedUpgradeRune feedUpgrade = CreateMutableTestModel<FeedUpgradeRune>();
+		feedUpgrade.SavedStacks = 3;
+		Equal(1.45m, feedUpgrade.MaxHpScale, "three Feed upgrade triggers should be 15% + 15% + 15%");
+
+		NineDragonPowerRune nineDragon = CreateMutableTestModel<NineDragonPowerRune>();
+		nineDragon.SavedStacks = 3;
+		Equal(1.09m, nineDragon.MaxHpScale, "three Nine Dragon stacks should be 3% + 3% + 3%");
+	}
+
+	private static void CoefficientForgesShareOneAdditiveSector()
+	{
+		SilverAttackForge silver = CreateMutableTestModel<SilverAttackForge>();
+		silver.SavedStackCount = 2;
+		GoldAttackForge gold = CreateMutableTestModel<GoldAttackForge>();
+		AttackForge prismatic = CreateMutableTestModel<AttackForge>();
+
+		decimal multiplier = HextechForgeCoefficientHelper.CombineBonusFractions(
+		[
+			silver.DamageBonusFractionTotal,
+			gold.DamageBonusFractionTotal,
+			prismatic.DamageBonusFractionTotal
+		]);
+
+		Equal(1.4m, multiplier, "two silver, one gold and one prismatic attack forge should share a 40% sector");
+	}
+
+	private static void MaxHpCoefficientSectorsMultiply()
+	{
+		decimal multiplier = HextechMaxHpScaling.CombineScales(
+			[1.35m, 1.5m, 1.18m, 1.3m],
+			[7.5m, 15m, 30m]);
+
+		Equal(4.73718375m, multiplier, "rune sectors should multiply after HP forge bonuses are added into one sector");
 	}
 
 	private static void NightmareHooksEveryDarkOrbPassiveTrigger()
@@ -1430,6 +1602,29 @@ internal static partial class Program
 			"retired Well-Laid Plans rune model should remain in custom model registration for old saves");
 	}
 
+	private static void SnailFormRuneIsRetiredButSaveCompatible()
+	{
+		Type retiredType = typeof(SnailFormRune);
+		PlayerRuneMetadataCatalog metadata = HextechContentRegistry.PlayerRuneMetadata;
+
+		Expect(metadata.IsRegistered(retiredType), "retired Pell's Laziness model should remain registered for old saves");
+		Expect(metadata.HasFlag(retiredType, PlayerRuneFlags.Retired), "Pell's Laziness should carry the retired flag");
+		Expect(HextechContentRegistry.RetiredPlayerRuneTypes.Contains(retiredType), "retired registry slice should contain Pell's Laziness");
+		Expect(!HextechCatalog.IsPlayerRuneTypeVisible(retiredType), "retired Pell's Laziness should be hidden");
+		Expect(!HextechCatalog.IsPlayerRuneTypeConfigurable(retiredType), "retired Pell's Laziness should not be configurable");
+		Expect(!HextechCatalog.IsPlayerRuneTypeSelectable(retiredType), "retired Pell's Laziness should not be selectable");
+		Expect(
+			HextechCatalog.GetAllCustomRelicTypes().Contains(retiredType),
+			"retired Pell's Laziness model should remain in custom model registration for old saves");
+
+		MethodInfo[] powerMethods = typeof(HextechPlayerSlowPower).GetMethods(
+			BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+		MethodInfo[] legacyRuneMethods = typeof(SnailFormRune).GetMethods(
+			BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
+		Expect(powerMethods.All(static method => method.Name != "AfterCardPlayed"), "custom Slow power should not add a second card-play increment");
+		Expect(legacyRuneMethods.Any(static method => method.Name == "AfterCardPlayed"), "retired Pell's Laziness should preserve its old card-play behavior for loaded saves");
+	}
+
 	private static void PlayerRuneMetadataCatalogOutputsMatchCatalogQueries()
 	{
 		PlayerRuneMetadataCatalog metadata = HextechContentRegistry.PlayerRuneMetadata;
@@ -1563,6 +1758,205 @@ internal static partial class Program
 		Expect(!HextechMonsterInteractionPolicy.IsMonsterMechanismBuff(new StrengthPower()), "ordinary strength should remain mirrorable");
 	}
 
+	private static void EnemyJeweledGauntletUsesExpectedStrengthTierChances()
+	{
+		Equal(10, HextechCombatHooks.GetJeweledGauntletRepeatPercent(0), "enemy Jeweled Gauntlet tier zero fallback chance");
+		Equal(10, HextechCombatHooks.GetJeweledGauntletRepeatPercent(1), "enemy Jeweled Gauntlet tier one chance");
+		Equal(20, HextechCombatHooks.GetJeweledGauntletRepeatPercent(2), "enemy Jeweled Gauntlet tier two chance");
+		Equal(30, HextechCombatHooks.GetJeweledGauntletRepeatPercent(3), "enemy Jeweled Gauntlet tier three chance");
+		Equal(30, HextechCombatHooks.GetJeweledGauntletRepeatPercent(99), "enemy Jeweled Gauntlet high-tier clamp chance");
+	}
+
+	private static void EnemyFossilStalkerUsesExpectedSuckTiers()
+	{
+		Equal(1, FossilStalkerEnemyHex.ResolveSuckAmount(0), "enemy Fossil Stalker tier zero fallback Suck");
+		Equal(1, FossilStalkerEnemyHex.ResolveSuckAmount(1), "enemy Fossil Stalker tier one Suck");
+		Equal(2, FossilStalkerEnemyHex.ResolveSuckAmount(2), "enemy Fossil Stalker tier two Suck");
+		Equal(3, FossilStalkerEnemyHex.ResolveSuckAmount(3), "enemy Fossil Stalker tier three Suck");
+		Equal(3, FossilStalkerEnemyHex.ResolveSuckAmount(99), "enemy Fossil Stalker high-tier clamp Suck");
+	}
+
+	private static void EnemyTungstenRodReducesEachHpLossByTier()
+	{
+		Equal(4m, TungstenRodEnemyHex.ReduceHpLoss(5m, 1), "enemy Tungsten Rod tier one HP loss");
+		Equal(3m, TungstenRodEnemyHex.ReduceHpLoss(5m, 2), "enemy Tungsten Rod tier two HP loss");
+		Equal(2m, TungstenRodEnemyHex.ReduceHpLoss(5m, 3), "enemy Tungsten Rod tier three HP loss");
+		Equal(0m, TungstenRodEnemyHex.ReduceHpLoss(2m, 3), "enemy Tungsten Rod should floor HP loss at zero");
+		Equal(0m, TungstenRodEnemyHex.ReduceHpLoss(0m, 3), "enemy Tungsten Rod should preserve zero HP loss");
+	}
+
+	private static void EnemySlowHexesUseExpectedBaselinesAndTiers()
+	{
+		Equal(0m, HextechPlayerSlowPower.PlayerCombatStartAmount, "Ancient Statue player Slow baseline");
+		Equal(0m, HextechPlayerSlowPower.EnemyCombatStartAmount, "Hundred Refinements enemy Slow baseline");
+		Equal(0, HextechPlayerSlowPower.RoundStartAmount, "enemy Slow hexes reset to zero each round");
+		Equal(-90m, HextechPlayerSlowPower.LegacySnailCombatStartAmount, "retired Snail Form keeps its old-save baseline");
+		HextechPlayerSlowPower slow = new();
+		Equal(MegaCrit.Sts2.Core.Entities.Powers.PowerType.Buff, slow.Type, "custom Slow should be classified as a buff");
+		Equal(MegaCrit.Sts2.Core.Entities.Powers.PowerType.Buff, slow.GetTypeForAmount(8m), "positive Hundred Refinements changes should not trigger debuff reactions");
+		Equal(8m, HextechPlayerSlowPower.NormalizeEnemyReductionAmount(-8m), "legacy negative Hundred Refinements Slow should migrate by magnitude");
+		Equal(5, AncientStatueEnemyHex.ResolveCardSlowGain(0), "Ancient Statue tier zero fallback Slow gain");
+		Equal(5, AncientStatueEnemyHex.ResolveCardSlowGain(1), "Ancient Statue tier one Slow gain");
+		Equal(8, AncientStatueEnemyHex.ResolveCardSlowGain(2), "Ancient Statue tier two Slow gain");
+		Equal(10, AncientStatueEnemyHex.ResolveCardSlowGain(3), "Ancient Statue tier three Slow gain");
+		Equal(10, AncientStatueEnemyHex.ResolveCardSlowGain(99), "Ancient Statue high-tier Slow gain clamp");
+		Equal(3, HundredRefinementsEnemyHex.ResolveSlowReduction(0), "Hundred Refinements tier zero fallback Slow reduction");
+		Equal(3, HundredRefinementsEnemyHex.ResolveSlowReduction(1), "Hundred Refinements tier one Slow reduction");
+		Equal(5, HundredRefinementsEnemyHex.ResolveSlowReduction(2), "Hundred Refinements tier two Slow reduction");
+		Equal(8, HundredRefinementsEnemyHex.ResolveSlowReduction(3), "Hundred Refinements tier three Slow reduction");
+		Equal(8, HundredRefinementsEnemyHex.ResolveSlowReduction(99), "Hundred Refinements high-tier Slow reduction clamp");
+	}
+
+	private static void EnemyVitalitySurgeScalesAllSustainFromMaxHp()
+	{
+		Equal(1m, VitalitySurgeEnemyHex.ResolveMultiplier(0m), "Vitality Surge zero-HP multiplier");
+		Equal(1m, VitalitySurgeEnemyHex.ResolveMultiplier(19m), "Vitality Surge below first threshold multiplier");
+		Equal(1.01m, VitalitySurgeEnemyHex.ResolveMultiplier(20m), "Vitality Surge first threshold multiplier");
+		Equal(1.05m, VitalitySurgeEnemyHex.ResolveMultiplier(119m), "Vitality Surge floors partial twenty-HP steps");
+		Equal(1.06m, VitalitySurgeEnemyHex.ResolveMultiplier(120m), "Vitality Surge sixth threshold multiplier");
+		Equal(1.29m, VitalitySurgeEnemyHex.ResolveMultiplier(599m), "Vitality Surge multiplier below cap");
+		Equal(1.30m, VitalitySurgeEnemyHex.ResolveMultiplier(600m), "Vitality Surge multiplier at cap");
+		Equal(1.30m, VitalitySurgeEnemyHex.ResolveMultiplier(6000m), "Vitality Surge multiplier above cap");
+	}
+
+	private static void EnemyHeavyHitterScalesDamageEveryFifteenMaxHp()
+	{
+		Equal(1m, HeavyHitterEnemyHex.ResolveMultiplier(0m), "Heavy Hitter zero-HP multiplier");
+		Equal(1m, HeavyHitterEnemyHex.ResolveMultiplier(14m), "Heavy Hitter below first threshold multiplier");
+		Equal(1.01m, HeavyHitterEnemyHex.ResolveMultiplier(15m), "Heavy Hitter first threshold multiplier");
+		Equal(1.29m, HeavyHitterEnemyHex.ResolveMultiplier(449m), "Heavy Hitter multiplier below cap");
+		Equal(1.30m, HeavyHitterEnemyHex.ResolveMultiplier(450m), "Heavy Hitter multiplier at cap");
+		Equal(1.30m, HeavyHitterEnemyHex.ResolveMultiplier(4500m), "Heavy Hitter multiplier above cap");
+	}
+
+	private static void EnemyMaxHpCoefficientThresholdsScaleWithPlayerCount()
+	{
+		Equal(1m, HeavyHitterEnemyHex.ResolveMultiplier(29m, 2), "two-player Heavy Hitter below 30-HP threshold");
+		Equal(1.01m, HeavyHitterEnemyHex.ResolveMultiplier(30m, 2), "two-player Heavy Hitter first threshold");
+		Equal(1.30m, HeavyHitterEnemyHex.ResolveMultiplier(900m, 2), "two-player Heavy Hitter cap");
+
+		Equal(1m, VitalitySurgeEnemyHex.ResolveMultiplier(39m, 2), "two-player Vitality Surge below 40-HP threshold");
+		Equal(1.01m, VitalitySurgeEnemyHex.ResolveMultiplier(40m, 2), "two-player Vitality Surge first threshold");
+		Equal(1.30m, VitalitySurgeEnemyHex.ResolveMultiplier(1200m, 2), "two-player Vitality Surge cap");
+
+		Equal(1m, HextechMonsterSustainHelper.ResolveProteinShakeSustainMultiplier(9m, 2), "two-player Protein Shake below 10-HP threshold");
+		Equal(1.01m, HextechMonsterSustainHelper.ResolveProteinShakeSustainMultiplier(10m, 2), "two-player Protein Shake first threshold");
+		Equal(2m, HextechMonsterSustainHelper.ResolveProteinShakeSustainMultiplier(1000m, 2), "two-player Protein Shake cap");
+	}
+
+	private static void EnemyCuttingEdgeAlchemistHalvesSuccessfulPotionRolls()
+	{
+		Expect(HextechEnemyCuttingEdgeAlchemistHooks.ShouldKeepRolledPotion(wasForced: false, 0f), "successful potion roll should be kept below fifty percent");
+		Expect(HextechEnemyCuttingEdgeAlchemistHooks.ShouldKeepRolledPotion(wasForced: false, 0.499999f), "successful potion roll should be kept just below fifty percent");
+		Expect(!HextechEnemyCuttingEdgeAlchemistHooks.ShouldKeepRolledPotion(wasForced: false, 0.5f), "successful potion roll should be removed at fifty percent boundary");
+		Expect(!HextechEnemyCuttingEdgeAlchemistHooks.ShouldKeepRolledPotion(wasForced: false, 0.999999f), "successful potion roll should be removed above fifty percent");
+		Expect(HextechEnemyCuttingEdgeAlchemistHooks.ShouldKeepRolledPotion(wasForced: true, 0.999999f), "forced potion reward should remain guaranteed");
+	}
+
+	private static void EnemyJeweledGauntletOnlyRepeatsStandardIntentTypes()
+	{
+		IntentType[] repeatable =
+		[
+			IntentType.Attack,
+			IntentType.Buff,
+			IntentType.CardDebuff,
+			IntentType.Debuff,
+			IntentType.DebuffStrong,
+			IntentType.Defend,
+			IntentType.Heal,
+			IntentType.StatusCard
+		];
+		foreach (IntentType intentType in repeatable)
+		{
+			Expect(
+				HextechCombatHooks.IsJeweledGauntletIntentTypeRepeatable(intentType),
+				$"enemy Jeweled Gauntlet should repeat {intentType}");
+		}
+
+		IntentType[] excluded =
+		[
+			IntentType.DeathBlow,
+			IntentType.Escape,
+			IntentType.Hidden,
+			IntentType.Sleep,
+			IntentType.Stun,
+			IntentType.Summon,
+			IntentType.Unknown
+		];
+		foreach (IntentType intentType in excluded)
+		{
+			Expect(
+				!HextechCombatHooks.IsJeweledGauntletIntentTypeRepeatable(intentType),
+				$"enemy Jeweled Gauntlet should exclude {intentType}");
+		}
+	}
+
+	private static void EnemyJeweledGauntletDuplicatesWholeIntentGroup()
+	{
+		BuffIntent buff = new();
+		DebuffIntent debuff = new();
+		IReadOnlyList<AbstractIntent> duplicated =
+			HextechCombatHooks.DuplicateJeweledGauntletIntentGroup([buff, debuff]);
+
+		Equal(4, duplicated.Count, "enemy Jeweled Gauntlet duplicated intent count");
+		Expect(ReferenceEquals(buff, duplicated[0]), "first intent group should retain buff");
+		Expect(ReferenceEquals(debuff, duplicated[1]), "first intent group should retain debuff");
+		Expect(ReferenceEquals(buff, duplicated[2]), "second intent group should repeat buff");
+		Expect(ReferenceEquals(debuff, duplicated[3]), "second intent group should repeat debuff");
+		Expect(
+			HextechCombatHooks.AreJeweledGauntletIntentsRepeatable([buff, debuff]),
+			"ordinary multi-intent move should be repeatable");
+		Expect(
+			!HextechCombatHooks.AreJeweledGauntletIntentsRepeatable([buff, new SummonIntent()]),
+			"a special intent should exclude the whole move from repetition");
+		Expect(
+			!HextechCombatHooks.AreJeweledGauntletIntentsRepeatable([]),
+			"an empty intent group should not be repeatable");
+	}
+
+	private static void EnemyJeweledGauntletNeverRepeatsIntoFinalKnowledgeDemonCurse()
+	{
+		const string curseMove = "CURSE_OF_KNOWLEDGE_MOVE";
+		Expect(
+			!HextechCombatHooks.WouldRepeatFinalKnowledgeDemonCurse(curseMove, 0),
+			"first Knowledge Demon curse may repeat into its second stage");
+		Expect(
+			HextechCombatHooks.WouldRepeatFinalKnowledgeDemonCurse(curseMove, 1),
+			"second-stage Knowledge Demon curse must not repeat into its third stage");
+		Expect(
+			HextechCombatHooks.WouldRepeatFinalKnowledgeDemonCurse(curseMove, 2),
+			"third-stage Knowledge Demon curse should never repeat");
+		Expect(
+			HextechCombatHooks.WouldRepeatFinalKnowledgeDemonCurse(curseMove, 3),
+			"out-of-range Knowledge Demon curse should remain guarded");
+		Expect(
+			!HextechCombatHooks.WouldRepeatFinalKnowledgeDemonCurse("SLAP_MOVE", 2),
+			"other Knowledge Demon moves should remain repeatable");
+	}
+
+	private static void EnemyJeweledGauntletSkipsTheInsatiableOpeningMove()
+	{
+		Expect(
+			HextechCombatHooks.IsTheInsatiableOpeningMove("LIQUIFY_GROUND_MOVE"),
+			"The Insatiable opening move should never repeat");
+		Expect(
+			!HextechCombatHooks.IsTheInsatiableOpeningMove("THRASH_MOVE"),
+			"later The Insatiable moves should remain repeatable");
+	}
+
+	private static void EnemyJeweledGauntletSkipsMonsterRevivalMoves()
+	{
+		Expect(
+			HextechCombatHooks.IsMonsterRevivalMove("RESPAWN_MOVE"),
+			"Test Subject respawn should never repeat");
+		Expect(
+			HextechCombatHooks.IsMonsterRevivalMove("REVIVE_MOVE"),
+			"Illusion revive should never repeat");
+		Expect(
+			!HextechCombatHooks.IsMonsterRevivalMove("HEAL_MOVE"),
+			"ordinary healing moves should remain repeatable");
+	}
+
 	private static void PersonalHiveSafetyRejectsPlayerSideCopies()
 	{
 		MethodInfo target = HextechPersonalHiveSafetyHooks.ResolveDamageResponseTarget();
@@ -1586,50 +1980,78 @@ internal static partial class Program
 		Expect(!HextechPersonalHiveSafetyHooks.ShouldRunOriginal(null), "ownerless personal hive should be neutralized");
 	}
 
-	private static void EnemyCompensationPoisonUsesOneThirdRoundedDownWithMinimum()
+	private static void EnemyCompensationDefersHalfDamageRoundedDown()
 	{
-		Equal(0, CompensationEnemyHex.CalculateReplacementPoison(0m), "zero damage replacement poison");
-		Equal(1, CompensationEnemyHex.CalculateReplacementPoison(1m), "one damage replacement poison");
-		Equal(1, CompensationEnemyHex.CalculateReplacementPoison(2m), "two damage replacement poison");
-		Equal(1, CompensationEnemyHex.CalculateReplacementPoison(3m), "three damage replacement poison");
-		Equal(1, CompensationEnemyHex.CalculateReplacementPoison(5m), "five damage replacement poison");
-		Equal(2, CompensationEnemyHex.CalculateReplacementPoison(6m), "six damage replacement poison");
-		Equal(333, CompensationEnemyHex.CalculateReplacementPoison(999m), "large damage replacement poison");
+		Equal((0m, 0), CompensationEnemyHex.SplitDamage(0m), "zero damage split");
+		Equal((1m, 0), CompensationEnemyHex.SplitDamage(1m), "one damage stays immediate");
+		Equal((1m, 1), CompensationEnemyHex.SplitDamage(2m), "even damage splits evenly");
+		Equal((2m, 1), CompensationEnemyHex.SplitDamage(3m), "odd damage rounds the deferred half down");
+		Equal((3m, 2), CompensationEnemyHex.SplitDamage(5m), "five damage preserves total after split");
+		Equal((3.5m, 2), CompensationEnemyHex.SplitDamage(5.5m), "fractional damage preserves its immediate remainder");
+		Equal((500m, 499), CompensationEnemyHex.SplitDamage(999m), "large odd damage split");
 	}
 
-	private static void EnemyCompensationSkipsPoisonDamageSignature()
+	private static void PlayerCompensationRequiresActiveCombatContext()
 	{
 		Expect(
-			CompensationEnemyHex.IsPoisonDamageSignature(ValueProp.Unblockable | ValueProp.Unpowered, null, null),
-			"unblockable unpowered damage without dealer or card should match poison damage signature");
+			CompensationRune.IsActiveCombatContext(combatInProgress: true, currentRoomIsCombat: true, combatStateMatchesRun: true),
+			"Compensation should replace damage during the active combat it belongs to");
 		Expect(
-			!CompensationEnemyHex.IsPoisonDamageSignature(ValueProp.Unblockable, null, null),
-			"missing unpowered flag should not match poison damage signature");
+			!CompensationRune.IsActiveCombatContext(combatInProgress: false, currentRoomIsCombat: true, combatStateMatchesRun: true),
+			"Compensation should not replace event or other out-of-combat damage");
 		Expect(
-			!CompensationEnemyHex.IsPoisonDamageSignature(ValueProp.Unpowered, null, null),
-			"missing unblockable flag should not match poison damage signature");
+			!CompensationRune.IsActiveCombatContext(combatInProgress: true, currentRoomIsCombat: false, combatStateMatchesRun: true),
+			"Compensation should require the current room to be a combat room");
 		Expect(
-			!CompensationEnemyHex.IsPoisonDamageSignature(ValueProp.Unblockable | ValueProp.Unpowered, (Creature)RuntimeHelpers.GetUninitializedObject(typeof(Creature)), null),
-			"damage with dealer should not match poison damage signature");
-		Expect(
-			!CompensationEnemyHex.IsPoisonDamageSignature(ValueProp.Unblockable | ValueProp.Unpowered, null, UninitializedCard<SovereignBlade>()),
-			"damage with card source should not match poison damage signature");
+			!CompensationRune.IsActiveCombatContext(combatInProgress: true, currentRoomIsCombat: true, combatStateMatchesRun: false),
+			"Compensation should reject stale combat state from another run");
+	}
+
+	private static void NextTurnDamageUsesTurnStartSnapshot()
+	{
+		Equal(0, HextechNextTurnDamagePower.GetDamageToResolve(5, 0), "new stacks should not resolve during the turn they are applied");
+		Equal(5, HextechNextTurnDamagePower.GetDamageToResolve(5, 5), "all stacks present at turn start should resolve");
+		Equal(5, HextechNextTurnDamagePower.GetDamageToResolve(8, 5), "stacks added during turn-start hooks should wait for the following turn");
+		Equal(3, HextechNextTurnDamagePower.GetDamageToResolve(3, 5), "resolution should never exceed the current amount");
+		Equal(0, HextechNextTurnDamagePower.GetDamageToResolve(-1, 5), "negative amounts should never deal damage");
+	}
+
+	private static void NextTurnDamageDoesNotRetriggerCompensation()
+	{
+		Expect(!HextechNextTurnDamagePower.IsResolvingDamage, "next-turn damage guard should start inactive");
+		Expect(!CompensationEnemyHex.ShouldSkipDamageReplacement(), "ordinary damage should remain eligible for compensation");
+
+		bool skippedDuringResolution = false;
+		HextechNextTurnDamagePower.RunWithDamageResolutionGuard(() =>
+		{
+			skippedDuringResolution = CompensationEnemyHex.ShouldSkipDamageReplacement();
+			return Task.CompletedTask;
+		}).GetAwaiter().GetResult();
+
+		Expect(skippedDuringResolution, "next-turn damage must bypass compensation instead of being delayed again");
+		Expect(!HextechNextTurnDamagePower.IsResolvingDamage, "next-turn damage guard should reset after guarded work");
+	}
+
+	private static void UniversalScopeUpgradeRestorationKeepsCapturedLevels()
+	{
+		Equal(3, CardTransformUpgradeHelper.GetUpgradeRestorationSteps(0, 3, 30), "restore all lost multi-upgrade levels");
+		Equal(2, CardTransformUpgradeHelper.GetUpgradeRestorationSteps(1, 3, 30), "restore only missing levels");
+		Equal(0, CardTransformUpgradeHelper.GetUpgradeRestorationSteps(3, 3, 30), "preserve an unchanged card");
+		Equal(0, CardTransformUpgradeHelper.GetUpgradeRestorationSteps(4, 3, 30), "never downgrade a card that gained levels while moving");
+		Equal(1, CardTransformUpgradeHelper.GetUpgradeRestorationSteps(0, 3, 1), "respect the card max upgrade level");
 	}
 
 	private static void EnemyCompensationSkipsOutbreakPoisonResponse()
 	{
-		Creature target = (Creature)RuntimeHelpers.GetUninitializedObject(typeof(Creature));
-		Creature dealer = (Creature)RuntimeHelpers.GetUninitializedObject(typeof(Creature));
-
 		Expect(!HextechCombatHooks.IsResolvingOutbreakPowerPoisonResponse, "outbreak response guard should start inactive");
 		Expect(
-			!CompensationEnemyHex.ShouldSkipDamageReplacement(target, ValueProp.Unpowered, dealer, null),
+			!CompensationEnemyHex.ShouldSkipDamageReplacement(),
 			"ordinary unpowered damage with dealer should still be eligible for compensation replacement");
 
 		bool skippedInsideGuard = false;
 		HextechCombatHooks.RunWithOutbreakPowerPoisonResponseGuard(() =>
 		{
-			skippedInsideGuard = CompensationEnemyHex.ShouldSkipDamageReplacement(target, ValueProp.Unpowered, dealer, null);
+			skippedInsideGuard = CompensationEnemyHex.ShouldSkipDamageReplacement();
 			return Task.CompletedTask;
 		}).GetAwaiter().GetResult();
 
@@ -1639,18 +2061,15 @@ internal static partial class Program
 
 	private static void EnemyCompensationSkipsSleightOfFleshResponse()
 	{
-		Creature target = (Creature)RuntimeHelpers.GetUninitializedObject(typeof(Creature));
-		Creature dealer = (Creature)RuntimeHelpers.GetUninitializedObject(typeof(Creature));
-
 		Expect(!HextechCombatHooks.IsResolvingSleightOfFleshPowerDebuffResponse, "sleight response guard should start inactive");
 		Expect(
-			!CompensationEnemyHex.ShouldSkipDamageReplacement(target, ValueProp.Unpowered, dealer, null),
+			!CompensationEnemyHex.ShouldSkipDamageReplacement(),
 			"ordinary unpowered damage with dealer should still be eligible for compensation replacement");
 
 		bool skippedInsideGuard = false;
 		HextechCombatHooks.RunWithSleightOfFleshPowerDebuffResponseGuard(() =>
 		{
-			skippedInsideGuard = CompensationEnemyHex.ShouldSkipDamageReplacement(target, ValueProp.Unpowered, dealer, null);
+			skippedInsideGuard = CompensationEnemyHex.ShouldSkipDamageReplacement();
 			return Task.CompletedTask;
 		}).GetAwaiter().GetResult();
 
@@ -1759,6 +2178,23 @@ internal static partial class Program
 		ExpectThrows<InvalidOperationException>(
 			() => transaction.CommitSequentially(static _ => Task.CompletedTask).GetAwaiter().GetResult(),
 			"event transaction should not commit twice");
+	}
+
+	private static void EventRewardTransactionTryRecordSkipsLateAsyncRewards()
+	{
+		EventRewardTransaction<int> transaction = new();
+		Expect(transaction.TryRecord(1), "open event transaction should accept its original reward");
+		transaction.CloseForRecording();
+		Expect(!transaction.TryRecord(2), "closed event transaction should ignore inherited async rewards");
+
+		List<int> committed = [];
+		transaction.CommitSequentially(item =>
+		{
+			committed.Add(item);
+			return Task.CompletedTask;
+		}).GetAwaiter().GetResult();
+
+		Expect(committed.SequenceEqual([1]), "late inherited reward must not enter the committed event batch");
 	}
 
 	private static void DoubleVisionDustyTomeSinglePlayerCopiesRelicWithoutAncientCardEffect()

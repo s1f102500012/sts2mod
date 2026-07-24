@@ -107,6 +107,7 @@ internal static class HextechEnemyHexEffects
 			new DeathHarvestEnemyHex(),
 			new GiantSlayerEnemyHex(),
 			new DualWieldEnemyHex(),
+			new JeweledGauntletEnemyHex(),
 			new LeafSlimeEnemyHex(),
 			new ShrinkerBeetleEnemyHex(),
 			new InkletEnemyHex(),
@@ -118,7 +119,12 @@ internal static class HextechEnemyHexEffects
 			new SlimedBerserkerEnemyHex(),
 			new GlobeHeadEnemyHex(),
 			new MyteEnemyHex(),
-			new ByrdonisEnemyHex()
+			new FossilStalkerEnemyHex(),
+			new ByrdonisEnemyHex(),
+			new TungstenRodEnemyHex(),
+			new HundredRefinementsEnemyHex(),
+			new VitalitySurgeEnemyHex(),
+			new AncientStatueEnemyHex()
 		]);
 
 	internal static IEnumerable<HextechEnemyHexEffect> GetActive(HextechMayhemModifier modifier)

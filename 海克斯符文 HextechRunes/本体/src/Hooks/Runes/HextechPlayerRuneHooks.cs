@@ -5,6 +5,17 @@ namespace HextechRunes;
 
 internal static partial class HextechPlayerRuneHooks
 {
+	private static bool CreativeAiBeforeHandDrawPrefix(CreativeAiPower __instance, Player player, ref Task __result)
+	{
+		if (!CreativeAiUpgradeRune.ShouldUseUpgradedGeneration(__instance, player))
+		{
+			return true;
+		}
+
+		__result = CreativeAiUpgradeRune.GenerateUpgradedPowerCards(__instance, player);
+		return false;
+	}
+
 	private static void RelicDynamicDescriptionPrefix(RelicModel __instance)
 	{
 		if (__instance is FlyingKickRune flyingKickRune)

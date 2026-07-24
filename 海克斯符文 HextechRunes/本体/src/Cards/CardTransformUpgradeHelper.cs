@@ -64,11 +64,25 @@ internal static class CardTransformUpgradeHelper
 
 	public static void PreserveUpgradeLevel(CardModel original, CardModel replacement)
 	{
-		int targetUpgradeLevel = Math.Min(original.CurrentUpgradeLevel, replacement.MaxUpgradeLevel);
-		while (replacement.CurrentUpgradeLevel < targetUpgradeLevel && replacement.IsUpgradable)
+		RestoreUpgradeLevel(replacement, original.CurrentUpgradeLevel);
+	}
+
+	public static void RestoreUpgradeLevel(CardModel card, int capturedUpgradeLevel)
+	{
+		int upgradesToRestore = GetUpgradeRestorationSteps(
+			card.CurrentUpgradeLevel,
+			capturedUpgradeLevel,
+			card.MaxUpgradeLevel);
+		for (int i = 0; i < upgradesToRestore && card.IsUpgradable; i++)
 		{
-			CardCmd.Upgrade(replacement, CardPreviewStyle.None);
+			CardCmd.Upgrade(card, CardPreviewStyle.None);
 		}
+	}
+
+	internal static int GetUpgradeRestorationSteps(int currentUpgradeLevel, int capturedUpgradeLevel, int maxUpgradeLevel)
+	{
+		int targetUpgradeLevel = Math.Min(Math.Max(0, capturedUpgradeLevel), Math.Max(0, maxUpgradeLevel));
+		return Math.Max(0, targetUpgradeLevel - Math.Max(0, currentUpgradeLevel));
 	}
 
 	private static string?[] BuildStableTransformSalt(CardModel original, string source, int ordinal, params string?[] saltParts)

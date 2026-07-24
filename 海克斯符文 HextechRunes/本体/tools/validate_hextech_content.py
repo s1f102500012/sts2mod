@@ -363,6 +363,10 @@ def validate_icon_assets(errors: list[str], warnings: list[str]) -> None:
     同时对 relics 目录做孤儿资源告警。路径规则复刻 HextechAssets.TryGetCustomRelicIconPath。"""
     relics_dir = REPO_ROOT / "assets" / "images" / "relics"
     registry_text = registry_source_text()
+    # 与 HextechAssets.TryGetCustomRelicIconPath 中显式复用其他模型图标的分支保持一致。
+    shared_icon_stems = {
+        "hundredRefinementsHex": "hundredRefinementsRune",
+    }
 
     expected_stems: set[str] = set()
     rune_regs = extract_rune_registrations(registry_text)
@@ -372,7 +376,11 @@ def validate_icon_assets(errors: list[str], warnings: list[str]) -> None:
         for type_name in extract_type_list(registry_text, values_list):
             expected_stems.add(model_loc_stem(type_name))
 
-    missing = sorted(stem for stem in expected_stems if not (relics_dir / f"{stem}.png").exists())
+    missing = sorted(
+        stem
+        for stem in expected_stems
+        if not (relics_dir / f"{shared_icon_stems.get(stem, stem)}.png").exists()
+    )
     if missing:
         fail(errors, f"registered relic icon png missing under assets/images/relics: {', '.join(missing)}")
 

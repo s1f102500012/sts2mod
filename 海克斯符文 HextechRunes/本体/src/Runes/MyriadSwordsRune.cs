@@ -1,8 +1,8 @@
 namespace HextechRunes;
 
 /// <summary>
-/// 万剑归宗(棱彩,仅储君):你的君王之剑打出后会被消耗;回合结束时,打出你消耗牌堆里的所有君王之剑。
-/// 打出→消耗→回合末齐射→再次消耗,形成"剑冢"滚雪球:每把亲手打出过的剑永久加入回合末齐射。
+/// 万剑归宗(棱彩,仅储君):你的君王之剑打出后会被消耗;每当抽牌堆洗牌时,打出你消耗牌堆里的所有君王之剑。
+/// 打出→消耗→洗牌时齐射→再次消耗,形成"剑冢"滚雪球:每把亲手打出过的剑永久加入后续齐射。
 /// </summary>
 public sealed class MyriadSwordsRune : HextechRelicBase
 {
@@ -26,11 +26,11 @@ public sealed class MyriadSwordsRune : HextechRelicBase
 			: (pileType, position);
 	}
 
-	public override async Task BeforeTurnEnd(PlayerChoiceContext choiceContext, CombatSide side)
+	public override async Task AfterShuffle(PlayerChoiceContext choiceContext, Player shuffler)
 	{
 		if (_discharging
 			|| Owner == null
-			|| side != Owner.Creature.Side
+			|| shuffler != Owner
 			|| Owner.Creature.IsDead
 			|| Owner.PlayerCombatState == null
 			|| Owner.Creature.CombatState == null)
@@ -38,7 +38,7 @@ public sealed class MyriadSwordsRune : HextechRelicBase
 			return;
 		}
 
-		// 快照:齐射打出的剑经上面的去向改写回到消耗堆,不会在本次齐射内重复打出。
+		// 快照:齐射打出的剑经上面的去向改写回到消耗堆,不会在本次洗牌触发内重复打出。
 		List<SovereignBlade> blades = PileType.Exhaust.GetPile(Owner).Cards
 			.OfType<SovereignBlade>()
 			.Where(blade => blade.Owner == Owner)
@@ -52,6 +52,7 @@ public sealed class MyriadSwordsRune : HextechRelicBase
 		try
 		{
 			Flash();
+			HextechMyriadSwordsVfx.Play(Owner.Creature);
 			PlayerChoiceContext autoChoiceContext = new BlockingPlayerChoiceContext();
 			foreach (SovereignBlade blade in blades)
 			{
@@ -70,10 +71,15 @@ public sealed class MyriadSwordsRune : HextechRelicBase
 				}
 
 				await HextechAutoPlayHelper.AutoPlayOrMoveToResultPile(autoChoiceContext, blade, target, skipXCapture: true);
+				HextechSovereignBladeVfxSync.Reconcile(Owner);
 			}
 		}
 		finally
 		{
+			if (Owner?.PlayerCombatState != null && Owner.Creature.CombatState != null)
+			{
+				HextechSovereignBladeVfxSync.Reconcile(Owner);
+			}
 			_discharging = false;
 		}
 	}
