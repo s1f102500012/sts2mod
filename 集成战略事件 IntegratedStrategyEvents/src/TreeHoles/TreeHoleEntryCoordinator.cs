@@ -26,8 +26,28 @@ internal static class TreeHoleEntryCoordinator
 
 	public static Task EnterFromEvent(Player owner, string destinationActName, string stageLabel)
 	{
+		NetGameType gameType = RunManager.Instance.NetService.Type;
+		Log.Info(
+			$"{ModInfo.LogPrefix} Tree-hole entry requested for {destinationActName} " +
+			$"(stage={stageLabel}, player={owner.NetId}, mode={gameType}).");
+		if (ShouldEnterDirectly(gameType))
+		{
+			// 单人事件选项已由 EventSynchronizer 排序；再放入玩家动作队列可能被尚未
+			// 退出的事件动作挡在队首。延后一帧即可等当前选项任务收尾后安全拆房。
+			_ = TaskHelper.RunSafely(EnterFromEventDeferred(owner, destinationActName, stageLabel));
+			return Task.CompletedTask;
+		}
+
 		IntegratedStrategyTemporaryMapAction.EnqueueTreeHoleEntry(owner, destinationActName, stageLabel);
+		Log.Info(
+			$"{ModInfo.LogPrefix} Tree-hole entry for {destinationActName} was submitted " +
+			$"to the synchronized action queue.");
 		return Task.CompletedTask;
+	}
+
+	internal static bool ShouldEnterDirectly(NetGameType gameType)
+	{
+		return gameType == NetGameType.Singleplayer;
 	}
 
 	public static Task EnterFromDebugCommand(Player owner, string destinationActName, string stageLabel)
@@ -133,11 +153,13 @@ internal static class TreeHoleEntryCoordinator
 		}
 
 		EventSynchronizer synchronizer = RunManager.Instance.EventSynchronizer;
+		Log.Info($"{ModInfo.LogPrefix} Waiting for {destinationActName} event option settlement.");
 		await synchronizer.AwaitPendingOptionTasks();
 		const int maxFrames = 600;
-		for (int frame = 0;
-			frame < maxFrames && synchronizer.Events.Any(static e => !e.IsFinished);
-			frame++)
+		int waitedFrames = 0;
+		for (;
+			waitedFrames < maxFrames && synchronizer.Events.Any(static e => !e.IsFinished);
+			waitedFrames++)
 		{
 			await TreeHoleSessionManager.AwaitNextProcessFrame();
 			await synchronizer.AwaitPendingOptionTasks();
@@ -148,6 +170,12 @@ internal static class TreeHoleEntryCoordinator
 			Log.Warn(
 				$"{ModInfo.LogPrefix} Entering {destinationActName} with unfinished event clones after " +
 				$"waiting {maxFrames} frames; proceeding anyway.");
+		}
+		else
+		{
+			Log.Info(
+				$"{ModInfo.LogPrefix} Event option settlement completed for {destinationActName} " +
+				$"after {waitedFrames} frame(s).");
 		}
 	}
 }

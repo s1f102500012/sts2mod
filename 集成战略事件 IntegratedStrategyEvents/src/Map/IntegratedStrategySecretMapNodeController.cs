@@ -70,6 +70,7 @@ internal static class IntegratedStrategySecretMapNodeController
 	}
 
 	private static readonly ConditionalWeakTable<RunState, SecretNodeStore> SecretNodes = new();
+	private static readonly HashSet<Type> LoggedCompatibleExternalMapTypes = [];
 	private static Texture2D? _secretIcon;
 	private static Texture2D? _secretOutline;
 
@@ -80,6 +81,7 @@ internal static class IntegratedStrategySecretMapNodeController
 			return;
 		}
 
+		LogCompatibleExternalMapType(map);
 		SecretNodeStore store = SecretNodes.GetOrCreateValue(state);
 		HashSet<MapCoord> selectedCoords = SelectSecretNodeCoords(state, map, actIndex);
 		store.Set(actIndex, selectedCoords);
@@ -343,13 +345,17 @@ internal static class IntegratedStrategySecretMapNodeController
 
 	internal static bool ShouldSkipMapMutation(IRunState runState, ActMap map)
 	{
-		// 秘境节点只出现在正常大地图上：
-		// 1) 本模组的树洞/终局/断章临时层由标记接口+会话判定排除；
-		// 2) 其他模组的脚本化/临时地图类型（非原版、非本模组程序集）默认排除（玩家反馈）；
-		// 3) 其他模组也可通过 IntegratedStrategyEventsInterop.RegisterSecretNodeSkipPredicate 显式声明排除。
+		// SavedActMap 会在读档时抹掉原始具体类型，不能用程序集来源判断一张地图
+		// 是否为临时层，否则第三方主地图会在新局被跳过、读档后却参与秘境生成。
 		return IntegratedStrategyTreeHoleController.IsTemporaryMap(runState, map) ||
-			IsExternalScriptedMap(map) ||
 			IntegratedStrategyEventsInterop.ShouldSkipSecretNodes(map);
+	}
+
+	internal static bool ShouldSkipWholeMapReplacement(IRunState runState, ActMap map)
+	{
+		// 花瓣和预言号角会替换整张地图；未知外部地图可能承载自己的结构与状态，
+		// 因而保持保守策略。秘境节点只修改普通未知节点，不共享这个限制。
+		return ShouldSkipMapMutation(runState, map) || IsExternalMapType(map);
 	}
 
 	private static bool ShouldSkipMap(RunState state, ActMap map)
@@ -357,10 +363,24 @@ internal static class IntegratedStrategySecretMapNodeController
 		return ShouldSkipMapMutation(state, map);
 	}
 
-	private static bool IsExternalScriptedMap(ActMap map)
+	private static bool IsExternalMapType(ActMap map)
 	{
 		Assembly mapAssembly = map.GetType().Assembly;
 		return mapAssembly != VanillaMapAssembly && mapAssembly != SelfAssembly;
+	}
+
+	private static void LogCompatibleExternalMapType(ActMap map)
+	{
+		Type mapType = map.GetType();
+		if (!IsExternalMapType(map) || !LoggedCompatibleExternalMapTypes.Add(mapType))
+		{
+			return;
+		}
+
+		Log.Info(
+			$"{ModInfo.LogPrefix} External map type {mapType.FullName ?? mapType.Name} " +
+			$"from {mapType.Assembly.GetName().Name ?? "<unknown>"} is eligible for secret nodes; " +
+			"whole-map replacement remains disabled.");
 	}
 
 	private static HashSet<MapCoord> SelectSecretNodeCoords(RunState state, ActMap map, int actIndex)

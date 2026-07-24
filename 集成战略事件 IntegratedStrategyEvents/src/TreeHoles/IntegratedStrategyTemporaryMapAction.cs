@@ -2,6 +2,7 @@ using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
+using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Multiplayer.Serialization;
 using MegaCrit.Sts2.Core.Runs;
 
@@ -83,6 +84,9 @@ internal sealed class IntegratedStrategyTemporaryMapAction : GameAction
 
 	protected override Task ExecuteAction()
 	{
+		Log.Info(
+			$"{ModInfo.LogPrefix} Executing synchronized temporary-map action " +
+			$"{_entryKind} for player {_player.NetId}.");
 		return _entryKind switch
 		{
 			IntegratedStrategyTemporaryMapEntryKind.TreeHole =>
@@ -120,6 +124,7 @@ internal sealed class IntegratedStrategyTemporaryMapAction : GameAction
 
 	private static void Enqueue(IntegratedStrategyTemporaryMapAction action)
 	{
+		Log.Info($"{ModInfo.LogPrefix} Requesting synchronized temporary-map action: {action}.");
 		RunManager.Instance.ActionQueueSynchronizer.RequestEnqueue(action);
 	}
 }

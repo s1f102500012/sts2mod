@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IntegratedStrategySts2Target Condition="'$(IntegratedStrategySts2Target)' == ''">0.109.0</IntegratedStrategySts2Target>
+    <VersionedRefsRoot>$(MSBuildThisFileDirectory)../../../HextechRunes/versioned-dll-backups</VersionedRefsRoot>
+    <GameDataPath Condition="'$(GameDataPath)' == ''">$(VersionedRefsRoot)/$(IntegratedStrategySts2Target)/game-refs</GameDataPath>
+    <RitsuLibRoot Condition="'$(RitsuLibRoot)' == ''">/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295</RitsuLibRoot>
+    <IntegratedStrategyAssembly Condition="'$(IntegratedStrategyAssembly)' == ''">$(MSBuildThisFileDirectory)../../dist/lib/$(IntegratedStrategySts2Target)/IntegratedStrategyEvents.dll</IntegratedStrategyAssembly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(GameDataPath)/sts2.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="GodotSharp">
+      <HintPath>$(GameDataPath)/GodotSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameDataPath)/0Harmony.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="STS2-RitsuLib">
+      <HintPath>$(RitsuLibRoot)/lib/$(IntegratedStrategySts2Target)/STS2-RitsuLib.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="IntegratedStrategyEvents">
+      <HintPath>$(IntegratedStrategyAssembly)</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+
+  <Target Name="ValidateProbeInputs" BeforeTargets="ResolveReferences">
+    <Error Condition="!Exists('$(IntegratedStrategyAssembly)')" Text="Missing IntegratedStrategyEvents variant: $(IntegratedStrategyAssembly)" />
+    <Error Condition="!Exists('$(RitsuLibRoot)/lib/$(IntegratedStrategySts2Target)/STS2-RitsuLib.dll')" Text="Missing RitsuLib variant for $(IntegratedStrategySts2Target)." />
+  </Target>
+</Project>

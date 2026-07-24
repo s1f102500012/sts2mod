@@ -221,6 +221,7 @@ python3 "$ROOT/tools/multi_version/validate_variant_bundle.py" \
 	--dist "$DIST" \
 	--mod-id "$FILE_STEM" \
 	--manifest-name "$VARIANT_MANIFEST_NAME"
+"$ROOT/tools/run_map_compatibility_probe.sh"
 
 if [[ "$INTEGRATED_STRATEGY_DEPLOY" != "0" ]]; then
 	deploy_bundle_atomically
