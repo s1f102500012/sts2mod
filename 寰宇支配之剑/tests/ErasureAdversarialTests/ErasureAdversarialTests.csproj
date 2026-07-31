@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="../../src/ErasureCompletionPolicy.cs" Link="ErasureCompletionPolicy.cs" />
+    <Compile Include="../../src/ErasureLineage.cs" Link="ErasureLineage.cs" />
+    <Compile Include="../../src/ErasureLineage.Completion.cs" Link="ErasureLineage.Completion.cs" />
+    <Compile Include="../../src/ErasureMutationJournal.cs" Link="ErasureMutationJournal.cs" />
+    <Compile Include="../../loader/VariantSelectionPolicy.cs" Link="VariantSelectionPolicy.cs" />
+  </ItemGroup>
+</Project>

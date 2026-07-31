@@ -1,0 +1,8 @@
+src/bin/
+src/obj/
+loader/bin/
+loader/obj/
+dist/
+.build/
+.DS_Store
+._*

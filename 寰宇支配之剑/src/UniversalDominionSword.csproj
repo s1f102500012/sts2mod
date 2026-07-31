@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>UniversalDominionSword</AssemblyName>
+    <RootNamespace>UniversalDominionSword</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GameRoot Condition="'$(GameRoot)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app</GameRoot>
+    <UniversalDominionSwordSts2Target Condition="'$(UniversalDominionSwordSts2Target)' == ''">0.110.0</UniversalDominionSwordSts2Target>
+    <VersionedRefsRoot>$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups</VersionedRefsRoot>
+    <OfficialGameDataDir>$(VersionedRefsRoot)/$(UniversalDominionSwordSts2Target)/game-refs</OfficialGameDataDir>
+    <GameDataDir Condition="'$(GameDataDir)' == '' and Exists('$(OfficialGameDataDir)/sts2.dll')">$(OfficialGameDataDir)</GameDataDir>
+    <GameDataDir Condition="'$(GameDataDir)' == ''">$(GameRoot)/Contents/Resources/data_sts2_macos_arm64</GameDataDir>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <Optimize>true</Optimize>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=/_/src</PathMap>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(UniversalDominionSwordSts2Target)' == '0.107.1'">
+    <DefineConstants>$(DefineConstants);STS2_107_1</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(UniversalDominionSwordSts2Target)' == '0.110.0'">
+    <DefineConstants>$(DefineConstants);STS2_110_0</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(GameDataDir)/sts2.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="GodotSharp">
+      <HintPath>$(GameDataDir)/GodotSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameDataDir)/0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="../assets/images/relics/*.png" LogicalName="UniversalDominionSword.images.relics.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../assets/images/cards/*.png" LogicalName="UniversalDominionSword.images.cards.%(Filename)%(Extension)" />
+  </ItemGroup>
+</Project>
