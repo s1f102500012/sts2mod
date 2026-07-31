@@ -16,7 +16,7 @@ internal sealed class MysteryEnemyHex : HextechEnemyHexEffect
 		}
 
 		List<CardModel> candidates = PileType.Hand.GetPile(player).Cards
-			.Where(CanTransformToRandomCard)
+			.Where(CardTransformUpgradeHelper.CanTransformToRandomCard)
 			.OrderBy(HextechStableRandom.CardKey, StringComparer.Ordinal)
 			.ToList();
 		if (candidates.Count == 0)
@@ -57,23 +57,6 @@ internal sealed class MysteryEnemyHex : HextechEnemyHexEffect
 				HextechStableRandom.PlayerKey(player),
 				combatState.RoundNumber.ToString(),
 				HextechStableRandom.CardPileKey(candidates));
-		}
-	}
-
-	private static bool CanTransformToRandomCard(CardModel card)
-	{
-		if (!card.IsTransformable || card.Pile?.Type != PileType.Hand)
-		{
-			return false;
-		}
-
-		try
-		{
-			return CardFactory.GetDefaultTransformationOptions(card, card.CombatState != null).Any();
-		}
-		catch (InvalidOperationException)
-		{
-			return false;
 		}
 	}
 }

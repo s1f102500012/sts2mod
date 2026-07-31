@@ -13,6 +13,7 @@ namespace HextechRunes;
 /// 事件驱动的战斗特效派发器。符文在其触发点(战斗逻辑、各端一致执行)调用这里的方法,
 /// 由本类把可视节点延迟挂到对应 <see cref="NCreature"/> 上。纯表现层:只新建可视节点、不读写任何
 /// gameplay/同步状态;取不到节点时安全跳过。<see cref="HextechCreatureNodeRegistry"/> 提供 entity→node 桥。
+/// 延迟异步入口均为 fire-and-forget,对应 Run* 方法必须在顶层捕获并记录异常。
 /// </summary>
 internal static class HextechCombatVfxHooks
 {
@@ -35,6 +36,7 @@ internal static class HextechCombatVfxHooks
 
 	private static void CombatRoomReadyPostfix(NCombatRoom __instance)
 	{
+		HextechCreatureNodeRegistry.Clear();
 		foreach (NCreature creature in __instance.CreatureNodes)
 		{
 			HextechCreatureNodeRegistry.Register(creature);
@@ -84,10 +86,15 @@ internal static class HextechCombatVfxHooks
 	}
 }
 
-/// <summary>entity → 屏幕节点 的弱映射,由战斗节点生命周期 hook 填充;取用时校验有效性、惰性清理失效项。</summary>
+/// <summary>entity → 屏幕节点映射,由战斗节点生命周期 hook 填充;新战斗重建,取用时校验有效性。</summary>
 internal static class HextechCreatureNodeRegistry
 {
 	private static readonly Dictionary<Creature, NCreature> Nodes = new();
+
+	internal static void Clear()
+	{
+		Nodes.Clear();
+	}
 
 	internal static void Register(NCreature? node)
 	{
@@ -97,13 +104,7 @@ internal static class HextechCreatureNodeRegistry
 		}
 
 		Nodes[node.Entity] = node;
-		if (Nodes.Count > 24)
-		{
-			Prune();
-		}
 	}
-
-	private static int _safeGetFailureLogs;
 
 	/// <summary>AddCreature postfix 专用:GetCreatureNode 在战斗构建/召唤同步链上,异常不能外泄。</summary>
 	internal static NCreature? SafeGetCreatureNode(NCombatRoom room, Creature creature)
@@ -114,7 +115,7 @@ internal static class HextechCreatureNodeRegistry
 		}
 		catch (Exception ex)
 		{
-			if (_safeGetFailureLogs++ < 5)
+			if (HextechRunLogBudget.TryConsume("combat.creature-node-safe-get-failure", 5))
 			{
 				Log.Error($"[{ModInfo.Id}][Mayhem] GetCreatureNode failed in AddCreature postfix: {ex}");
 			}
@@ -131,23 +132,6 @@ internal static class HextechCreatureNodeRegistry
 		}
 
 		return null;
-	}
-
-	private static void Prune()
-	{
-		List<Creature> stale = [];
-		foreach (KeyValuePair<Creature, NCreature> pair in Nodes)
-		{
-			if (!GodotObject.IsInstanceValid(pair.Value))
-			{
-				stale.Add(pair.Key);
-			}
-		}
-
-		foreach (Creature key in stale)
-		{
-			Nodes.Remove(key);
-		}
 	}
 }
 
@@ -359,14 +343,14 @@ internal static class HextechCombatVfx
 	internal static void BoomerangSweep(Creature owner, IReadOnlyList<Creature> targets, Texture2D? boomerangTexture, bool roundTrip = false)
 	{
 		Creature[] snapshot = [.. targets];
-		Callable.From(() => TaskHelper.RunSafely(RunBoomerangSweep(owner, snapshot, boomerangTexture, roundTrip))).CallDeferred();
+		Callable.From(() => RunBoomerangSweep(owner, snapshot, boomerangTexture, roundTrip)).CallDeferred();
 	}
 
 	/// <summary>欧米伽:全场红色预警后,天降赤红审判光柱依次轰击每个敌人。</summary>
 	internal static void OmegaJudgment(IReadOnlyList<Creature> targets)
 	{
 		Creature[] snapshot = [.. targets];
-		Callable.From(() => TaskHelper.RunSafely(RunOmegaJudgment(snapshot))).CallDeferred();
+		Callable.From(() => RunOmegaJudgment(snapshot)).CallDeferred();
 	}
 
 	/// <summary>
@@ -376,7 +360,7 @@ internal static class HextechCombatVfx
 	/// </summary>
 	internal static void FlyingKickStrike(Creature target, Creature owner)
 	{
-		Callable.From(() => TaskHelper.RunSafely(RunFlyingKickStrike(target, owner))).CallDeferred();
+		Callable.From(() => RunFlyingKickStrike(target, owner)).CallDeferred();
 	}
 
 	/// <summary>
@@ -390,7 +374,7 @@ internal static class HextechCombatVfx
 			? CreatureCenter(sourceNode)
 			: null;
 		Creature[] snapshot = [.. targets];
-		Callable.From(() => TaskHelper.RunSafely(RunCorpseBloomBurst(sourcePos, snapshot))).CallDeferred();
+		Callable.From(() => RunCorpseBloomBurst(sourcePos, snapshot)).CallDeferred();
 	}
 
 	/// <summary>
@@ -400,7 +384,7 @@ internal static class HextechCombatVfx
 	internal static void QuantumPulse(Creature owner, IReadOnlyList<Creature> targets)
 	{
 		Creature[] snapshot = [.. targets];
-		Callable.From(() => TaskHelper.RunSafely(RunQuantumPulse(owner, snapshot))).CallDeferred();
+		Callable.From(() => RunQuantumPulse(owner, snapshot)).CallDeferred();
 	}
 
 	private static async Task RunBoomerangSweep(Creature owner, Creature[] targets, Texture2D? boomerangTexture, bool roundTrip = false)

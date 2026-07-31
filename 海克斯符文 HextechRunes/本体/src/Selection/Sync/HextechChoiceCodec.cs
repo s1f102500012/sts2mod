@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.GameActions;
+using System.Text;
 
 namespace HextechRunes;
 
@@ -26,6 +27,26 @@ internal static class HextechChoiceCodec
 	private const int PlayerRuneConfigBitsPerWord = 30;
 	private const int MaxPlayerRuneConfigBitsetWords = 64;
 	private const int MaxDisabledMonsterHexes = 128;
+	private const int MaxChoiceListCount = HextechStableModelIdListCodec.MaxCount;
+	private const uint Fnv1aOffsetBasis = 2166136261U;
+	private const uint Fnv1aPrime = 16777619U;
+
+	public static int ComputeOperationToken(
+		string operationKind,
+		uint choiceId,
+		ulong playerNetId,
+		string context)
+	{
+		ArgumentNullException.ThrowIfNull(operationKind);
+		ArgumentNullException.ThrowIfNull(context);
+
+		uint hash = Fnv1aOffsetBasis;
+		AppendFnvString(ref hash, operationKind);
+		AppendFnvUInt32(ref hash, choiceId);
+		AppendFnvUInt64(ref hash, playerNetId);
+		AppendFnvString(ref hash, context);
+		return unchecked((int)hash);
+	}
 
 	public static PlayerChoiceResult CreateActRoll(
 		int actIndex,
@@ -141,7 +162,9 @@ internal static class HextechChoiceCodec
 	private static void AppendDisabledPlayerRuneConfig(List<int> payload, IReadOnlySet<string> disabledPlayerRuneIds)
 	{
 		IReadOnlyList<ModelId> ids = PlayerRuneIdsByOrdinal.Value;
-		int wordCount = (ids.Count + PlayerRuneConfigBitsPerWord - 1) / PlayerRuneConfigBitsPerWord;
+		int wordCount = ids.Count / PlayerRuneConfigBitsPerWord
+			+ (ids.Count % PlayerRuneConfigBitsPerWord == 0 ? 0 : 1);
+		ValidateProtocolCount(wordCount, MaxPlayerRuneConfigBitsetWords, nameof(disabledPlayerRuneIds));
 		int[] words = new int[wordCount];
 		for (int i = 0; i < ids.Count; i++)
 		{
@@ -179,7 +202,9 @@ internal static class HextechChoiceCodec
 		}
 
 		int wordCount = payload[cursor++];
-		if (wordCount < 0 || wordCount > MaxPlayerRuneConfigBitsetWords || payload.Count < cursor + wordCount)
+		if (wordCount < 0
+			|| wordCount > MaxPlayerRuneConfigBitsetWords
+			|| !HasRemaining(payload, cursor, wordCount))
 		{
 			return false;
 		}
@@ -219,6 +244,7 @@ internal static class HextechChoiceCodec
 			.Select(static kind => kind!.Value)
 			.OrderBy(static kind => (int)kind)
 			.ToArray();
+		ValidateProtocolCount(disabledMonsterHexes.Length, MaxDisabledMonsterHexes, nameof(snapshot));
 		payload.Add(disabledMonsterHexes.Length);
 		payload.AddRange(disabledMonsterHexes.Select(static kind => (int)kind));
 
@@ -255,7 +281,7 @@ internal static class HextechChoiceCodec
 		int fixedIntCount = snapshotVersion == RunConfigurationSnapshotVersion
 			? 3 + 3 + 2 + 3 + 3 + 3 + 3 + 1 + 1
 			: 3 + 3 + 3 + 3 + 3 + 3 + 1;
-		if (payload.Count < cursor + fixedIntCount)
+		if (!HasRemaining(payload, cursor, fixedIntCount))
 		{
 			return false;
 		}
@@ -289,7 +315,9 @@ internal static class HextechChoiceCodec
 		}
 
 		int disabledMonsterHexCount = payload[cursor++];
-		if (disabledMonsterHexCount < 0 || disabledMonsterHexCount > MaxDisabledMonsterHexes || payload.Count < cursor + disabledMonsterHexCount)
+		if (disabledMonsterHexCount < 0
+			|| disabledMonsterHexCount > MaxDisabledMonsterHexes
+			|| !HasRemaining(payload, cursor, disabledMonsterHexCount))
 		{
 			return false;
 		}
@@ -365,11 +393,13 @@ internal static class HextechChoiceCodec
 
 	private static readonly Lazy<IReadOnlyList<ModelId>> PlayerRuneIdsByOrdinal = new(
 		() => HextechCatalog.GetConfigurablePlayerRuneIds()
-			.OrderBy(static id => id.Entry, StringComparer.Ordinal)
+			.OrderBy(static id => id.Category, StringComparer.Ordinal)
+			.ThenBy(static id => id.Entry, StringComparer.Ordinal)
 			.ToArray());
 
 	public static PlayerChoiceResult CreateRuneSelection(int actIndex, int choiceOrdinal, int selectedIndex, IReadOnlyList<int> rerollHistory, IReadOnlyList<RelicModel> finalOptions)
 	{
+		ValidateProtocolCount(rerollHistory.Count, MaxChoiceListCount, nameof(rerollHistory));
 		List<int> payload = [ Magic, ChoiceKindRuneSelection, actIndex, choiceOrdinal, selectedIndex, rerollHistory.Count ];
 		payload.AddRange(rerollHistory);
 		HextechStableModelIdListCodec.Append(payload, finalOptions.Select(static relic => relic.CanonicalInstance?.Id ?? relic.Id));
@@ -412,9 +442,11 @@ internal static class HextechChoiceCodec
 		}
 
 		selectedIndex = payload[4];
-		int rerollCount = Math.Max(0, payload[5]);
+		int rerollCount = payload[5];
 		const int headerCount = 6;
-		if (payload.Count < rerollCount + headerCount)
+		if (rerollCount < 0
+			|| rerollCount > MaxChoiceListCount
+			|| !HasRemaining(payload, headerCount, rerollCount))
 		{
 			return false;
 		}
@@ -437,9 +469,11 @@ internal static class HextechChoiceCodec
 			return HextechStableModelIdListCodec.TryDecode(payload, cursor, out finalOptionIds, out _);
 		}
 
-		int optionCount = Math.Max(0, payload[cursor]);
+		int optionCount = payload[cursor];
 		cursor++;
-		if (payload.Count < cursor + optionCount)
+		if (optionCount < 0
+			|| optionCount > MaxChoiceListCount
+			|| !HasRemaining(payload, cursor, optionCount))
 		{
 			return false;
 		}
@@ -449,7 +483,7 @@ internal static class HextechChoiceCodec
 			if (!TryGetRuneIdForOrdinal(payload[cursor + i], out ModelId id))
 			{
 				finalOptionIds.Clear();
-				return true;
+				return false;
 			}
 
 			finalOptionIds.Add(id);
@@ -471,127 +505,70 @@ internal static class HextechChoiceCodec
 		return true;
 	}
 
-	public static PlayerChoiceResult CreateRandomRuneGrant(IReadOnlyList<ModelId> runeIds)
+	public static PlayerChoiceResult CreateRandomRuneGrant(int operationToken, IReadOnlyList<ModelId> runeIds)
 	{
-		List<int> payload = [ Magic, ChoiceKindRandomRuneGrant ];
+		List<int> payload = [ Magic, ChoiceKindRandomRuneGrant, operationToken ];
 		HextechStableModelIdListCodec.Append(payload, runeIds);
 		return PlayerChoiceResult.FromIndexes(payload);
 	}
 
-	public static bool IsRandomRuneGrant(PlayerChoiceResult result)
+	public static bool IsRandomRuneGrant(PlayerChoiceResult result, int expectedOperationToken)
 	{
-		return TryDecodeRandomRuneGrant(result, out _);
+		return TryDecodeRandomRuneGrant(result, expectedOperationToken, out _);
 	}
 
-	public static bool TryDecodeRandomRuneGrant(PlayerChoiceResult result, out List<ModelId> runeIds)
+	public static bool TryDecodeRandomRuneGrant(
+		PlayerChoiceResult result,
+		int expectedOperationToken,
+		out List<ModelId> runeIds)
 	{
 		runeIds = [];
 		if (!TryGetIndexPayload(result, out List<int> payload)
-			|| payload.Count < 3
+			|| payload.Count < 4
 			|| payload[0] != Magic
-			|| payload[1] != ChoiceKindRandomRuneGrant)
+			|| payload[1] != ChoiceKindRandomRuneGrant
+			|| payload[2] != expectedOperationToken)
 		{
 			return false;
 		}
 
-		if (payload[2] == HextechStableModelIdListCodec.Version)
+		if (payload[3] == HextechStableModelIdListCodec.Version)
 		{
-			return HextechStableModelIdListCodec.TryDecode(payload, 2, out runeIds, out _);
+			return HextechStableModelIdListCodec.TryDecode(payload, 3, out runeIds, out _);
 		}
 
-		int count = Math.Max(0, payload[2]);
-		if (payload.Count < 3 + count)
-		{
-			return false;
-		}
-
-		for (int i = 0; i < count; i++)
-		{
-			if (!TryGetRuneIdForOrdinal(payload[3 + i], out ModelId id))
-			{
-				runeIds.Clear();
-				return false;
-			}
-
-			runeIds.Add(id);
-		}
-
-		return true;
+		return false;
 	}
 
 	private static readonly Lazy<IReadOnlyList<ModelId>> ForgeIdsByOrdinal = new(
 		() => HextechCatalog.GetAllForgeTypes()
 			.Select(ModelDb.GetId)
-			.OrderBy(static id => id.Entry, StringComparer.Ordinal)
+			.OrderBy(static id => id.Category, StringComparer.Ordinal)
+			.ThenBy(static id => id.Entry, StringComparer.Ordinal)
 			.ToArray());
 
-	public static PlayerChoiceResult CreateForgeSelection(int selectedIndex, IReadOnlyList<RelicModel> options)
+	public static PlayerChoiceResult CreateForgeSelection(
+		int operationToken,
+		int selectedIndex,
+		IReadOnlyList<RelicModel> options)
 	{
-		List<int> payload = [ Magic, ChoiceKindForgeSelection, selectedIndex ];
+		List<int> payload = [ Magic, ChoiceKindForgeSelection, operationToken, selectedIndex ];
 		HextechStableModelIdListCodec.Append(payload, options.Select(static relic => relic.CanonicalInstance?.Id ?? relic.Id));
 
 		return PlayerChoiceResult.FromIndexes(payload);
 	}
 
-	public static bool IsForgeSelection(PlayerChoiceResult result)
+	public static bool IsForgeSelection(PlayerChoiceResult result, int expectedOperationToken)
 	{
-		return TryDecodeForgeSelection(result, out _, out _);
+		return TryDecodeForgeSelection(result, expectedOperationToken, out _, out _);
 	}
 
-	public static bool TryDecodeForgeSelection(PlayerChoiceResult result, out int selectedIndex, out List<ModelId> optionIds)
+	public static bool IsForgeSelection(
+		PlayerChoiceResult result,
+		int expectedOperationToken,
+		IReadOnlyList<RelicModel> expectedOptions)
 	{
-		selectedIndex = -1;
-		optionIds = [];
-		if (!TryGetIndexPayload(result, out List<int> payload)
-			|| payload.Count < 3
-			|| payload[0] != Magic
-			|| payload[1] != ChoiceKindForgeSelection)
-		{
-			return false;
-		}
-
-		selectedIndex = payload[2];
-		if (payload.Count <= 3)
-		{
-			return true;
-		}
-
-		if (payload[3] == HextechStableModelIdListCodec.Version)
-		{
-			return HextechStableModelIdListCodec.TryDecode(payload, 3, out optionIds, out _);
-		}
-
-		int optionCount = Math.Max(0, payload[3]);
-		if (payload.Count < 4 + optionCount)
-		{
-			return false;
-		}
-
-		for (int i = 0; i < optionCount; i++)
-		{
-			if (!TryGetForgeIdForOrdinal(payload[4 + i], out ModelId id))
-			{
-				optionIds.Clear();
-				return true;
-			}
-
-			optionIds.Add(id);
-		}
-
-		return true;
-	}
-
-	public static PlayerChoiceResult CreateRelicOptionSelection(int selectedIndex, IReadOnlyList<RelicModel> options)
-	{
-		List<int> payload = [ Magic, ChoiceKindRelicOptionSelection, selectedIndex ];
-		HextechStableModelIdListCodec.Append(payload, options.Select(static relic => relic.CanonicalInstance?.Id ?? relic.Id));
-
-		return PlayerChoiceResult.FromIndexes(payload);
-	}
-
-	public static bool IsRelicOptionSelection(PlayerChoiceResult result, IReadOnlyList<RelicModel> expectedOptions)
-	{
-		if (!TryDecodeRelicOptionSelection(result, out _, out List<ModelId> optionIds)
+		if (!TryDecodeForgeSelection(result, expectedOperationToken, out _, out List<ModelId> optionIds)
 			|| optionIds.Count != expectedOptions.Count)
 		{
 			return false;
@@ -609,21 +586,94 @@ internal static class HextechChoiceCodec
 		return true;
 	}
 
-	public static bool TryDecodeRelicOptionSelection(PlayerChoiceResult result, out int selectedIndex, out List<ModelId> optionIds)
+	public static bool IsMalformedForgeSelectionEnvelope(PlayerChoiceResult result, int expectedOperationToken)
+	{
+		return IsChoiceEnvelope(result, ChoiceKindForgeSelection)
+			&& !TryDecodeForgeSelection(result, expectedOperationToken, out _, out _);
+	}
+
+	public static bool TryDecodeForgeSelection(
+		PlayerChoiceResult result,
+		int expectedOperationToken,
+		out int selectedIndex,
+		out List<ModelId> optionIds)
 	{
 		selectedIndex = -1;
 		optionIds = [];
 		if (!TryGetIndexPayload(result, out List<int> payload)
-			|| payload.Count < 4
+			|| payload.Count < 5
 			|| payload[0] != Magic
-			|| payload[1] != ChoiceKindRelicOptionSelection
-			|| payload[3] != HextechStableModelIdListCodec.Version)
+			|| payload[1] != ChoiceKindForgeSelection
+			|| payload[2] != expectedOperationToken
+			|| payload[4] != HextechStableModelIdListCodec.Version)
 		{
 			return false;
 		}
 
-		selectedIndex = payload[2];
-		return HextechStableModelIdListCodec.TryDecode(payload, 3, out optionIds, out _);
+		selectedIndex = payload[3];
+		return HextechStableModelIdListCodec.TryDecode(payload, 4, out optionIds, out _);
+	}
+
+	public static PlayerChoiceResult CreateRelicOptionSelection(
+		int operationToken,
+		int selectedIndex,
+		IReadOnlyList<RelicModel> options)
+	{
+		List<int> payload = [ Magic, ChoiceKindRelicOptionSelection, operationToken, selectedIndex ];
+		HextechStableModelIdListCodec.Append(payload, options.Select(static relic => relic.CanonicalInstance?.Id ?? relic.Id));
+
+		return PlayerChoiceResult.FromIndexes(payload);
+	}
+
+	public static bool IsRelicOptionSelection(
+		PlayerChoiceResult result,
+		int expectedOperationToken,
+		IReadOnlyList<RelicModel> expectedOptions)
+	{
+		if (!TryDecodeRelicOptionSelection(result, expectedOperationToken, out _, out List<ModelId> optionIds)
+			|| optionIds.Count != expectedOptions.Count)
+		{
+			return false;
+		}
+
+		for (int i = 0; i < expectedOptions.Count; i++)
+		{
+			ModelId expectedId = expectedOptions[i].CanonicalInstance?.Id ?? expectedOptions[i].Id;
+			if (optionIds[i] != expectedId)
+			{
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	public static bool IsMalformedRelicOptionSelectionEnvelope(PlayerChoiceResult result, int expectedOperationToken)
+	{
+		return IsChoiceEnvelope(result, ChoiceKindRelicOptionSelection)
+			&& !TryDecodeRelicOptionSelection(result, expectedOperationToken, out _, out _);
+	}
+
+	public static bool TryDecodeRelicOptionSelection(
+		PlayerChoiceResult result,
+		int expectedOperationToken,
+		out int selectedIndex,
+		out List<ModelId> optionIds)
+	{
+		selectedIndex = -1;
+		optionIds = [];
+		if (!TryGetIndexPayload(result, out List<int> payload)
+			|| payload.Count < 5
+			|| payload[0] != Magic
+			|| payload[1] != ChoiceKindRelicOptionSelection
+			|| payload[2] != expectedOperationToken
+			|| payload[4] != HextechStableModelIdListCodec.Version)
+		{
+			return false;
+		}
+
+		selectedIndex = payload[3];
+		return HextechStableModelIdListCodec.TryDecode(payload, 4, out optionIds, out _);
 	}
 
 	private static bool TryGetForgeIdForOrdinal(int ordinal, out ModelId id)
@@ -637,6 +687,14 @@ internal static class HextechChoiceCodec
 
 		id = ids[ordinal];
 		return true;
+	}
+
+	private static bool IsChoiceEnvelope(PlayerChoiceResult result, int choiceKind)
+	{
+		return TryGetIndexPayload(result, out List<int> payload)
+			&& payload.Count >= 2
+			&& payload[0] == Magic
+			&& payload[1] == choiceKind;
 	}
 
 	public static PlayerChoiceResult CreateActSelectionApplied(int actIndex, int choiceOrdinal)
@@ -655,14 +713,24 @@ internal static class HextechChoiceCodec
 			&& payload[4] == 1;
 	}
 
-	public static PlayerChoiceResult CreateEnemyHexAdjustment(EnemyHexAdjustmentPayload payload)
+	public static PlayerChoiceResult CreateEnemyHexAdjustment(
+		int operationToken,
+		EnemyHexAdjustmentPayload payload)
 	{
+		if (payload.Sequence < 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(payload), payload.Sequence, "Enemy adjustment sequence must be non-negative.");
+		}
+
+		ValidateProtocolCount(payload.MonsterHexes.Count, MaxChoiceListCount, nameof(payload));
+		ValidateProtocolCount(payload.RerollCounts.Count, MaxChoiceListCount, nameof(payload));
 		List<int> indexes =
 		[
 			Magic,
 			ChoiceKindEnemyHexAdjustment,
 			payload.ActIndex,
 			payload.Sequence,
+			operationToken,
 			EnemyHexAdjustmentListVersion,
 			payload.IsFinal ? 1 : 0,
 			payload.MonsterHexes.Count
@@ -673,27 +741,55 @@ internal static class HextechChoiceCodec
 		return PlayerChoiceResult.FromIndexes(indexes);
 	}
 
-	public static bool TryDecodeEnemyHexAdjustment(PlayerChoiceResult result, int expectedActIndex, out EnemyHexAdjustmentPayload payload)
+	public static bool TryDecodeEnemyHexAdjustment(
+		PlayerChoiceResult result,
+		int expectedOperationToken,
+		int expectedActIndex,
+		int expectedSequence,
+		out EnemyHexAdjustmentPayload payload)
 	{
 		payload = default;
-		if (!TryGetIndexPayload(result, out List<int> indexes)
-			|| indexes.Count < 6
-			|| indexes[0] != Magic
-			|| indexes[1] != ChoiceKindEnemyHexAdjustment
-			|| indexes[2] != expectedActIndex)
+		if (expectedSequence < 0
+			|| !TryDecodeEnemyHexAdjustmentCore(
+				result,
+				expectedOperationToken,
+				expectedActIndex,
+				out EnemyHexAdjustmentPayload decoded)
+			|| decoded.Sequence != expectedSequence)
 		{
 			return false;
 		}
 
-		if (indexes.Count < 7 || indexes[4] != EnemyHexAdjustmentListVersion)
+		payload = decoded;
+		return true;
+	}
+
+	private static bool TryDecodeEnemyHexAdjustmentCore(
+		PlayerChoiceResult result,
+		int expectedOperationToken,
+		int expectedActIndex,
+		out EnemyHexAdjustmentPayload payload)
+	{
+		payload = default;
+		if (!TryGetIndexPayload(result, out List<int> indexes)
+			|| indexes.Count < 8
+			|| indexes[0] != Magic
+			|| indexes[1] != ChoiceKindEnemyHexAdjustment
+			|| indexes[2] != expectedActIndex
+			|| indexes[3] < 0
+			|| indexes[4] != expectedOperationToken
+			|| indexes[5] != EnemyHexAdjustmentListVersion)
 		{
-			return indexes.Count >= 8 && TryDecodeLegacyEnemyHexAdjustment(indexes, out payload);
+			return false;
 		}
 
-		bool isFinal = indexes[5] != 0;
-		int hexCount = Math.Max(0, indexes[6]);
-		int cursor = 7;
-		if (indexes.Count < cursor + hexCount + 1)
+		bool isFinal = indexes[6] != 0;
+		int hexCount = indexes[7];
+		int cursor = 8;
+		if (hexCount < 0
+			|| hexCount > MaxChoiceListCount
+			|| !HasRemaining(indexes, cursor, hexCount)
+			|| !HasRemaining(indexes, cursor + hexCount, 1))
 		{
 			return false;
 		}
@@ -717,9 +813,11 @@ internal static class HextechChoiceCodec
 		}
 
 		cursor += hexCount;
-		int rerollCount = Math.Max(0, indexes[cursor]);
+		int rerollCount = indexes[cursor];
 		cursor++;
-		if (indexes.Count < cursor + rerollCount)
+		if (rerollCount < 0
+			|| rerollCount > MaxChoiceListCount
+			|| !HasRemaining(indexes, cursor, rerollCount))
 		{
 			return false;
 		}
@@ -732,33 +830,10 @@ internal static class HextechChoiceCodec
 
 		payload = new EnemyHexAdjustmentPayload(
 			indexes[2],
-			Math.Max(0, indexes[3]),
+			indexes[3],
 			monsterHexes,
 			rerollCounts,
 			isFinal);
-		return true;
-	}
-
-	private static bool TryDecodeLegacyEnemyHexAdjustment(IReadOnlyList<int> indexes, out EnemyHexAdjustmentPayload payload)
-	{
-		payload = default;
-		MonsterHexKind? monsterHex = null;
-		if (indexes[5] >= 0)
-		{
-			if (!Enum.IsDefined(typeof(MonsterHexKind), indexes[5]))
-			{
-				return false;
-			}
-
-			monsterHex = (MonsterHexKind)indexes[5];
-		}
-
-		payload = new EnemyHexAdjustmentPayload(
-			indexes[2],
-			Math.Max(0, indexes[3]),
-			[ indexes[4] != 0 ? null : monsterHex ],
-			[ Math.Max(0, indexes[6]) ],
-			indexes[7] != 0);
 		return true;
 	}
 
@@ -780,5 +855,55 @@ internal static class HextechChoiceCodec
 		{
 			return false;
 		}
+	}
+
+	private static bool HasRemaining(IReadOnlyList<int> payload, int cursor, int count)
+	{
+		return cursor >= 0
+			&& count >= 0
+			&& cursor <= payload.Count
+			&& count <= payload.Count - cursor;
+	}
+
+	private static void ValidateProtocolCount(int count, int maximum, string parameterName)
+	{
+		if (count < 0 || count > maximum)
+		{
+			throw new ArgumentOutOfRangeException(
+				parameterName,
+				count,
+				$"Protocol list count must be between 0 and {maximum}.");
+		}
+	}
+
+	private static void AppendFnvString(ref uint hash, string value)
+	{
+		byte[] bytes = Encoding.UTF8.GetBytes(value);
+		AppendFnvUInt32(ref hash, checked((uint)bytes.Length));
+		foreach (byte valueByte in bytes)
+		{
+			AppendFnvByte(ref hash, valueByte);
+		}
+	}
+
+	private static void AppendFnvUInt32(ref uint hash, uint value)
+	{
+		for (int shift = 0; shift < 32; shift += 8)
+		{
+			AppendFnvByte(ref hash, unchecked((byte)(value >> shift)));
+		}
+	}
+
+	private static void AppendFnvUInt64(ref uint hash, ulong value)
+	{
+		for (int shift = 0; shift < 64; shift += 8)
+		{
+			AppendFnvByte(ref hash, unchecked((byte)(value >> shift)));
+		}
+	}
+
+	private static void AppendFnvByte(ref uint hash, byte value)
+	{
+		hash = unchecked((hash ^ value) * Fnv1aPrime);
 	}
 }

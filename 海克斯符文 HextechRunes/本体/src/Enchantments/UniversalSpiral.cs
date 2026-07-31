@@ -14,11 +14,6 @@ public sealed class UniversalSpiral : EnchantmentModel
 		HoverTipFactory.Static(StaticHoverTip.ReplayDynamic, DynamicVars[TimesKey])
 	];
 
-	public override bool CanEnchant(CardModel card)
-	{
-		return base.CanEnchant(card);
-	}
-
 	public override int EnchantPlayCount(int originalPlayCount)
 	{
 		return originalPlayCount + DynamicVars[TimesKey].IntValue;

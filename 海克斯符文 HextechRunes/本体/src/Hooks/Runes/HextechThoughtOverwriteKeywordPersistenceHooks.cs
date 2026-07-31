@@ -194,24 +194,24 @@ internal static class UndyingEtherealKeywordPersistence
 	}
 }
 
-internal static class ThoughtOverwriteKeywordPersistenceHooks
+internal static class HextechThoughtOverwriteKeywordPersistenceHooks
 {
 	public static void Install(Harmony harmony)
 	{
 		harmony.Patch(
 			RequireMethod(typeof(CardModel), nameof(CardModel.ToSerializable), BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(ThoughtOverwriteKeywordPersistenceHooks), nameof(CardToSerializablePostfix)));
+			postfix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardToSerializablePostfix)));
 		harmony.Patch(
 			RequireMethod(typeof(CardModel), nameof(CardModel.FromSerializable), BindingFlags.Static | BindingFlags.Public, typeof(SerializableCard)),
-			postfix: new HarmonyMethod(typeof(ThoughtOverwriteKeywordPersistenceHooks), nameof(CardFromSerializablePostfix)));
+			postfix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardFromSerializablePostfix)));
 		harmony.Patch(
 			RequireMethod(typeof(CardModel), nameof(CardModel.DowngradeInternal), BindingFlags.Instance | BindingFlags.Public),
-			prefix: new HarmonyMethod(typeof(ThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPrefix)),
-			postfix: new HarmonyMethod(typeof(ThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPostfix)));
+			prefix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPrefix)),
+			postfix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPostfix)));
 		harmony.Patch(
 			RequireMethod(typeof(CardModel), nameof(CardModel.FinalizeUpgradeInternal), BindingFlags.Instance | BindingFlags.Public),
-			prefix: new HarmonyMethod(typeof(ThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPrefix)),
-			postfix: new HarmonyMethod(typeof(ThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPostfix)));
+			prefix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPrefix)),
+			postfix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPostfix)));
 	}
 
 	private readonly struct KeywordPersistenceSnapshot

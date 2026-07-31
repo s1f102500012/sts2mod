@@ -1,22 +1,10 @@
-using MegaCrit.Sts2.Core.Models.CardPools;
-
 namespace HextechRunes;
 
-public sealed class SearingAttackCard : CardModel
+public sealed class SearingAttackCard : HextechOwnerPoolTokenCard
 {
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
 	public override string PortraitPath => HextechAssets.SearingAttackCardPortraitPath;
 
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
-
-	// 上限护栏:第三方 mod 存在「while IsUpgradable 升到满」式逻辑,999 会被一口气拉满
-	// (升级:打击/防御曾因此炸出 3003 伤害,玩家实报)。正常一场战斗打不出 200 次,封顶无感。
-	public override int MaxUpgradeLevel => Math.Max(CurrentUpgradeLevel, 200);
+	public override int MaxUpgradeLevel => Math.Max(CurrentUpgradeLevel, HextechStarterUpgradeHooks.UpgradeLevelCap);
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[

@@ -10,7 +10,13 @@ internal static class HextechEnemyHealModifier
 		}
 
 		HextechEnemyHexContext context = new(modifier);
-		foreach (HextechEnemyHexEffect effect in HextechEnemyHexEffects.GetActive(modifier).OrderBy(static effect => effect.EnemyHealOrder))
+		HextechEnemyHexEffect[] activeEffects = HextechEnemyHexEffects.GetActive(modifier).ToArray();
+		decimal multiplier = HextechEnemyCoefficientHelper.CombineMultipliersByHex(
+			activeEffects.Select(effect => (
+				effect.Kind,
+				effect.ModifyEnemyHealMultiplicative(context, creature, amount))));
+		amount *= multiplier;
+		foreach (HextechEnemyHexEffect effect in activeEffects.OrderBy(static effect => effect.EnemyHealOrder))
 		{
 			amount = effect.ModifyEnemyHealAmount(context, creature, amount);
 		}

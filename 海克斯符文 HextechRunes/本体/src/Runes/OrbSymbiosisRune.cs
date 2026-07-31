@@ -21,13 +21,25 @@ public sealed class OrbSymbiosisRune : HextechRelicBase
 			return;
 		}
 
+		ModelId orbId = orb.Id;
+		OrbModel? canonicalOrb = orbId == ModelId.none
+			? null
+			: ModelDb.GetByIdOrNull<OrbModel>(orbId);
+		if (canonicalOrb == null)
+		{
+			Log.Warn(
+				$"[{ModInfo.Id}][OrbSymbiosis] Skipped orb duplication because its model is not registered: "
+				+ $"orb={orbId.Entry} type={orb.GetType().FullName}.");
+			return;
+		}
+
 		Flash();
 		_duplicatingOrb = true;
 		try
 		{
 			for (int i = 0; i < DynamicVars["OrbCount"].IntValue; i++)
 			{
-				OrbModel duplicate = ModelDb.GetById<OrbModel>(orb.Id).ToMutable();
+				OrbModel duplicate = canonicalOrb.ToMutable();
 				await OrbCmd.Channel(choiceContext, duplicate, Owner);
 			}
 		}

@@ -2,7 +2,7 @@ namespace HextechRunes;
 
 /// <summary>
 /// 升级：永恒铠甲——打出永恒铠甲后,本场战斗内覆甲在回合开始时不再减少。
-/// 拦截口径沿用旧「不退甲胄」(覆甲的负向变化归零),但以"本场打出过永恒铠甲"为开关。
+/// 以"本场打出过永恒铠甲"为开关，将覆甲的负向变化归零。
 /// </summary>
 public sealed class EternalArmorUpgradeRune : CardUpgradeRuneBase<EternalArmor>
 {

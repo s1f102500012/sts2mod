@@ -16,6 +16,21 @@ internal static class HextechPlayerContextHelper
 		}
 	}
 
+	public static bool IsClientRun(bool fallbackWhenUnavailable = false)
+	{
+		try
+		{
+			var netService = RunManager.Instance?.NetService;
+			return netService == null
+				? fallbackWhenUnavailable
+				: netService.Type == NetGameType.Client;
+		}
+		catch (NullReferenceException)
+		{
+			return fallbackWhenUnavailable;
+		}
+	}
+
 	public static int GetActNumberForScaling(Player? owner)
 	{
 		if (owner?.RunState.Modifiers.OfType<HextechMayhemModifier>().LastOrDefault()?.IsEndlessLoopActive == true)

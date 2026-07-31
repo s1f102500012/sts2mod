@@ -8,6 +8,23 @@ public abstract partial class HextechRelicBase : RelicModel
 {
 	private static readonly string PlaceholderIconPath = ImageHelper.GetImagePath("powers/missing_power.png");
 
+	public virtual decimal ModifyDamageAdditiveCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
+	{
+		return 0m;
+	}
+
+#if STS2_108_OR_NEWER
+	public sealed override decimal ModifyDamageAdditive(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource, CardPlay? cardPlay)
+	{
+		return ModifyDamageAdditiveCompat(target, amount, props, dealer, cardSource);
+	}
+#else
+	public sealed override decimal ModifyDamageAdditive(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
+	{
+		return ModifyDamageAdditiveCompat(target, amount, props, dealer, cardSource);
+	}
+#endif
+
 	// 0.108.0 起伤害管线加 CardPlay 参数:游戏侧 override 按版本二选一,子类统一重写版本无关的
 	// Compat 虚方法(签名沿用 0.107,cardPlay 目前无子类需要,需要时再扩)。
 	public virtual decimal ModifyDamageMultiplicativeCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)

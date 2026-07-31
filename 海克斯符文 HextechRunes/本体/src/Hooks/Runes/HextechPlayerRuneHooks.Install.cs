@@ -1,4 +1,5 @@
 using HarmonyLib;
+using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Orbs;
 using static HextechRunes.HextechHookReflection;
@@ -33,7 +34,6 @@ internal static partial class HextechPlayerRuneHooks
 		TryInstallRuneHook<MadScientistRune>("mad scientist orb slots", () => InstallMadScientistHooks(harmony));
 		TryInstallCombatHookGroup("orb layout soft cap", () => InstallOrbLayoutSoftCapHooks(harmony));
 		TryInstallRuneHook<ElectrodynamicsRune>("electrodynamics lightning", () => InstallElectrodynamicsLightningHook(harmony));
-		TryInstallRuneHook<DrawYourSwordRune>("draw your sword orb conversion", () => InstallDrawYourSwordHooks(harmony));
 	}
 
 	private static void InstallUpgradeRuneHooks(Harmony harmony)
@@ -49,6 +49,14 @@ internal static partial class HextechPlayerRuneHooks
 		TryInstallRuneHook<VoltaicUpgradeRune>("voltaic upgraded play", () => InstallVoltaicUpgradeHooks(harmony));
 		TryInstallRuneHook<GrandFinaleUpgradeRune>("grand finale upgraded play", () => InstallGrandFinaleUpgradeHooks(harmony));
 		TryInstallRuneHook<CrashLandingUpgradeRune>("crash landing upgraded play", () => InstallCrashLandingUpgradeHooks(harmony));
+		TryInstallRuneHook<PactsEndUpgradeRune>("pacts end direct play", () => HextechRuneMechanicHooks.InstallPactsEndUpgrade(harmony));
+		TryInstallRuneHook<CorrosiveWaveUpgradeRune>("corrosive wave persistence", () => HextechRuneMechanicHooks.InstallCorrosiveWaveUpgrade(harmony));
+		TryInstallRuneHook<TerminalIllnessRune>("persistent poison", () => HextechRuneMechanicHooks.InstallTerminalIllness(harmony));
+		TryInstallRuneHook<BigHammerRune>("forge amount bonus", () => HextechRuneMechanicHooks.InstallBigHammer(harmony));
+		TryInstallRuneHook<OblivionUpgradeRune>("oblivion persistence", () => HextechRuneMechanicHooks.InstallOblivionUpgrade(harmony));
+		TryInstallRuneHook<BodySlamUpgradeRune>("body slam block", () => InstallBodySlamUpgradeHooks(harmony));
+		TryInstallRuneHook<WroughtInWarUpgradeRune>("wrought in war block", () => InstallWroughtInWarUpgradeHooks(harmony));
+		TryInstallRuneHook<DecisionsDecisionsUpgradeRune>("decisions card selection", () => InstallDecisionsDecisionsUpgradeHooks(harmony));
 	}
 
 	private static void InstallCreativeAiUpgradeHooks(Harmony harmony)
@@ -177,13 +185,6 @@ internal static partial class HextechPlayerRuneHooks
 			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(LightningApplyDamagePrefix)));
 	}
 
-	private static void InstallDrawYourSwordHooks(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(OrbCmd), nameof(OrbCmd.Channel), BindingFlags.Static | BindingFlags.Public, typeof(PlayerChoiceContext), typeof(OrbModel), typeof(Player)),
-			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(OrbChannelPrefix)));
-	}
-
 	private static void InstallSurvivorUpgradeHooks(Harmony harmony)
 	{
 		harmony.Patch(
@@ -252,6 +253,39 @@ internal static partial class HextechPlayerRuneHooks
 		harmony.Patch(
 			RequireMethod(typeof(CrashLanding), "OnPlay", BindingFlags.Instance | BindingFlags.NonPublic, typeof(PlayerChoiceContext), typeof(CardPlay)),
 			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(CrashLandingOnPlayPrefix)));
+	}
+
+	private static void InstallBodySlamUpgradeHooks(Harmony harmony)
+	{
+		harmony.Patch(
+			RequireMethod(typeof(BodySlam), "OnPlay", BindingFlags.Instance | BindingFlags.NonPublic, typeof(PlayerChoiceContext), typeof(CardPlay)),
+			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(BodySlamOnPlayPrefix)));
+	}
+
+	private static void InstallWroughtInWarUpgradeHooks(Harmony harmony)
+	{
+		harmony.Patch(
+			RequireMethod(typeof(WroughtInWar), "OnPlay", BindingFlags.Instance | BindingFlags.NonPublic, typeof(PlayerChoiceContext), typeof(CardPlay)),
+			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(WroughtInWarOnPlayPrefix)));
+	}
+
+	private static void InstallDecisionsDecisionsUpgradeHooks(Harmony harmony)
+	{
+		harmony.Patch(
+			RequireMethod(typeof(DecisionsDecisions), "OnPlay", BindingFlags.Instance | BindingFlags.NonPublic, typeof(PlayerChoiceContext), typeof(CardPlay)),
+			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(DecisionsDecisionsOnPlayPrefix)));
+
+		harmony.Patch(
+			RequireMethod(
+				typeof(CardSelectCmd),
+				nameof(CardSelectCmd.FromHand),
+				BindingFlags.Static | BindingFlags.Public,
+				typeof(PlayerChoiceContext),
+				typeof(Player),
+				typeof(CardSelectorPrefs),
+				typeof(Func<CardModel, bool>),
+				typeof(AbstractModel)),
+			prefix: new HarmonyMethod(typeof(HextechPlayerRuneHooks), nameof(DecisionsDecisionsFromHandPrefix)));
 	}
 
 	private static void TryInstallCombatHookGroup(string label, Action install)

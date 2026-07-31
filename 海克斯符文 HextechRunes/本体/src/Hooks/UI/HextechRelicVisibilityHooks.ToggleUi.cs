@@ -1,5 +1,6 @@
 using Godot;
 using MegaCrit.Sts2.Core.Assets;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 
@@ -7,6 +8,8 @@ namespace HextechRunes;
 
 internal static partial class HextechRelicVisibilityHooks
 {
+	private const string LocTable = "relic_collection";
+
 	private static Control CreateToggleRoot()
 	{
 		Control root = new()
@@ -39,7 +42,7 @@ internal static partial class HextechRelicVisibilityHooks
 		Label label = new()
 		{
 			Name = ToggleLabelNodeName,
-			Text = "隐藏 UI",
+			Text = new LocString(LocTable, "HEXTECH_HIDE_UI_LABEL").GetRawText(),
 			CustomMinimumSize = new Vector2(ToggleRootSize.X, 16f),
 			HorizontalAlignment = HorizontalAlignment.Center,
 			VerticalAlignment = VerticalAlignment.Center,
@@ -72,7 +75,7 @@ internal static partial class HextechRelicVisibilityHooks
 			ToggleMode = true,
 			Flat = true,
 			Text = string.Empty,
-			TooltipText = "隐藏遗物栏和联机玩家状态条，不会禁用任何效果。",
+			TooltipText = new LocString(LocTable, "HEXTECH_HIDE_UI_TOOLTIP").GetRawText(),
 			MouseFilter = Control.MouseFilterEnum.Stop,
 			FocusMode = Control.FocusModeEnum.All
 		};

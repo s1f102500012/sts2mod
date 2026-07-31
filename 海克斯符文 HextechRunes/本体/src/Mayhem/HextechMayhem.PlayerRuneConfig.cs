@@ -33,33 +33,16 @@ internal sealed partial class HextechMayhemModifier
 
 	private HashSet<string> GetPlayerRuneConfigDisabledIdsForPool()
 	{
-		bool isClient = false;
-		try
-		{
-			isClient = RunManager.Instance.NetService.Type == NetGameType.Client;
-		}
-		catch
-		{
-			// Fall back to local config outside a fully initialized multiplayer run.
-		}
-
 		return _runContext.PlayerRuneConfig.GetDisabledIdsForPool(
-			isClient,
+			HextechPlayerContextHelper.IsClientRun(),
 			HextechRuneConfiguration.GetDisabledPlayerRuneIds());
 	}
 
 	private static HashSet<string> CreateNewRunPlayerRuneConfigDisabledIdsSnapshot()
 	{
-		try
-		{
-			return RunManager.Instance.NetService.Type == NetGameType.Client
-				? new HashSet<string>(StringComparer.Ordinal)
-				: HextechRuneConfiguration.GetDisabledPlayerRuneIds().ToHashSet(StringComparer.Ordinal);
-		}
-		catch
-		{
-			return HextechRuneConfiguration.GetDisabledPlayerRuneIds().ToHashSet(StringComparer.Ordinal);
-		}
+		return HextechPlayerContextHelper.IsClientRun()
+			? new HashSet<string>(StringComparer.Ordinal)
+			: HextechRuneConfiguration.GetDisabledPlayerRuneIds().ToHashSet(StringComparer.Ordinal);
 	}
 
 	private string SerializePlayerRuneConfigDisabledIds()

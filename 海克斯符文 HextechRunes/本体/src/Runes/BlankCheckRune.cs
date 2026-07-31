@@ -25,26 +25,26 @@ public sealed class BlankCheckRune : HextechRelicBase
 			return;
 		}
 
-		List<CardModel> pool = ModelDb.CardPool<ColorlessCardPool>()
-			.GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint)
-			.Where(static card => card.Rarity is not CardRarity.Basic and not CardRarity.Ancient && card.CanBeGeneratedInCombat)
-			.OrderBy(HextechStableRandom.CardKey, StringComparer.Ordinal)
-			.ToList();
+		List<CardModel> pool = BuildStableCombatGenerationPool(
+			ModelDb.CardPool<ColorlessCardPool>()
+				.GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint));
 		if (pool.Count == 0)
 		{
 			return;
 		}
 
-		CardModel canonicalCard = HextechStableRandom.Pick(
+		CardModel? card = PickStableGeneratedCard(
+			combatState,
 			pool,
-			(RunState)Owner.RunState,
-			HextechStableRandom.CardKey,
 			"blank-check-colorless-card",
 			HextechStableRandom.PlayerKey(Owner),
 			combatState.RoundNumber.ToString(),
 			PileType.Hand.GetPile(Owner).Cards.Count.ToString(),
 			HextechStableRandom.CardPileKey(pool));
-		CardModel card = combatState.CreateCard(canonicalCard, Owner);
+		if (card == null)
+		{
+			return;
+		}
 
 		Flash();
 		await HextechCardGeneration.AddGeneratedCardToCombat(card, PileType.Hand, addedByPlayer: true);

@@ -1,6 +1,6 @@
 namespace HextechRunes;
 
-internal sealed class AstralBodyEnemyHex : HextechEnemyHexEffect
+internal sealed class AstralBodyEnemyHex : HextechEnemyHexEffect, IHextechEnemyMaxHpCoefficientProvider
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.AstralBody;
 
@@ -15,7 +15,12 @@ internal sealed class AstralBodyEnemyHex : HextechEnemyHexEffect
 	{
 		if (HextechCombatProcTracker.TryMarkPersistentHexApplied(context.Tracking.AstralBodyApplied, creature, replayOneShotPowers))
 		{
-			await HextechMayhemModifier.EnsureMonsterMaxHpBonus(creature, context.TierValue(Kind, 0.20m, 0.30m, 0.40m), maxHpBaseOverride);
+			await context.Modifier.ReapplyMonsterMaxHpCoefficients(creature, maxHpBaseOverride);
 		}
+	}
+
+	public decimal GetMaxHpBonusFraction(HextechEnemyHexContext context, Creature creature)
+	{
+		return context.TierValue(Kind, 0.20m, 0.30m, 0.40m);
 	}
 }

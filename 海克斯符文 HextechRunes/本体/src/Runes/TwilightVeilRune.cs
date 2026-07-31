@@ -9,6 +9,7 @@ namespace HextechRunes;
 public sealed class TwilightVeilRune : HextechRelicBase
 {
 	private static readonly AsyncLocal<bool> MirrorSuppressed = new();
+	private static readonly HashSet<ModelId> WarnedMissingMirroredPowerIds = [];
 
 	private bool _armed;
 	private bool _mirroring;
@@ -62,7 +63,19 @@ public sealed class TwilightVeilRune : HextechRelicBase
 			return;
 		}
 
-		PowerModel mirrored = ModelDb.GetById<PowerModel>(power.Id).ToMutable();
+		ModelId powerId = power.Id;
+		PowerModel? canonical = ModelDb.GetByIdOrNull<PowerModel>(powerId);
+		if (canonical == null)
+		{
+			if (WarnedMissingMirroredPowerIds.Add(powerId))
+			{
+				Log.Warn($"[{ModInfo.Id}][TwilightVeil] Power model is not registered; mirror skipped: {powerId}");
+			}
+
+			return;
+		}
+
+		PowerModel mirrored = canonical.ToMutable();
 		_mirroring = true;
 		try
 		{

@@ -5,6 +5,7 @@ internal sealed class HextechMayhemRunContext
 	public HextechMayhemActState ActState { get; } = new();
 	public HextechMayhemCombatTrackingState CombatTracking { get; } = new();
 	public HextechMayhemChoiceHistoryState ChoiceHistory { get; } = new();
+	public HextechRuneSelectionJournalState RuneSelectionJournal { get; } = new();
 	public HextechActiveMonsterHexCache ActiveMonsterHexCache { get; } = new();
 	public HextechPlayerHexCountState PlayerHexCounts { get; } = new();
 	public HextechEnemyHexCountState EnemyHexCounts { get; } = new();
@@ -29,6 +30,7 @@ internal sealed class HextechMayhemRunContext
 		ResetProgressState(hexCountRecoveryBaseline: 0, monsterHexStrengthTierFloor: 0);
 		ActState.Reset();
 		ChoiceHistory.Reset();
+		RuneSelectionJournal.Reset();
 		ResetCombatTracking();
 	}
 
@@ -37,6 +39,7 @@ internal sealed class HextechMayhemRunContext
 		ResetProgressState(hexCountRecoveryBaseline, monsterHexStrengthTierFloor: 3);
 		ActState.ResetForEndlessLoop();
 		ChoiceHistory.Reset();
+		RuneSelectionJournal.Reset();
 		ResetCombatTracking();
 	}
 
@@ -47,6 +50,7 @@ internal sealed class HextechMayhemRunContext
 		ResetProgressState(hexCountRecoveryBaseline: 0, monsterHexStrengthTierFloor: 0);
 		ActState.DebugSetOnlyMonsterHex(actIndex, hex, rarity);
 		ChoiceHistory.Reset();
+		RuneSelectionJournal.Reset();
 		ResetCombatTracking();
 	}
 

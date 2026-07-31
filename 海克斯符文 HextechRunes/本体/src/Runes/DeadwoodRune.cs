@@ -61,28 +61,22 @@ public sealed class DeadwoodRune : HextechRelicBase
 			return null;
 		}
 
-		List<CardModel> pool = CardFactory
-			.FilterForCombat(Owner.Character.CardPool.GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint))
-			.Where(static card => card.CanBeGeneratedByModifiers)
-			.OrderBy(HextechStableRandom.CardKey, StringComparer.Ordinal)
-			.ToList();
+		List<CardModel> pool = BuildStableCombatGenerationPool(
+			Owner.Character.CardPool.GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint));
 		if (pool.Count == 0)
 		{
 			return null;
 		}
 
 		int procOrdinal = ConsumeCombatProcOrdinal(nameof(DeadwoodRune), ref _generatedCardsThisCombat);
-		CardModel canonicalCard = HextechStableRandom.Pick(
+		return PickStableGeneratedCard(
+			combatState,
 			pool,
-			(RunState)Owner.RunState,
-			HextechStableRandom.CardKey,
 			"deadwood-ethereal-exhaust",
 			HextechStableRandom.PlayerKey(Owner),
 			combatState.RoundNumber.ToString(),
 			procOrdinal.ToString(),
 			HextechStableRandom.CardKey(sourceCard),
 			HextechStableRandom.CardPileKey(pool));
-
-		return combatState.CreateCard(canonicalCard, Owner);
 	}
 }

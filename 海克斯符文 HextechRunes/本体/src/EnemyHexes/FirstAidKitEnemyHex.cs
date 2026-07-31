@@ -11,8 +11,8 @@ internal sealed class FirstAidKitEnemyHex : HextechEnemyHexEffect
 		return 1.25m;
 	}
 
-	internal override decimal ModifyEnemyHealAmount(HextechEnemyHexContext context, Creature creature, decimal amount)
+	internal override decimal ModifyEnemyHealMultiplicative(HextechEnemyHexContext context, Creature creature, decimal amount)
 	{
-		return amount * 1.25m;
+		return 1.25m;
 	}
 }

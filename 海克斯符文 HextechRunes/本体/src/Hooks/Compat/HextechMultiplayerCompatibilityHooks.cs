@@ -11,6 +11,7 @@ namespace HextechRunes;
 internal static class HextechMultiplayerCompatibilityHooks
 {
 	private const string SponsorPackModId = "HextechRunesSponsorPack";
+	internal const string NetworkProtocolVersion = "net1";
 	private static readonly string[] NetworkCheckedModIds = [ ModInfo.Id, SponsorPackModId ];
 
 	private static bool _installed;
@@ -30,12 +31,12 @@ internal static class HextechMultiplayerCompatibilityHooks
 			installedAny |= TryPatch(
 				harmony,
 				modListMethod,
-				"gameplay mod list signature",
+				"gameplay mod list protocol version",
 				postfix: new HarmonyMethod(typeof(HextechMultiplayerCompatibilityHooks), nameof(GetGameplayRelevantModNameListPostfix)));
 		}
 		else
 		{
-			Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] Could not patch gameplay mod list; multiplayer build signature checks are unavailable.");
+			Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] Could not patch gameplay mod list; multiplayer network protocol checks are unavailable.");
 		}
 
 		installedAny |= TryPatchPacketFinalizer(harmony, typeof(NetHostGameService), nameof(NetHostGameService.OnPacketReceived), nameof(NetHostGameServiceOnPacketReceivedFinalizer));
@@ -95,10 +96,10 @@ internal static class HextechMultiplayerCompatibilityHooks
 
 	internal static string BuildGameplayCompatibilityEntry(string modId, string version)
 	{
-		// 仅用可读的 modId-version 作为联机兼容条目;不再追加 +hexsig:<哈希>(玩家看不懂)。
-		// 区分「同版本号不同构建」改为依赖发布时手动升版本号(如 0.8.1 → 0.8.1hf1)。
+		// 短协议号随 wire schema、共享状态事务或战斗确定性规则变化而递增。
+		// 不追加构建哈希，保证入房报错中的兼容条目可读且可人工核对。
 		// 运行时仍由 NetHost/ClientGameService 的 SavedProperties 协议失配 finalizer 兜底断开。
-		return $"{modId}-{version}";
+		return $"{modId}-{version}-{NetworkProtocolVersion}";
 	}
 
 	private static Exception? NetHostGameServiceOnPacketReceivedFinalizer(Exception? __exception, NetHostGameService __instance, ulong senderId)
@@ -108,7 +109,7 @@ internal static class HextechMultiplayerCompatibilityHooks
 			return __exception;
 		}
 
-		Log.Error($"[{ModInfo.Id}][MultiplayerCompat] Disconnecting peer {senderId} after SavedProperties protocol mismatch. This usually means players are using different HextechRunes builds with the same visible version. localSignature={GetNetworkSignature()} exception={__exception}");
+		Log.Error($"[{ModInfo.Id}][MultiplayerCompat] Disconnecting peer {senderId} after SavedProperties protocol mismatch. This usually means players are using incompatible content under the same visible version and network protocol. localSignature={GetNetworkSignature()} exception={__exception}");
 		try
 		{
 			__instance.DisconnectClient(senderId, NetError.ModMismatch, now: true);
@@ -128,7 +129,7 @@ internal static class HextechMultiplayerCompatibilityHooks
 			return __exception;
 		}
 
-		Log.Error($"[{ModInfo.Id}][MultiplayerCompat] Disconnecting from host after SavedProperties protocol mismatch. This usually means players are using different HextechRunes builds with the same visible version. localSignature={GetNetworkSignature()} exception={__exception}");
+		Log.Error($"[{ModInfo.Id}][MultiplayerCompat] Disconnecting from host after SavedProperties protocol mismatch. This usually means players are using incompatible content under the same visible version and network protocol. localSignature={GetNetworkSignature()} exception={__exception}");
 		try
 		{
 			__instance.Disconnect(NetError.ModMismatch, now: true);
@@ -239,7 +240,7 @@ internal static class HextechMultiplayerCompatibilityHooks
 
 	internal static string BuildModNetworkSignature(string modId, string version, string? dllPath, string pckPath, string manifestPath, bool includeSavedProperties)
 	{
-		string signature = $"id={modId};version={version};target={ModInfo.TargetGameVersion};dll={ShortFileHash(dllPath)};pck={ShortFileHash(pckPath)};manifest={ShortFileHash(manifestPath)}";
+		string signature = $"id={modId};version={version};protocol={NetworkProtocolVersion};target={ModInfo.TargetGameVersion};dll={ShortFileHash(dllPath)};pck={ShortFileHash(pckPath)};manifest={ShortFileHash(manifestPath)}";
 		return includeSavedProperties
 			? $"{signature};savedProps={BuildSavedPropertiesSignature()}"
 			: signature;

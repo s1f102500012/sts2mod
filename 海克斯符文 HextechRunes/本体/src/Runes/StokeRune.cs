@@ -25,7 +25,7 @@ internal sealed class StokeRestSiteOption : RestSiteOption
 
 	// 基类的 RestSiteOption.Icon 写死从 PreloadManager.Cache 取 res://images/ui/rest_site/option_stoke.png,
 	// 而模组的 PCK 只能挂在 res://HextechRunes/ 下、无法提供该 base-game 命名空间的真实资源。
-	// 图标改由 AssetHooks 的 RestSiteOption.Icon 前缀补丁直接返回这里解析出的纹理(见 ResolveIcon),
+	// 图标改由 HextechAssetHooks 的 RestSiteOption.Icon 前缀补丁直接返回这里解析出的纹理(见 ResolveIcon),
 	// 因此本选项不再声明任何需要预载的资源(避免预载器尝试加载不存在的路径并产生噪声)。
 	private static Texture2D? _icon;
 
@@ -76,7 +76,7 @@ internal sealed class StokeRestSiteOption : RestSiteOption
 
 	/// <summary>
 	/// 解析「添柴」休息室选项的图标:复用原版 Stoke 卡牌的立绘(真实磁盘资源,任何端、任何时机都能稳定加载,
-	/// 不依赖会被房间切换卸载的 AssetCache 别名)。供 <see cref="AssetHooks"/> 的 RestSiteOption.Icon 补丁调用。
+	/// 不依赖会被房间切换卸载的 AssetCache 别名)。供 <see cref="HextechAssetHooks"/> 的 RestSiteOption.Icon 补丁调用。
 	///
 	/// 此前的实现把一张别名贴图塞进 <c>PreloadManager.Cache</c>,但该缓存会在进入休息室房间时按「本地玩家选项」
 	/// 卸载未被引用的资源 —— 对非遗物持有方(联机另一端)而言这张别名被判为多余而清掉,导致取图返回 null、

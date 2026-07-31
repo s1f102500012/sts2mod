@@ -21,15 +21,24 @@ internal static class HextechRuneGrantHelper
 		return DestructiveRandomRewardRuneTypes.Contains(runeType);
 	}
 
-	public static async Task ObtainRandomRunes(Player player, IEnumerable<Type> candidateTypes, int count)
+	public static async Task ObtainRandomRunes(
+		Player player,
+		IEnumerable<Type> candidateTypes,
+		int count,
+		string operationContext)
 	{
-		await ObtainRandomRunes(player, candidateTypes, count, blockedIds: null);
+		await ObtainRandomRunes(player, candidateTypes, count, blockedIds: null, operationContext);
 	}
 
-	public static async Task ObtainRandomRunes(Player player, IEnumerable<Type> candidateTypes, int count, IReadOnlySet<ModelId>? blockedIds)
+	public static async Task ObtainRandomRunes(
+		Player player,
+		IEnumerable<Type> candidateTypes,
+		int count,
+		IReadOnlySet<ModelId>? blockedIds,
+		string operationContext)
 	{
 		IReadOnlyList<Type> candidates = candidateTypes as IReadOnlyList<Type> ?? candidateTypes.ToArray();
-		if (await TryObtainRandomRunesMultiplayer(player, candidates, count, blockedIds))
+		if (await TryObtainRandomRunesMultiplayer(player, candidates, count, blockedIds, operationContext))
 		{
 			return;
 		}
@@ -42,7 +51,8 @@ internal static class HextechRuneGrantHelper
 		Player player,
 		IReadOnlyList<Type> candidateTypes,
 		int count,
-		IReadOnlySet<ModelId>? blockedIds)
+		IReadOnlySet<ModelId>? blockedIds,
+		string operationContext)
 	{
 		RunManager runManager = RunManager.Instance;
 		NetGameType gameType = runManager.NetService.Type;
@@ -51,43 +61,75 @@ internal static class HextechRuneGrantHelper
 			return false;
 		}
 
-		PlayerChoiceSynchronizer? synchronizer = await HextechRuneSelectionCoordinator.WaitForPlayerChoiceSynchronizerAsync(runManager);
-		if (synchronizer == null)
-		{
-			return false;
-		}
+		PlayerChoiceSynchronizer synchronizer = await HextechRuneSelectionCoordinator.WaitForPlayerChoiceSynchronizerAsync(runManager);
 
 		uint choiceId = synchronizer.ReserveChoiceId(player);
+		int operationToken = HextechChoiceCodec.ComputeOperationToken(
+			"random-rune-grant",
+			choiceId,
+			player.NetId,
+			operationContext);
 		RunState runState = (RunState)player.RunState;
-			if (HextechRuneSelectionCoordinator.IsLocalPlayer(runManager, player))
+		if (HextechRuneSelectionCoordinator.IsLocalPlayer(runManager, player))
+		{
+			try
 			{
 				List<ModelId> selectedIds = SelectRandomRuneIds(player, candidateTypes, count, blockedIds);
-				if (!HextechRuneSelectionCoordinator.TrySyncLocalHextechChoice(synchronizer, player, choiceId, HextechChoiceCodec.CreateRandomRuneGrant(selectedIds), "random-rune-grant", out uint sentChoiceId))
-				{
-					Log.Warn($"[{ModInfo.Id}][Mayhem] RandomRuneGrant sync local failed: player={player.NetId} choiceId={choiceId}");
-				}
+				uint sentChoiceId = HextechRuneSelectionCoordinator.SyncLocalHextechChoice(
+					synchronizer,
+					player,
+					choiceId,
+					HextechChoiceCodec.CreateRandomRuneGrant(operationToken, selectedIds),
+					$"random-rune-grant {operationContext}");
 
-				HextechLog.Info($"[{ModInfo.Id}][Mayhem] RandomRuneGrant sync local: player={player.NetId} choiceId={sentChoiceId} ids={string.Join(",", selectedIds.Select(static id => id.Entry))}");
+				HextechLog.Info($"[{ModInfo.Id}][Mayhem] RandomRuneGrant sync local: player={player.NetId} choiceId={sentChoiceId} context={operationContext} ids={string.Join(",", selectedIds.Select(static id => id.Entry))}");
 				await ObtainRuneIds(player, selectedIds);
 				return true;
 			}
+			catch (HextechChoiceProtocolException)
+			{
+				throw;
+			}
+			catch (Exception ex)
+			{
+				string message =
+					$"Local random rune grant failed after reserving choice: " +
+					$"player={player.NetId} choiceId={choiceId} context={operationContext}";
+				throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"random-rune-grant {operationContext}", message, ex);
+			}
+		}
 
 		(PlayerChoiceResult remoteChoice, uint receivedChoiceId) = await HextechRuneSelectionCoordinator.WaitForRemoteHextechChoice(
 			synchronizer,
 			runState,
 			player,
 			choiceId,
-			HextechChoiceCodec.IsRandomRuneGrant,
-			"random-rune-grant");
-		if (!HextechChoiceCodec.TryDecodeRandomRuneGrant(remoteChoice, out List<ModelId> syncedIds))
+			choice => HextechChoiceCodec.IsRandomRuneGrant(choice, operationToken),
+			$"random-rune-grant {operationContext}");
+		if (!HextechChoiceCodec.TryDecodeRandomRuneGrant(
+			remoteChoice,
+			operationToken,
+			out List<ModelId> syncedIds))
 		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] RandomRuneGrant malformed remote payload: player={player.NetId} choiceId={receivedChoiceId}");
-			return false;
+			string message =
+				$"Malformed remote random rune grant payload: player={player.NetId} " +
+				$"choiceId={receivedChoiceId} context={operationContext}";
+			throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"random-rune-grant {operationContext}", message);
 		}
 
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] RandomRuneGrant remote received: player={player.NetId} choiceId={receivedChoiceId} ids={string.Join(",", syncedIds.Select(static id => id.Entry))}");
-		await ObtainRuneIds(player, syncedIds);
-		return true;
+		HextechLog.Info($"[{ModInfo.Id}][Mayhem] RandomRuneGrant remote received: player={player.NetId} choiceId={receivedChoiceId} context={operationContext} ids={string.Join(",", syncedIds.Select(static id => id.Entry))}");
+		try
+		{
+			await ObtainRuneIds(player, syncedIds);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			string message =
+				$"Failed to apply authoritative random rune grant: player={player.NetId} " +
+				$"choiceId={receivedChoiceId} context={operationContext} ids={string.Join(",", syncedIds.Select(static id => id.Entry))}";
+			throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"random-rune-grant {operationContext}", message, ex);
+		}
 	}
 
 	private static List<ModelId> SelectRandomRuneIds(
@@ -171,7 +213,11 @@ internal static class HextechRuneGrantHelper
 			.ToList();
 	}
 
-	public static async Task ReplaceOwnedHextechRunesWithRandomRunes(Player player, IEnumerable<Type> candidateTypes, IReadOnlySet<ModelId>? blockedIds = null)
+	public static async Task ReplaceOwnedHextechRunesWithRandomRunes(
+		Player player,
+		IEnumerable<Type> candidateTypes,
+		string operationContext,
+		IReadOnlySet<ModelId>? blockedIds = null)
 	{
 		List<RelicModel> ownedRunes = player.Relics.Where(HextechCatalog.IsHextechRelic).ToList();
 		if (ownedRunes.Count == 0)
@@ -184,13 +230,18 @@ internal static class HextechRuneGrantHelper
 			await RelicCmd.Remove(relic);
 		}
 
-		await ObtainRandomRunes(player, candidateTypes, ownedRunes.Count, blockedIds);
+		await ObtainRandomRunes(player, candidateTypes, ownedRunes.Count, blockedIds, operationContext);
 	}
 
 	public static async Task ConsumeAndObtainRandomRunes(RelicModel consumedRune, Player player, IEnumerable<Type> candidateTypes, int count)
 	{
+		ModelId consumedRuneId = consumedRune.CanonicalInstance?.Id ?? consumedRune.Id;
 		await RelicCmd.Remove(consumedRune);
-		await ObtainRandomRunes(player, candidateTypes, count);
+		await ObtainRandomRunes(
+			player,
+			candidateTypes,
+			count,
+			$"consume:{consumedRuneId.Category}:{consumedRuneId.Entry}");
 	}
 
 	/// <summary>

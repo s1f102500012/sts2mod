@@ -47,14 +47,22 @@ internal static class HextechCustomRunModifierHooks
 
 	public static void Install(Harmony harmony)
 	{
-		MethodInfo? getAllModifiers = TryGetMethod(typeof(NCustomRunModifiersList), "GetAllModifiers", BindingFlags.Instance | BindingFlags.NonPublic);
+		MethodInfo? getAllModifiers = TryGetMethod(
+			typeof(NCustomRunModifiersList),
+			"GetAllModifiers",
+			BindingFlags.Instance | BindingFlags.NonPublic,
+			warnIfMissing: false);
 		if (getAllModifiers != null)
 		{
 			harmony.Patch(
 				getAllModifiers,
 				postfix: new HarmonyMethod(typeof(HextechCustomRunModifierHooks), nameof(AppendCustomRarityModifiersPostfix)));
 		}
-		else if (TryGetMethod(typeof(NCustomRunModifiersList), nameof(NCustomRunModifiersList._Ready), BindingFlags.Instance | BindingFlags.Public) is { } readyMethod)
+		else if (TryGetMethod(
+			typeof(NCustomRunModifiersList),
+			nameof(NCustomRunModifiersList._Ready),
+			BindingFlags.Instance | BindingFlags.Public,
+			warnIfMissing: false) is { } readyMethod)
 		{
 			harmony.Patch(
 				readyMethod,
@@ -66,7 +74,12 @@ internal static class HextechCustomRunModifierHooks
 			Log.Warn($"[{ModInfo.Id}][CustomRun] Could not install custom rarity modifier list hook; no compatible NCustomRunModifiersList entrypoint found.");
 		}
 
-		if (TryGetMethod(typeof(NCustomRunModifiersList), "UntickMutuallyExclusiveModifiersForTickbox", BindingFlags.Instance | BindingFlags.NonPublic, typeof(NRunModifierTickbox)) is { } untickMethod)
+		if (TryGetMethod(
+			typeof(NCustomRunModifiersList),
+			"UntickMutuallyExclusiveModifiersForTickbox",
+			BindingFlags.Instance | BindingFlags.NonPublic,
+			warnIfMissing: false,
+			typeof(NRunModifierTickbox)) is { } untickMethod)
 		{
 			harmony.Patch(
 				untickMethod,
@@ -77,7 +90,11 @@ internal static class HextechCustomRunModifierHooks
 			Log.Warn($"[{ModInfo.Id}][CustomRun] Could not install mutual exclusion hook for custom rarity modifiers.");
 		}
 
-		if (TryGetMethod(typeof(NRunModifierTickbox), nameof(NRunModifierTickbox._Ready), BindingFlags.Instance | BindingFlags.Public) is { } tickboxReadyMethod)
+		if (TryGetMethod(
+			typeof(NRunModifierTickbox),
+			nameof(NRunModifierTickbox._Ready),
+			BindingFlags.Instance | BindingFlags.Public,
+			warnIfMissing: false) is { } tickboxReadyMethod)
 		{
 			harmony.Patch(
 				tickboxReadyMethod,

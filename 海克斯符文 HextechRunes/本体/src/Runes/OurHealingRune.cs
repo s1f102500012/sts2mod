@@ -3,11 +3,11 @@ namespace HextechRunes;
 /// <summary>
 /// 我们的治疗(仅联机):队友获得生命回复时,持有者获得等量回复。
 /// 由 HextechCombatHooks.Healing 的 CreatureCmd.Heal postfix 统一驱动,
-/// 战斗内外通吃;镜像期间以深度标志阻断再触发,防止双持互相回血无限递归。
+/// 战斗内外通吃;同一异步响应链内阻断再触发,防止双持互相回血无限递归。
 /// </summary>
 public sealed class OurHealingRune : HextechRelicBase
 {
-	private static int _mirrorDepth;
+	private static readonly HextechScopedDepthGuard MirrorHealGuard = new();
 
 	public override bool IsAvailableForPlayer(Player player)
 	{
@@ -16,7 +16,7 @@ public sealed class OurHealingRune : HextechRelicBase
 
 	internal static async Task MirrorTeammateHeal(Creature healed, decimal amount)
 	{
-		if (_mirrorDepth > 0 || amount <= 0m)
+		if (MirrorHealGuard.IsActive || amount <= 0m)
 		{
 			return;
 		}
@@ -46,8 +46,7 @@ public sealed class OurHealingRune : HextechRelicBase
 			return;
 		}
 
-		_mirrorDepth++;
-		try
+		await MirrorHealGuard.RunAsync(async () =>
 		{
 			foreach (OurHealingRune rune in receivers)
 			{
@@ -59,10 +58,6 @@ public sealed class OurHealingRune : HextechRelicBase
 				rune.Flash();
 				await CreatureCmd.Heal(rune.Owner.Creature, amount);
 			}
-		}
-		finally
-		{
-			_mirrorDepth--;
-		}
+		});
 	}
 }

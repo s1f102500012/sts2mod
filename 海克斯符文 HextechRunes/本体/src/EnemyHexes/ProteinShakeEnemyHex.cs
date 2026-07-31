@@ -11,8 +11,8 @@ internal sealed class ProteinShakeEnemyHex : HextechEnemyHexEffect
 		return HextechMonsterSustainHelper.GetProteinShakeSustainMultiplier(target, context.ScalingPlayerCount);
 	}
 
-	internal override decimal ModifyEnemyHealAmount(HextechEnemyHexContext context, Creature creature, decimal amount)
+	internal override decimal ModifyEnemyHealMultiplicative(HextechEnemyHexContext context, Creature creature, decimal amount)
 	{
-		return amount * HextechMonsterSustainHelper.GetProteinShakeSustainMultiplier(creature, context.ScalingPlayerCount);
+		return HextechMonsterSustainHelper.GetProteinShakeSustainMultiplier(creature, context.ScalingPlayerCount);
 	}
 }

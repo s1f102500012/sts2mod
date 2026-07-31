@@ -24,8 +24,6 @@ internal static partial class HextechCombatHooks
 	private static readonly FieldInfo KnowledgeDemonCurseCounterField =
 		RequireField(typeof(KnowledgeDemon), "_curseOfKnowledgeCounter");
 
-	private static int _jeweledGauntletFailureLogs;
-
 	private static void InstallJeweledGauntletHooks(Harmony harmony)
 	{
 		try
@@ -98,7 +96,7 @@ internal static partial class HextechCombatHooks
 		IReadOnlyList<Creature> targets = combatState!.PlayerCreatures.ToArray();
 		try
 		{
-			Log.Info($"Monster {monster.Id.Entry} repeating move {repeatState.Move.Id} via enemy Jeweled Gauntlet");
+			HextechLog.Info($"[{ModInfo.Id}][JeweledGauntlet] Monster {monster.Id.Entry} repeating move {repeatState.Move.Id} via enemy Jeweled Gauntlet");
 			await repeatState.Move.PerformMove(targets);
 			CombatManager.Instance.History.MonsterPerformedMove(combatState, monster, repeatState.Move, targets);
 		}
@@ -203,7 +201,7 @@ internal static partial class HextechCombatHooks
 			|| creature.CombatId is not uint combatId
 			|| creature.CombatState is not { } combatState
 			|| combatState.RunState is not RunState runState
-			|| GetMayhemModifier(runState) is not { } modifier
+			|| HextechMayhemModifier.FindIn(runState) is not { } modifier
 			|| !modifier.HasActiveMonsterHex(MonsterHexKind.JeweledGauntlet))
 		{
 			return false;
@@ -314,7 +312,7 @@ internal static partial class HextechCombatHooks
 
 	private static void LogJeweledGauntletFailure(string hook, Exception ex)
 	{
-		if (_jeweledGauntletFailureLogs++ < 10)
+		if (HextechRunLogBudget.TryConsume("combat.jeweled-gauntlet-failure", 10))
 		{
 			Log.Error($"[{ModInfo.Id}][Mayhem] {hook} failed; enemy Jeweled Gauntlet fell back to one action: {ex}");
 		}

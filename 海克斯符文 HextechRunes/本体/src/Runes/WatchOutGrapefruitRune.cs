@@ -20,7 +20,12 @@ public sealed class WatchOutGrapefruitRune : HextechRelicBase, IHextechSharedCom
 		typeof(NutritiousOyster),
 		typeof(VeryHotCocoa),
 		typeof(FragrantMushroom),
-		typeof(BigMushroom)
+		typeof(BigMushroom),
+		typeof(ChosenCheese),
+		typeof(LastingCandy),
+		typeof(NutritiousSoup),
+		typeof(BoneTea),
+		typeof(EmberTea)
 	];
 
 	public override Task AfterCombatVictory(CombatRoom room)
@@ -40,19 +45,41 @@ public sealed class WatchOutGrapefruitRune : HextechRelicBase, IHextechSharedCom
 			return Task.CompletedTask;
 		}
 
-			Type[] candidates = Owner.GetRelic<IceCream>() == null
-				? FoodRelicTypes
-				: FoodRelicTypes.Where(static type => type != typeof(IceCream)).ToArray();
-			Type relicType = HextechStableRandom.Pick(
-				candidates,
-				(RunState)Owner.RunState,
-				HextechStableRandom.TypeModelKey,
-				"treat-yourself-food-relic",
-				HextechStableRandom.PlayerKey(Owner),
-				Owner.Relics.Count.ToString());
-			RelicModel relic = ModelDb.GetById<RelicModel>(ModelDb.GetId(relicType)).ToMutable();
+		IReadOnlyList<Type> candidates = BuildFoodRelicCandidates(
+			IsRegentOwner,
+			Owner.GetRelic<IceCream>() != null,
+			Owner.GetRelic<NutritiousSoup>() != null);
+		Type relicType = HextechStableRandom.Pick(
+			candidates,
+			(RunState)Owner.RunState,
+			HextechStableRandom.TypeModelKey,
+			"treat-yourself-food-relic",
+			HextechStableRandom.PlayerKey(Owner),
+			Owner.Relics.Count.ToString());
+		RelicModel relic = ModelDb.GetById<RelicModel>(ModelDb.GetId(relicType)).ToMutable();
 		Flash(Array.Empty<Creature>());
 		room.AddExtraReward(Owner, new RelicReward(relic, Owner));
 		return Task.CompletedTask;
+	}
+
+	internal static IReadOnlyList<Type> BuildFoodRelicCandidates(
+		bool isRegent,
+		bool hasIceCream,
+		bool hasNutritiousSoup)
+	{
+		IEnumerable<Type> candidates = FoodRelicTypes;
+		if (isRegent)
+		{
+			candidates = candidates.Append(typeof(LunarPastry));
+		}
+		if (hasIceCream)
+		{
+			candidates = candidates.Where(static type => type != typeof(IceCream));
+		}
+		if (hasNutritiousSoup)
+		{
+			candidates = candidates.Where(static type => type != typeof(NutritiousSoup));
+		}
+		return candidates.ToArray();
 	}
 }

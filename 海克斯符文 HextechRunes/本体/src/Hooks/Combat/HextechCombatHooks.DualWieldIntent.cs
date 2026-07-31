@@ -51,8 +51,6 @@ internal static partial class HextechCombatHooks
 		}
 	}
 
-	private static int _dualWieldIntentFailureLogs;
-
 	// 头顶意图数字/贴图:把传入的攻击意图替换成「双段」等价意图。
 	private static void NIntentUpdateIntentPrefix(ref AbstractIntent intent, Creature owner)
 	{
@@ -97,7 +95,7 @@ internal static partial class HextechCombatHooks
 
 	private static void LogDualWieldIntentFailure(string hook, Exception ex)
 	{
-		if (_dualWieldIntentFailureLogs++ < 10)
+		if (HextechRunLogBudget.TryConsume("combat.dual-wield-intent-failure", 10))
 		{
 			Log.Error($"[{ModInfo.Id}][Mayhem] {hook} failed; falling back to vanilla intent: {ex}");
 		}
@@ -119,7 +117,7 @@ internal static partial class HextechCombatHooks
 
 		if (owner?.Side != CombatSide.Enemy
 			|| owner.CombatState?.RunState is not RunState runState
-			|| GetMayhemModifier(runState) is not { } modifier
+			|| HextechMayhemModifier.FindIn(runState) is not { } modifier
 			|| !modifier.HasActiveMonsterHex(MonsterHexKind.DualWield))
 		{
 			return false;

@@ -4,7 +4,7 @@ internal sealed class OmniDragonSoulEnemyHex : HextechEnemyHexEffect
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.OmniDragonSoul;
 
-	internal override async Task BeforeEnemySideTurnStart(HextechEnemyHexContext context, HextechCombatState combatState, IReadOnlyList<Creature> players, IReadOnlyList<Creature> enemies)
+	internal override async Task BeforePlayerSideTurnStart(HextechEnemyHexContext context, HextechCombatState combatState, IReadOnlyList<Creature> players)
 	{
 		if (combatState.RunState != context.RunState || players.Count == 0)
 		{

@@ -39,7 +39,7 @@ internal static partial class HextechTelemetry
 	{
 		try
 		{
-			HextechMayhemModifier? modifier = GetMayhemModifier(runState);
+			HextechMayhemModifier? modifier = HextechMayhemModifier.FindIn(runState);
 			if (modifier == null)
 			{
 				return;

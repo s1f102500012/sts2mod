@@ -26,7 +26,7 @@ internal static partial class HextechTelemetry
 			string.Join(",", players.Select(static player => player.Character.Id.Entry))
 		]));
 
-		HextechMayhemModifier? modifier = GetMayhemModifier(runState);
+		HextechMayhemModifier? modifier = HextechMayhemModifier.FindIn(runState);
 		IReadOnlyList<RuneChoiceRecord> runeChoices = modifier?.GetTelemetryChoiceRecords() ?? [];
 
 		return new RunEndedPayload(
@@ -93,11 +93,6 @@ internal static partial class HextechTelemetry
 		}
 
 		return payloads;
-	}
-
-	private static HextechMayhemModifier? GetMayhemModifier(RunState runState)
-	{
-		return runState.Modifiers.OfType<HextechMayhemModifier>().LastOrDefault();
 	}
 
 	private static int GetPlayerSlot(RunState runState, Player player)

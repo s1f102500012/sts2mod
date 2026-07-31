@@ -1,6 +1,7 @@
 using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.addons.mega_text;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.Core.Nodes.Screens.MainMenu;
 using static HextechRunes.HextechHookReflection;
 
@@ -111,7 +112,7 @@ internal static partial class HextechUpdateChecker
 				return;
 			}
 
-			if (!await AwaitProcessFrameAsync(mainMenu))
+			if (!await HextechGodotAsync.AwaitProcessFrameAsync(mainMenu))
 			{
 				return;
 			}
@@ -140,7 +141,8 @@ internal static partial class HextechUpdateChecker
 	internal static bool TryFindNoticeLayer(NMainMenu mainMenu, out Node searchRoot, out Label template, out Node noticeHost)
 	{
 		searchRoot = ResolveNoticeSearchRoot(mainMenu);
-		template = FindVanillaModStatusLabel(searchRoot)!;
+		template = mainMenu.GetNodeOrNull<Label>("%ModdedWarning")
+			?? FindVanillaModStatusLabel(searchRoot)!;
 		noticeHost = template?.GetParent()!;
 		return template != null && noticeHost != null;
 	}
@@ -257,7 +259,8 @@ internal static partial class HextechUpdateChecker
 				continue;
 			}
 
-			if (child is Label label && IsVanillaModStatusText(label.Text))
+			if (child is Label label
+				&& (child.Name == "ModdedWarning" || IsVanillaModStatusText(label.Text)))
 			{
 				return label;
 			}
@@ -280,6 +283,13 @@ internal static partial class HextechUpdateChecker
 		}
 
 		string normalized = text.Trim();
+		if (MatchesLocalizedTemplate(
+			normalized,
+			new LocString("main_menu_ui", "MODDED_WARNING").GetRawText()))
+		{
+			return true;
+		}
+
 		if (normalized.Contains("模组", StringComparison.Ordinal) && normalized.Contains("已加载", StringComparison.Ordinal))
 		{
 			return true;
@@ -287,6 +297,50 @@ internal static partial class HextechUpdateChecker
 
 		return normalized.Contains("mod", StringComparison.OrdinalIgnoreCase)
 			&& normalized.Contains("loaded", StringComparison.OrdinalIgnoreCase);
+	}
+
+	private static bool MatchesLocalizedTemplate(string text, string template)
+	{
+		if (string.IsNullOrWhiteSpace(template))
+		{
+			return false;
+		}
+
+		int textCursor = 0;
+		int templateCursor = 0;
+		bool matchedLiteral = false;
+		while (templateCursor < template.Length)
+		{
+			int placeholderStart = template.IndexOf('{', templateCursor);
+			int literalEnd = placeholderStart >= 0 ? placeholderStart : template.Length;
+			string literal = template[templateCursor..literalEnd].Trim();
+			if (literal.Length > 0)
+			{
+				int match = text.IndexOf(literal, textCursor, StringComparison.Ordinal);
+				if (match < 0)
+				{
+					return false;
+				}
+
+				textCursor = match + literal.Length;
+				matchedLiteral = true;
+			}
+
+			if (placeholderStart < 0)
+			{
+				break;
+			}
+
+			int placeholderEnd = template.IndexOf('}', placeholderStart + 1);
+			if (placeholderEnd < 0)
+			{
+				return false;
+			}
+
+			templateCursor = placeholderEnd + 1;
+		}
+
+		return matchedLiteral;
 	}
 
 	private static void SetNoticeText(Label label, string text)
@@ -312,23 +366,6 @@ internal static partial class HextechUpdateChecker
 
 			RemoveExistingNotice(child);
 		}
-	}
-
-	private static async Task<bool> AwaitProcessFrameAsync(Node node)
-	{
-		if (!GodotObject.IsInstanceValid(node) || !node.IsInsideTree())
-		{
-			return false;
-		}
-
-		SceneTree tree = node.GetTree();
-		if (tree == null)
-		{
-			return false;
-		}
-
-		await node.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
-		return GodotObject.IsInstanceValid(node) && node.IsInsideTree();
 	}
 
 	private static string DescribeNode(Node? node)

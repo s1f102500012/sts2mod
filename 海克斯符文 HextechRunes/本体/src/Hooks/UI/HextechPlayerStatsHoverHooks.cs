@@ -1,4 +1,5 @@
 using HarmonyLib;
+using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.sts2.Core.Nodes.TopBar;
 using static HextechRunes.HextechHookReflection;
 
@@ -6,14 +7,14 @@ namespace HextechRunes;
 
 internal static class HextechPlayerStatsHoverHooks
 {
-	private const string HealthLabel = "生命系数：";
-	private const string DamageLabel = "伤害系数：";
-	private const string BlockLabel = "格挡系数：";
-	private const string HealingLabel = "治疗系数：";
+	private const string LocTable = "relic_collection";
+	private static string HealthLabel => new LocString(LocTable, "HEXTECH_STAT_COEFF_HEALTH").GetRawText();
+	private static string DamageLabel => new LocString(LocTable, "HEXTECH_STAT_COEFF_DAMAGE").GetRawText();
+	private static string BlockLabel => new LocString(LocTable, "HEXTECH_STAT_COEFF_BLOCK").GetRawText();
+	private static string HealingLabel => new LocString(LocTable, "HEXTECH_STAT_COEFF_HEALING").GetRawText();
 
 	private static readonly FieldInfo PortraitHoverTipField = RequireField(typeof(NTopBarPortraitTip), "_hoverTip");
 	private static readonly FieldInfo HoverTipDescriptionField = RequireField(typeof(HoverTip), "<Description>k__BackingField");
-	private static int _failedUpdateLogs;
 
 	public static void Install(Harmony harmony)
 	{
@@ -58,7 +59,7 @@ internal static class HextechPlayerStatsHoverHooks
 		}
 		catch (Exception ex)
 		{
-			if (_failedUpdateLogs++ < 3)
+			if (HextechRunLogBudget.TryConsume("ui.player-stats-hover-update-failure", 3))
 			{
 				Log.Warn($"[{ModInfo.Id}][Mayhem] Failed to update portrait stat hover tip: {ex.GetType().Name}: {ex.Message}");
 			}

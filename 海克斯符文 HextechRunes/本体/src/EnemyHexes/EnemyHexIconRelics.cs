@@ -137,3 +137,21 @@ public sealed class ByrdonisHex : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player) => false;
 }
+
+/// <summary>我饥饿</summary>
+public sealed class HungryHex : HextechRelicBase
+{
+	public override bool IsAvailableForPlayer(Player player) => false;
+}
+
+/// <summary>我细看</summary>
+public sealed class InspectHex : HextechRelicBase
+{
+	public override bool IsAvailableForPlayer(Player player) => false;
+}
+
+/// <summary>我紧握</summary>
+public sealed class GripHex : HextechRelicBase
+{
+	public override bool IsAvailableForPlayer(Player player) => false;
+}

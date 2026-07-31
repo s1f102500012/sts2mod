@@ -113,7 +113,7 @@ internal sealed class SlowCookAuraVisual
 
 	private readonly NCreature _creature;
 	private Node2D? _root;
-	private Node? _renderParent;
+	private Node2D? _renderLayer;
 	private AuraLayer? _heatLayer;
 	private AuraLayer? _polarLayer;
 	private AuraLayer? _edgeLayer;
@@ -171,12 +171,12 @@ internal sealed class SlowCookAuraVisual
 
 	private bool Start()
 	{
-		Node? parent = _creature.GetParent();
-		if (!GodotObject.IsInstanceValid(parent))
+		Node2D? renderLayer = HextechBehindCreaturesLayer.GetOrCreate(_creature.GetParent());
+		if (renderLayer == null)
 		{
 			return false;
 		}
-		_renderParent = parent;
+		_renderLayer = renderLayer;
 
 		_root = new Node2D
 		{
@@ -187,7 +187,7 @@ internal sealed class SlowCookAuraVisual
 			ZAsRelative = true,
 			ZIndex = 0
 		};
-		parent.AddChildSafely(_root);
+		renderLayer.AddChildSafely(_root);
 		EnsureRenderOrder();
 
 		_heatLayer = TryCreateFlowLayer(
@@ -266,10 +266,7 @@ internal sealed class SlowCookAuraVisual
 
 	private void EnsureRenderOrder()
 	{
-		if (GodotObject.IsInstanceValid(_renderParent) && GodotObject.IsInstanceValid(_root) && _root.GetIndex() != 0)
-		{
-			_renderParent.MoveChildSafely(_root, 0);
-		}
+		HextechBehindCreaturesLayer.EnsureRenderOrder(_renderLayer);
 	}
 
 	private void UpdateTransform()
@@ -418,7 +415,7 @@ internal sealed class SlowCookAuraVisual
 
 	private static Texture2D? LoadTextureOrWarn(string path)
 	{
-		Texture2D? texture = AssetHooks.LoadUiTexture(path);
+		Texture2D? texture = HextechAssetHooks.LoadUiTexture(path);
 		if (texture == null && LoggedMissingTexturePaths.Add(path))
 		{
 			Log.Warn($"[{ModInfo.Id}][SlowCookAura] Aura texture not found: {path}");

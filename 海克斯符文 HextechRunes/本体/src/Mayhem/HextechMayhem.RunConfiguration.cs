@@ -63,17 +63,7 @@ internal sealed partial class HextechMayhemModifier
 			});
 		}
 
-		bool isClient = false;
-		try
-		{
-			isClient = RunManager.Instance.NetService.Type == NetGameType.Client;
-		}
-		catch
-		{
-			// Fall back to local configuration outside a fully initialized multiplayer run.
-		}
-
-		HextechRunConfigurationSnapshot local = isClient
+		HextechRunConfigurationSnapshot local = HextechPlayerContextHelper.IsClientRun()
 			? HextechRuneConfiguration.GetDefaultSnapshot()
 			: HextechRuneConfiguration.GetSnapshot();
 		return HextechRuneConfiguration.NormalizeSnapshot(local with
@@ -101,16 +91,9 @@ internal sealed partial class HextechMayhemModifier
 
 	private static HextechRunConfigurationSnapshot CreateNewRunConfigurationSnapshot()
 	{
-		try
-		{
-			return RunManager.Instance.NetService.Type == NetGameType.Client
-				? HextechRuneConfiguration.GetDefaultSnapshot()
-				: HextechRuneConfiguration.GetSnapshot();
-		}
-		catch
-		{
-			return HextechRuneConfiguration.GetDefaultSnapshot();
-		}
+		return HextechPlayerContextHelper.IsClientRun(fallbackWhenUnavailable: true)
+			? HextechRuneConfiguration.GetDefaultSnapshot()
+			: HextechRuneConfiguration.GetSnapshot();
 	}
 
 	private string SerializeRunConfigurationSnapshot()

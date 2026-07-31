@@ -29,6 +29,7 @@ internal sealed class AeonglassEnemyHex : HextechEnemyHexEffect
 		if (shuffler.Creature.Side != CombatSide.Player
 			|| shuffler.Creature.IsDead
 			|| shuffler.Creature.CombatState is not HextechCombatState combatState
+			|| shuffler.PlayerCombatState is not { } playerCombatState
 			|| combatState.RunState != context.RunState)
 		{
 			return Task.CompletedTask;
@@ -36,7 +37,7 @@ internal sealed class AeonglassEnemyHex : HextechEnemyHexEffect
 
 		// 升级"该玩家所有的凋萎"：原版 Wither.FakeUpgrade 每次 +3 回合结束伤害并在标题加 +N。
 		// 同步纯状态变更，洗牌在两端确定性执行，MP 安全。
-		foreach (CardModel card in shuffler.PlayerCombatState.AllCards)
+		foreach (CardModel card in playerCombatState.AllCards)
 		{
 			if (card is Wither wither)
 			{

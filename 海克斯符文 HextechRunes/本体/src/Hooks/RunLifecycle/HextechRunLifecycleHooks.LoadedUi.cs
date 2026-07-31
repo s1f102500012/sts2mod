@@ -10,6 +10,10 @@ internal static partial class HextechRunLifecycleHooks
 
 	private static void LoadRunPostfix(RunState runState, ref Task __result)
 	{
+		HextechRunLogBudget.Reset();
+		HextechCombatHooks.ResetTransientCombatState();
+		HextechEnemyHexEffects.ResetAllRunScopedState();
+		HextechGoldrendSync.ResetForRun(runState);
 		__result = LoadRunAfterOriginal(__result, runState);
 	}
 
@@ -39,7 +43,7 @@ internal static partial class HextechRunLifecycleHooks
 				return;
 			}
 
-			HextechMayhemModifier? modifier = GetMayhemModifier(runState);
+			HextechMayhemModifier? modifier = HextechMayhemModifier.FindIn(runState);
 			if (modifier != null)
 			{
 				int actIndex = runState.CurrentActIndex;
@@ -139,7 +143,7 @@ internal static partial class HextechRunLifecycleHooks
 			return false;
 		}
 
-		HextechMayhemModifier? modifier = GetMayhemModifier(runState);
+		HextechMayhemModifier? modifier = HextechMayhemModifier.FindIn(runState);
 		if (modifier == null)
 		{
 			HextechEnemyUi.HideMayhemModifierBadge();

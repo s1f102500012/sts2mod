@@ -1,8 +1,10 @@
 using Godot;
+using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 using MegaCrit.Sts2.Core.Saves;
+using static HextechRunes.HextechSelectionHelpers;
 
 namespace HextechRunes;
 
@@ -271,6 +273,11 @@ internal static partial class HextechRuneSelectionCoordinator
 
 		Type overlayType = overlay.GetType();
 		overlayName = overlayType.FullName ?? overlayType.Name;
+		if (overlay is IOverlayScreen { ScreenType: NetScreenType.Rewards })
+		{
+			return true;
+		}
+
 		return overlayName.Contains("Reward", StringComparison.OrdinalIgnoreCase);
 	}
 

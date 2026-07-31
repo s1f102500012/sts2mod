@@ -1,17 +1,7 @@
-using MegaCrit.Sts2.Core.Models.CardPools;
-
 namespace HextechRunes;
 
-public abstract class DragonSoulCardBase : CardModel
+public abstract class DragonSoulCardBase : HextechOwnerPoolTokenCard
 {
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
-
 	protected DragonSoulCardBase(int cost)
 		: base(cost, CardType.Power, CardRarity.Token, TargetType.Self, shouldShowInCardLibrary: true)
 	{

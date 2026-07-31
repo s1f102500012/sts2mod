@@ -1,24 +1,15 @@
 using MegaCrit.Sts2.Core.Localization;
-using MegaCrit.Sts2.Core.Models.CardPools;
 
 namespace HextechRunes;
 
-public sealed class OstyWishCard : CardModel
+public sealed class OstyWishCard : HextechOwnerPoolTokenCard
 {
 	private const string WishBlockDisplayVar = "WishBlock";
 	private const string WishDamageDisplayVar = "WishDamage";
 
 	private bool _usePlaceholderDisplayValues;
 
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
 	public override string PortraitPath => HextechAssets.OstyWishCardPortraitPath;
-
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
 
 	public override IEnumerable<CardKeyword> CanonicalKeywords =>
 	[

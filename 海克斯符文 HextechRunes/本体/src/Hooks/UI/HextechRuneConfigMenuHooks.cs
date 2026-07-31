@@ -84,7 +84,7 @@ internal static partial class HextechRuneConfigMenuHooks
 				return;
 			}
 
-			if (!await AwaitProcessFrameAsync(mainMenu))
+			if (!await HextechGodotAsync.AwaitProcessFrameAsync(mainMenu))
 			{
 				return;
 			}
@@ -208,7 +208,7 @@ internal static partial class HextechRuneConfigMenuHooks
 
 	private static async Task AnimateOverlayInAsync(Control overlay)
 	{
-		if (!await AwaitProcessFrameAsync(overlay))
+		if (!await HextechGodotAsync.AwaitProcessFrameAsync(overlay))
 		{
 			return;
 		}
@@ -439,7 +439,7 @@ internal static partial class HextechRuneConfigMenuHooks
 		};
 		tabHolder.AddChild(tabIndicator);
 
-		Vector2 tabButtonSize = compactLayout ? new Vector2(108f, 36f) : new Vector2(154f, 42f);
+		Vector2 tabButtonSize = GetTabButtonSize(compactLayout);
 		tabHolder.CustomMinimumSize = new Vector2(tabButtonSize.X * 4f, tabButtonSize.Y);
 		tabIndicator.Size = new Vector2(tabButtonSize.X, 3f);
 		tabIndicator.Position = new Vector2(0f, tabButtonSize.Y - 3f);
@@ -1152,8 +1152,8 @@ internal static partial class HextechRuneConfigMenuHooks
 		numericBindings.Add(new NumericValueBinding(PercentText, percent));
 		refreshPercent = () => SetLabelText(percent, PercentText());
 
-		Button minus = CreateStepButton("-", false, compactLayout);
-		Button plus = CreateStepButton("+", false, compactLayout);
+		Button minus = CreateStepButton("-", compactLayout);
+		Button plus = CreateStepButton("+", compactLayout);
 		AttachRepeatingStep(minus, () =>
 		{
 			weights[index] = HextechRuneConfiguration.ClampRarityWeight(weights[index] - 1);
@@ -1211,8 +1211,8 @@ internal static partial class HextechRuneConfigMenuHooks
 		number.CustomMinimumSize = compactLayout ? new Vector2(44f, 32f) : new Vector2(54f, 34f);
 		numericBindings.Add(new NumericValueBinding(GetDisplay, number));
 
-		Button minus = CreateStepButton("-", false, compactLayout);
-		Button plus = CreateStepButton("+", false, compactLayout);
+		Button minus = CreateStepButton("-", compactLayout);
+		Button plus = CreateStepButton("+", compactLayout);
 		AttachRepeatingStep(minus, () =>
 		{
 			setValue(stepValue?.Invoke(getValue(), -step) ?? getValue() - step);
@@ -1266,13 +1266,18 @@ internal static partial class HextechRuneConfigMenuHooks
 		Button button = new()
 		{
 			Text = string.Empty,
-			CustomMinimumSize = compactLayout ? new Vector2(108f, 36f) : new Vector2(154f, 42f),
+			CustomMinimumSize = GetTabButtonSize(compactLayout),
 			MouseDefaultCursorShape = Control.CursorShape.PointingHand,
 			FocusMode = Control.FocusModeEnum.All
 		};
 		AddCrispButtonText(button, text, compactLayout ? 14 : 16, new Color(0.96f, 0.94f, 0.88f, 1f));
 		button.Pressed += action;
 		return button;
+	}
+
+	private static Vector2 GetTabButtonSize(bool compactLayout)
+	{
+		return compactLayout ? new Vector2(108f, 36f) : new Vector2(154f, 42f);
 	}
 
 	private static StyleBoxFlat CreateTabShellStyle()
@@ -1548,7 +1553,7 @@ internal static partial class HextechRuneConfigMenuHooks
 			HextechRelicVisibilityHooks.SetShowUpdateNotice(pendingShowUpdateNotice[0]);
 			HextechRelicVisibilityHooks.SetCollapseEnemyHexes(pendingCollapseEnemyHexes[0]);
 			HextechUpdateChecker.ApplyNoticeVisibility(overlay);
-			CollectionHooks.RefreshOpenRelicCollections();
+			HextechCollectionHooks.RefreshOpenRelicCollections();
 			HextechLog.Info($"[{ModInfo.Id}][RuneConfig] Saved run config: playerDisabled={pendingDisabledPlayerIds.Count} enemyDisabled={pendingDisabledMonsterHexIds.Count} forgeDisabled={pendingDisabledForgeIds.Count} playerCounts={string.Join(",", pendingPlayerHexCounts)} enemyCounts={string.Join(",", pendingEnemyHexCounts)} playerRerolls={pendingPlayerRuneRerollLimit[0]} monsterRerolls={pendingMonsterHexRerollLimit[0]} forgePrice={pendingForgePrice[0]} showHiddenUiToggle={pendingShowHiddenRelicsToggle[0]} showUpdateNotice={pendingShowUpdateNotice[0]} randomForgeDirect={pendingRandomForgeDirectGrant[0]} modEnabled={pendingModEnabled[0]}");
 			CloseOverlayAnimated(overlay);
 		}, compactLayout);
@@ -1710,20 +1715,18 @@ internal static partial class HextechRuneConfigMenuHooks
 		return windowHeight < CompactConfigHeightThreshold;
 	}
 
-	private static Button CreateStepButton(string text, bool disabled, bool compactLayout)
+	private static Button CreateStepButton(string text, bool compactLayout)
 	{
 		Button button = new()
 		{
 			Text = string.Empty,
 			CustomMinimumSize = compactLayout ? new Vector2(34f, 32f) : new Vector2(38f, 34f),
-			MouseDefaultCursorShape = Control.CursorShape.PointingHand,
-			Disabled = disabled
+			MouseDefaultCursorShape = Control.CursorShape.PointingHand
 		};
 		button.AddThemeStyleboxOverride("normal", CreateButtonStyle(new Color(0.1f, 0.12f, 0.17f, 0.9f), new Color(0.46f, 0.55f, 0.68f, 0.78f)));
 		button.AddThemeStyleboxOverride("hover", CreateButtonStyle(new Color(0.13f, 0.16f, 0.22f, 0.95f), new Color(0.88f, 0.72f, 0.36f, 0.92f)));
 		button.AddThemeStyleboxOverride("pressed", CreateButtonStyle(new Color(0.07f, 0.09f, 0.13f, 0.98f), new Color(0.88f, 0.62f, 0.28f, 0.92f)));
-		button.AddThemeStyleboxOverride("disabled", CreateButtonStyle(new Color(0.08f, 0.09f, 0.12f, 0.56f), new Color(0.32f, 0.36f, 0.44f, 0.58f)));
-		AddCrispButtonText(button, text, compactLayout ? 17 : 18, disabled ? new Color(0.62f, 0.66f, 0.72f, 0.82f) : new Color(0.96f, 0.94f, 0.88f, 1f));
+		AddCrispButtonText(button, text, compactLayout ? 17 : 18, new Color(0.96f, 0.94f, 0.88f, 1f));
 		return button;
 	}
 
@@ -1779,14 +1782,7 @@ internal static partial class HextechRuneConfigMenuHooks
 
 	private static bool IsEnemyHexCountConfigReadOnly()
 	{
-		try
-		{
-			return RunManager.Instance?.NetService.Type == NetGameType.Client;
-		}
-		catch
-		{
-			return false;
-		}
+		return HextechPlayerContextHelper.IsClientRun();
 	}
 
 	private static void CloseWithoutSaving(Control overlay)
@@ -1903,7 +1899,7 @@ internal static partial class HextechRuneConfigMenuHooks
 
 	private static async Task PopulateRuneIconsAsync(Control overlay, RuneConfigOverlayState state)
 	{
-		if (!await AwaitProcessFrameAsync(overlay))
+		if (!await HextechGodotAsync.AwaitProcessFrameAsync(overlay))
 		{
 			return;
 		}
@@ -1938,7 +1934,7 @@ internal static partial class HextechRuneConfigMenuHooks
 			}
 
 			loadedThisFrame = 0;
-			if (!await AwaitProcessFrameAsync(overlay))
+			if (!await HextechGodotAsync.AwaitProcessFrameAsync(overlay))
 			{
 				return;
 			}
@@ -2412,7 +2408,7 @@ internal static partial class HextechRuneConfigMenuHooks
 			MinFontSize = fontSize,
 			MaxFontSize = fontSize
 		};
-		ApplyDefaultMegaLabelTheme(label);
+		HextechUiTheme.ApplyDefaultMegaLabelTheme(label);
 		label.AddThemeFontSizeOverride("font_size", fontSize);
 		label.Modulate = color;
 		label.AddThemeColorOverride("font_color", Colors.White);
@@ -2433,32 +2429,6 @@ internal static partial class HextechRuneConfigMenuHooks
 		label.Text = text;
 	}
 
-	private static void SetButtonDisplayText(Button button, string text)
-	{
-		if (button.GetChildCount() > 0 && button.GetChild(0) is Label label)
-		{
-			SetLabelText(label, text);
-			return;
-		}
-
-		button.Text = text;
-	}
-
-	private static void ApplyDefaultMegaLabelTheme(MegaLabel label)
-	{
-		Font font = label.GetThemeDefaultFont();
-		if (font != null)
-		{
-			label.AddThemeFontOverride("font", font);
-		}
-
-		int fontSize = label.GetThemeDefaultFontSize();
-		if (fontSize > 0)
-		{
-			label.AddThemeFontSizeOverride("font_size", fontSize);
-		}
-	}
-
 	private static void AddCrispButtonText(Button button, string text, int fontSize, Color fontColor)
 	{
 		MegaLabel label = new()
@@ -2470,7 +2440,7 @@ internal static partial class HextechRuneConfigMenuHooks
 			MaxFontSize = fontSize
 		};
 		label.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
-		ApplyDefaultMegaLabelTheme(label);
+		HextechUiTheme.ApplyDefaultMegaLabelTheme(label);
 		label.AddThemeFontSizeOverride("font_size", fontSize);
 		label.AddThemeColorOverride("font_color", fontColor);
 		label.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.62f));
@@ -2572,16 +2542,6 @@ internal static partial class HextechRuneConfigMenuHooks
 		};
 	}
 
-	private static Color GetRarityAccentColorByKey(string rarityKey)
-	{
-		return rarityKey.ToUpperInvariant() switch
-		{
-			"SILVER" => GetRarityAccentColor(HextechRarityTier.Silver),
-			"PRISMATIC" => GetRarityAccentColor(HextechRarityTier.Prismatic),
-			_ => GetRarityAccentColor(HextechRarityTier.Gold)
-		};
-	}
-
 	private static Color GetRarityAccentColorByOrder(int rarityOrder)
 	{
 		return rarityOrder switch
@@ -2678,23 +2638,6 @@ internal static partial class HextechRuneConfigMenuHooks
 		}
 
 		return null;
-	}
-
-	private static async Task<bool> AwaitProcessFrameAsync(Node node)
-	{
-		if (!GodotObject.IsInstanceValid(node) || !node.IsInsideTree())
-		{
-			return false;
-		}
-
-		SceneTree tree = node.GetTree();
-		if (tree == null)
-		{
-			return false;
-		}
-
-		await node.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
-		return GodotObject.IsInstanceValid(node) && node.IsInsideTree();
 	}
 
 	private static string L(string key)

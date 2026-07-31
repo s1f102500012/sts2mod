@@ -106,7 +106,7 @@ internal static partial class HextechCombatHooks
 		// 敌方海克斯「回归基本功」:每回合打出的牌数达到上限后,其余牌不可再打出。
 		if (card.Owner.Creature.Side == CombatSide.Player
 			&& card.Owner.Creature.CombatState?.RunState is RunState runState
-			&& GetMayhemModifier(runState) is HextechMayhemModifier modifier
+			&& HextechMayhemModifier.FindIn(runState) is HextechMayhemModifier modifier
 			&& modifier.HasActiveMonsterHex(MonsterHexKind.BackToBasics))
 		{
 			int limit = BackToBasicsEnemyHex.GetTurnCardLimit(modifier);

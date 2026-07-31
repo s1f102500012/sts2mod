@@ -40,8 +40,9 @@ internal sealed partial class HextechRuneSelectionScreen
 
 	private Button CreateCardButton(RelicModel relic)
 	{
-		Color accent = GetAccentColor();
-		Texture2D? cardFrameTexture = GetCardFrameTexture();
+		string rarityKey = DetermineCardRarityKey(relic, _metadataMode);
+		Color accent = GetAccentColor(rarityKey);
+		Texture2D? cardFrameTexture = GetCardFrameTexture(rarityKey);
 		bool useImageFrame = cardFrameTexture != null;
 		Button button = new()
 		{
@@ -110,12 +111,12 @@ internal sealed partial class HextechRuneSelectionScreen
 			MaxFontSize = 28,
 			MinFontSize = 18
 		};
-		ApplyDefaultMegaLabelTheme(title);
+		HextechUiTheme.ApplyDefaultMegaLabelTheme(title);
 		title.Modulate = new Color(0.98f, 0.97f, 0.92f, 0.97f);
 		title.SetTextAutoSize(relic.Title.GetFormattedText());
 		content.AddChild(title);
 
-		content.AddChild(CreatePlayerMetadataPills(relic));
+		content.AddChild(CreatePlayerMetadataPills(relic, rarityKey));
 
 		MegaRichTextLabel body = CreateDescriptionLabel();
 		string descriptionText = relic.DynamicDescription.GetFormattedText();
@@ -173,21 +174,64 @@ internal sealed partial class HextechRuneSelectionScreen
 			Log.Warn($"[{ModInfo.Id}][Mayhem] SelectionScreen.CreateRerollButton: failed to load reroll button texture path={RerollButtonTexturePath}");
 		}
 		button.AddChild(icon);
+		HextechGoldenRerollVisual? goldenVisual = CreateGoldenRerollVisual(rerollLimitReached);
+		if (goldenVisual != null)
+		{
+			button.AddChild(goldenVisual);
+			_goldenRerollVisuals.Add(goldenVisual);
+		}
 		bool hovered = false;
 		button.MouseEntered += () =>
 		{
 			hovered = true;
 			ApplyRerollButtonVisualState(button, icon, rerollLimitReached, hovered);
+			goldenVisual?.SetVisualState(
+				_goldenRerollSession?.IsActive == true,
+				hovered,
+				rerollLimitReached);
 		};
 		button.MouseExited += () =>
 		{
 			hovered = false;
 			ApplyRerollButtonVisualState(button, icon, rerollLimitReached, hovered);
+			goldenVisual?.SetVisualState(
+				_goldenRerollSession?.IsActive == true,
+				hovered,
+				rerollLimitReached);
 		};
 		button.Pressed += () =>
 		{
 			OnRerollPressed(slotIndex);
 		};
 		return button;
+	}
+
+	private HextechGoldenRerollVisual? CreateGoldenRerollVisual(bool rerollLimitReached)
+	{
+		if (_goldenRerollSession?.CanActivate != true)
+		{
+			return null;
+		}
+
+		Texture2D? outerMask = HextechAssetHooks.LoadUiTexture(GoldenRerollOuterMaskPath);
+		Texture2D? fillMask = HextechAssetHooks.LoadUiTexture(GoldenRerollFillMaskPath);
+		HextechGoldenRerollVisual? visual = HextechGoldenRerollVisual.Create(
+			outerMask,
+			fillMask,
+			PlayerRerollButtonSize,
+			GoldenRerollSourceScale);
+		if (visual == null)
+		{
+			Log.Warn(
+				$"[{ModInfo.Id}][Mayhem] SelectionScreen.CreateGoldenRerollVisual: " +
+				$"failed to load masks outer={GoldenRerollOuterMaskPath} fill={GoldenRerollFillMaskPath}");
+			return null;
+		}
+
+		visual.SetVisualState(
+			_goldenRerollSession.IsActive,
+			hovered: false,
+			disabled: rerollLimitReached);
+		return visual;
 	}
 }

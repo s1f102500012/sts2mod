@@ -34,7 +34,7 @@ internal sealed partial class HextechMayhemModifier
 			(effect, context) => effect.AfterCardDrawn(context, choiceContext, card, fromHandDraw));
 	}
 
-	// 记录每张能力牌「开始打出时」玩家的 Storm 层数(在该牌 OnPlay 应用/叠加 StormPower 之前记录)。
+	// 记录每张会触发 Storm 的牌「开始打出时」玩家的 Storm 层数(在该牌 OnPlay 应用/叠加 StormPower 之前记录)。
 	// 用于在 AfterCardPlayedLate 补发闪电时复刻原版 StormPower 的自排除:首次打出雷暴时此刻还没有
 	// StormPower → 不记录 → 不会对雷暴自己发闪电;后续打出雷暴发的也是「打出前」的层数,与原版一致。
 	private readonly Dictionary<CardModel, int> _stormLightningAtCardStart = new();
@@ -43,7 +43,9 @@ internal sealed partial class HextechMayhemModifier
 	{
 		Player? owner = cardPlay.Card.Owner;
 		if (owner != null
-			&& cardPlay.Card.Type == CardType.Power
+			&& StormUpgradeRune.ShouldTrigger(
+				cardPlay.Card.Type,
+				owner.GetRelic<StormUpgradeRune>() != null)
 			&& owner.Creature.CombatState?.RunState == RunState
 			&& owner.Creature.GetPower<StormPower>() is StormPower stormPower)
 		{
@@ -63,7 +65,7 @@ internal sealed partial class HextechMayhemModifier
 			this,
 			(effect, context) => effect.AfterCardPlayedLate(context, choiceContext, cardPlay));
 
-		// 只对「打出前就已持有 Storm」的能力牌补发闪电;发的是打出前记录的层数(排除雷暴自身首次触发)。
+		// 只对「打出前就已持有 Storm」且通过类型判定的牌补发闪电;发的是打出前记录的层数(排除雷暴自身首次触发)。
 		if (!_stormLightningAtCardStart.Remove(cardPlay.Card, out int lightningCount) || lightningCount <= 0)
 		{
 			return;

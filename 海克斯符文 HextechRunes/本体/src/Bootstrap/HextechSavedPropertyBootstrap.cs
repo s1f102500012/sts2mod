@@ -4,8 +4,69 @@ namespace HextechRunes;
 
 internal static class HextechSavedPropertyBootstrap
 {
+	private const BindingFlags SavedPropertyFlags =
+		BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+
+#if STS2_109_OR_NEWER
+	private static readonly FieldInfo? OfficialCacheInitializedField = TryGetField(
+		typeof(SavedPropertiesTypeCache),
+		"_initialized",
+		BindingFlags.NonPublic | BindingFlags.Static,
+		warnIfMissing: false);
+#endif
+
+	internal static void EnsureModelTypeRegistrationAllowed(Type type)
+	{
+		ArgumentNullException.ThrowIfNull(type);
+
+#if STS2_109_OR_NEWER
+		if (!IsOfficialCacheInitialized())
+		{
+			return;
+		}
+
+		PropertyInfo[] savedProperties = GetSavedProperties(type);
+		if (savedProperties.Length == 0)
+		{
+			return;
+		}
+
+		IReadOnlyList<PropertyInfo>? cachedProperties;
+		try
+		{
+			cachedProperties = SavedPropertiesTypeCache.GetJsonPropertiesForType(type);
+		}
+		catch (Exception ex)
+		{
+			throw CreateLateRegistrationException(type, savedProperties, ex);
+		}
+
+		if (cachedProperties == null)
+		{
+			throw CreateLateRegistrationException(type, savedProperties);
+		}
+
+		PropertyInfo[] missingProperties = savedProperties
+			.Where(property => !ContainsProperty(cachedProperties, property))
+			.ToArray();
+		if (missingProperties.Length > 0)
+		{
+			throw CreateLateRegistrationException(type, missingProperties);
+		}
+#endif
+	}
+
 	internal static void InjectModelType(Type type)
 	{
+		ArgumentNullException.ThrowIfNull(type);
+
+#if STS2_109_OR_NEWER
+		// 0.109.0 的 Init 会从 ModelDb.All 统一排序、编号并散列 SavedProperty。Init 前调用
+		// CacheSavedPropertiesForTypeDebug 会提前写表且绕过该散列；Init 后追加则会破坏已经发布的 wire 布局。
+		// 因此这里只验证官方缓存是否已覆盖该载体，绝不调用 Debug 注入入口。
+		EnsureModelTypeRegistrationAllowed(type);
+		return;
+#else
 		if (HextechSavedPropertyNetIdHooks.IsCanonicalized)
 		{
 			// 规范化是一次性的(ExecuteEssential 后缀):此后注入的属性名按加载顺序追加、绕过规范排序,
@@ -13,20 +74,6 @@ internal static class HextechSavedPropertyBootstrap
 			Log.Warn($"[{ModInfo.Id}][Mayhem] SavedProperty 载体 {type.FullName} 在 net-id 规范化之后才注入:其属性按加载顺序追加,联机可能 1014/ModMismatch。请提前到启动初始化阶段注册。");
 		}
 
-#if STS2_109_OR_NEWER
-		// 0.109.0 起游戏在 OneTimeInitialization.ExecuteEssential 里由 ModelIdSerializationCache.Init()
-		// 从 ModelDb.All 自动收录全部载体并做确定性排序;Init 前无需(也不能,守卫会抛)手动注入。
-		// Init 之后的补注入走官方 CacheSavedPropertiesForTypeDebug(幂等:已缓存类型直接返回,
-		// 未缓存则追加属性 net-id——与 0.108 延迟注入同样是"追加尾部"语义,时序告警照旧适用)。
-		try
-		{
-			SavedPropertiesTypeCache.CacheSavedPropertiesForTypeDebug(type);
-		}
-		catch (InvalidOperationException)
-		{
-			// Init 尚未运行:类型此刻已在 ModelDb,启动流程稍后会统一收录。
-		}
-#else
 		SavedPropertiesTypeCache.InjectTypeIntoCache(type);
 #endif
 	}
@@ -73,11 +120,8 @@ internal static class HextechSavedPropertyBootstrap
 #endif
 	}
 
-	// R3 启动自检:扫本程序集所有 AbstractModel 载体,凡带 [SavedProperty] 却没进 net-id 表的属性名都告警。
-	// 与游戏一致地按【属性名】核对(SavedPropertiesTypeCache 也是按名注册/查询):缺名会让联机(反)序列化
-	// 在 GetNetIdForPropertyName 抛 "could not be mapped" → 概率性 1014/ModMismatch。此处只 Log.Warn、绝不抛,
-	// 把"漏登记 rune / 漏加 Power 到手写清单"这类隐患从线上崩提前到启动日志。时机:所有 InjectTypeIntoCache 之后、
-	// 后续规范化只重排不增删名字,故此刻名字集合已是最终集合。
+	// 启动自检同时核对全局 net-id 名字表和每个载体自己的 PropertyInfo 缓存。前者决定 wire 布局，
+	// 后者决定保存/同步时实际枚举哪些属性；只查名字会漏掉“同名属性已存在、载体本身未缓存”的静默丢字段。
 	internal static void WarnOnUninjectedSavedPropertyCarriers()
 	{
 		try
@@ -85,13 +129,11 @@ internal static class HextechSavedPropertyBootstrap
 			HashSet<string>? registeredNames = TryGetRegisteredSavedPropertyNames();
 			if (registeredNames == null)
 			{
-				Log.Warn($"[{ModInfo.Id}][Mayhem] SavedProperty 注入自检跳过:取不到 net-id 名字表。");
-				return;
+				Log.Warn($"[{ModInfo.Id}][Mayhem] SavedProperty net-id 名字表自检跳过:取不到名字表;继续核对各载体的 per-type cache。");
 			}
 
 			System.Type abstractModelType = typeof(MegaCrit.Sts2.Core.Models.AbstractModel);
-			HashSet<string> warned = new(StringComparer.Ordinal);
-			const BindingFlags propertyFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+			HashSet<(System.Type CarrierType, string PropertyName)> warned = [];
 
 			foreach (Assembly assembly in GetAssembliesToAudit())
 			{
@@ -102,17 +144,25 @@ internal static class HextechSavedPropertyBootstrap
 						continue;
 					}
 
-					foreach (PropertyInfo property in type.GetProperties(propertyFlags))
+					IReadOnlyList<PropertyInfo>? cachedProperties = TryGetCachedPropertiesForType(type);
+					foreach (PropertyInfo property in GetSavedProperties(type))
 					{
-						bool isSavedProperty = property
-							.GetCustomAttributes(inherit: true)
-							.Any(static attr => attr.GetType().Name == "SavedPropertyAttribute");
-						if (!isSavedProperty || registeredNames.Contains(property.Name) || !warned.Add(property.Name))
+						bool missingGlobalName = registeredNames != null
+							&& !registeredNames.Contains(property.Name);
+						bool missingCarrierProperty = cachedProperties == null
+							|| !ContainsProperty(cachedProperties, property);
+						if ((!missingGlobalName && !missingCarrierProperty)
+							|| !warned.Add((type, property.Name)))
 						{
 							continue;
 						}
 
-						Log.Warn($"[{ModInfo.Id}][Mayhem] SavedProperty 注入自检:载体 {type.FullName} 的 [SavedProperty] \"{property.Name}\" 未进 net-id 表;联机(反)序列化会抛 \"could not be mapped\" 致 1014/ModMismatch。请把该类型登记进 catalog,或加入 InjectCaches 的注入清单。");
+						string missingPart = missingGlobalName && missingCarrierProperty
+							? "未进 net-id 名字表及该载体的 per-type cache"
+							: missingGlobalName
+								? "未进 net-id 名字表"
+								: "未进该载体的 per-type cache";
+						Log.Warn($"[{ModInfo.Id}][Mayhem] SavedProperty 注入自检:载体 {type.FullName} 的 [SavedProperty] \"{property.Name}\" {missingPart};联机(反)序列化可能抛 \"could not be mapped\" 或静默漏字段。请在模型注册窗口内显式登记该 SavedProperty 载体。");
 					}
 				}
 			}
@@ -123,6 +173,69 @@ internal static class HextechSavedPropertyBootstrap
 			Log.Warn($"[{ModInfo.Id}][Mayhem] SavedProperty 注入自检跳过: {ex.Message}");
 		}
 	}
+
+	private static PropertyInfo[] GetSavedProperties(System.Type type)
+	{
+		return type
+			.GetProperties(SavedPropertyFlags)
+			.Where(static property => property
+				.GetCustomAttributes(inherit: true)
+				.Any(static attr => attr.GetType().Name == "SavedPropertyAttribute"))
+			.ToArray();
+	}
+
+	private static IReadOnlyList<PropertyInfo>? TryGetCachedPropertiesForType(System.Type type)
+	{
+		try
+		{
+			return SavedPropertiesTypeCache.GetJsonPropertiesForType(type);
+		}
+		catch (Exception)
+		{
+			return null;
+		}
+	}
+
+	private static bool ContainsProperty(
+		IReadOnlyList<PropertyInfo> cachedProperties,
+		PropertyInfo expected)
+	{
+		return cachedProperties.Any(property =>
+			property.Equals(expected)
+			|| (property.DeclaringType == expected.DeclaringType
+				&& string.Equals(property.Name, expected.Name, StringComparison.Ordinal)
+				&& property.PropertyType == expected.PropertyType));
+	}
+
+#if STS2_109_OR_NEWER
+	private static bool IsOfficialCacheInitialized()
+	{
+		if (OfficialCacheInitializedField?.GetValue(null) is bool initialized)
+		{
+			return initialized;
+		}
+
+		throw new InvalidOperationException(
+			$"[{ModInfo.Id}] 无法读取 ModelIdSerializationCache._initialized；为避免污染 SavedProperty net-id 表，已拒绝外部模型注册。");
+	}
+
+	private static InvalidOperationException CreateLateRegistrationException(
+		System.Type type,
+		IReadOnlyList<PropertyInfo> missingProperties,
+		Exception? innerException = null)
+	{
+		string propertyNames = string.Join(
+			", ",
+			missingProperties
+				.Select(static property => property.Name)
+				.Distinct(StringComparer.Ordinal)
+				.OrderBy(static name => name, StringComparer.Ordinal));
+		string message =
+			$"[{ModInfo.Id}] SavedProperty 载体 {type.FullName} 在 ModelIdSerializationCache.Init 之后注册，"
+			+ $"但 per-type cache 缺少属性 [{propertyNames}]。为保持联机 net-id 与官方 Hash 不变，已拒绝延迟注册。";
+		return new InvalidOperationException(message, innerException);
+	}
+#endif
 
 	// 自检范围 = 本程序集 + 所有已加载且引用了本程序集的包(拓展包/二创包的载体也要能被抓到)。
 	private static IEnumerable<Assembly> GetAssembliesToAudit()

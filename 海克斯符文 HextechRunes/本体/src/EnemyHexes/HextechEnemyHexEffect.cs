@@ -12,12 +12,21 @@ internal abstract class HextechEnemyHexEffect
 
 	internal virtual int EnemyHealOrder => 0;
 
+	internal virtual void ResetRunScopedState()
+	{
+	}
+
 	internal virtual decimal ModifyDamageMultiplicative(HextechEnemyHexContext context, Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
 	{
 		return 1m;
 	}
 
 	internal virtual decimal ModifyBlockMultiplicative(HextechEnemyHexContext context, Creature target, decimal block, ValueProp props, CardModel? cardSource, CardPlay? cardPlay)
+	{
+		return 1m;
+	}
+
+	internal virtual decimal ModifyEnemyHealMultiplicative(HextechEnemyHexContext context, Creature creature, decimal amount)
 	{
 		return 1m;
 	}
@@ -35,6 +44,11 @@ internal abstract class HextechEnemyHexEffect
 	internal virtual decimal ModifyHandDraw(HextechEnemyHexContext context, Player player, decimal count)
 	{
 		return count;
+	}
+
+	internal virtual bool ShouldDraw(HextechEnemyHexContext context, Player player, bool fromHandDraw)
+	{
+		return true;
 	}
 
 	internal virtual bool ShouldFlush(HextechEnemyHexContext context, Player player)

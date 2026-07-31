@@ -32,42 +32,18 @@ internal static partial class HextechTelemetry
 			return;
 		}
 
-		Directory.CreateDirectory(GetDataDirectory());
+		Directory.CreateDirectory(HextechDataPaths.GetDataDirectory());
 		TelemetryConfig config = new(true, DefaultEndpoint);
 		File.WriteAllText(configPath, JsonSerializer.Serialize(config, new JsonSerializerOptions(JsonOptions) { WriteIndented = true }));
 	}
 
-	private static string GetDataDirectory()
-	{
-		try
-		{
-			string godotUserDir = Godot.OS.GetUserDataDir();
-			if (!string.IsNullOrWhiteSpace(godotUserDir))
-			{
-				return Path.Combine(godotUserDir, ModInfo.Id);
-			}
-		}
-		catch
-		{
-			// Fall back to a normal per-user directory when Godot paths are unavailable.
-		}
-
-		string baseDir = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-		if (string.IsNullOrWhiteSpace(baseDir))
-		{
-			baseDir = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-		}
-
-		return Path.Combine(baseDir, "SlayTheSpire2", ModInfo.Id);
-	}
-
 	private static string GetConfigPath()
 	{
-		return Path.Combine(GetDataDirectory(), ConfigFileName);
+		return HextechDataPaths.GetFilePath(ConfigFileName);
 	}
 
 	private static string GetPendingPath()
 	{
-		return Path.Combine(GetDataDirectory(), PendingFileName);
+		return HextechDataPaths.GetFilePath(PendingFileName);
 	}
 }

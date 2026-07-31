@@ -93,7 +93,7 @@ internal static partial class HextechTelemetry
 		lock (QueueLock)
 		{
 			string path = GetPendingPath();
-			Directory.CreateDirectory(GetDataDirectory());
+			Directory.CreateDirectory(HextechDataPaths.GetDataDirectory());
 			if (payloads.Count == 0)
 			{
 				if (File.Exists(path))

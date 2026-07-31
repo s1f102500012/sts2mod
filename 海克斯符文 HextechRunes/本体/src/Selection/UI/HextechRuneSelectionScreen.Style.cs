@@ -35,9 +35,29 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		};
 	}
 
+	internal static string DetermineCardRarityKey(
+		RelicModel relic,
+		HextechSelectionMetadataMode metadataMode)
+	{
+		if (metadataMode == HextechSelectionMetadataMode.Forge
+			&& HextechCatalog.TryGetForgeRarity(relic, out HextechRarityTier forgeRarity))
+		{
+			return GetRarityKey(forgeRarity);
+		}
+
+		return HextechCatalog.TryGetPlayerRuneRarity(relic, out HextechRarityTier runeRarity)
+			? GetRarityKey(runeRarity)
+			: "GOLD";
+	}
+
 	private Color GetAccentColor()
 	{
-		return _rarityKey switch
+		return GetAccentColor(_rarityKey);
+	}
+
+	private static Color GetAccentColor(string rarityKey)
+	{
+		return rarityKey switch
 		{
 			"SILVER" => new Color(0.56f, 0.85f, 0.92f),
 			"PRISMATIC" => new Color(0.94f, 0.43f, 1f),
@@ -47,7 +67,12 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 
 	private string? GetCardFramePath()
 	{
-		return _rarityKey switch
+		return GetCardFramePath(_rarityKey);
+	}
+
+	private static string? GetCardFramePath(string rarityKey)
+	{
+		return rarityKey switch
 		{
 			"SILVER" => SilverCardFramePath,
 			"PRISMATIC" => PrismaticCardFramePath,
@@ -58,13 +83,18 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 
 	private Texture2D? GetCardFrameTexture()
 	{
-		string? path = GetCardFramePath();
+		return GetCardFrameTexture(_rarityKey);
+	}
+
+	private static Texture2D? GetCardFrameTexture(string rarityKey)
+	{
+		string? path = GetCardFramePath(rarityKey);
 		if (path == null)
 		{
 			return null;
 		}
 
-		Texture2D? texture = AssetHooks.LoadUiTexture(path);
+		Texture2D? texture = HextechAssetHooks.LoadUiTexture(path);
 		if (texture == null)
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] SelectionScreen.GetCardFrameTexture: failed to load frame path={path}");
@@ -72,9 +102,42 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		return texture;
 	}
 
+	private static readonly HashSet<string> DisplayTextureFallbackWarnings = new(StringComparer.Ordinal);
+
 	private static Texture2D? GetDisplayTexture(RelicModel relic)
 	{
-		return relic.BigIcon ?? relic.Icon;
+		ModelId id = relic.CanonicalInstance?.Id ?? relic.Id;
+		try
+		{
+			Texture2D? bigIcon = relic.BigIcon;
+			if (HextechAssetHooks.IsTextureUsable(bigIcon))
+			{
+				return bigIcon;
+			}
+
+			Texture2D? icon = relic.Icon;
+			if (HextechAssetHooks.IsTextureUsable(icon))
+			{
+				return icon;
+			}
+		}
+		catch (Exception ex)
+		{
+			WarnDisplayTextureFallbackOnce(id, ex.GetType().Name);
+			return HextechAssetHooks.GetMissingTexture();
+		}
+
+		WarnDisplayTextureFallbackOnce(id, "no usable icon");
+		return HextechAssetHooks.GetMissingTexture();
+	}
+
+	private static void WarnDisplayTextureFallbackOnce(ModelId id, string reason)
+	{
+		string key = id.ToString();
+		if (DisplayTextureFallbackWarnings.Add(key))
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] SelectionScreen.GetDisplayTexture: using fallback id={key} reason={reason}");
+		}
 	}
 
 	private static StyleBoxFlat CreateContentPanelStyle()
@@ -173,7 +236,7 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		string path = alreadyRerolled
 			? RerollButtonUsedTexturePath
 			: hovered ? RerollButtonHoverTexturePath : RerollButtonTexturePath;
-		icon.Texture = AssetHooks.LoadUiTexture(path) ?? AssetHooks.LoadUiTexture(RerollButtonTexturePath);
+		icon.Texture = HextechAssetHooks.LoadUiTexture(path) ?? HextechAssetHooks.LoadUiTexture(RerollButtonTexturePath);
 		button.Modulate = Colors.White;
 		icon.SelfModulate = Colors.White;
 	}
@@ -195,21 +258,6 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		style.ContentMarginTop = 3;
 		style.ContentMarginBottom = 3;
 		return style;
-	}
-
-	private static void ApplyDefaultMegaLabelTheme(MegaLabel label)
-	{
-		Font font = label.GetThemeDefaultFont();
-		if (font != null)
-		{
-			label.AddThemeFontOverride("font", font);
-		}
-
-		int fontSize = label.GetThemeDefaultFontSize();
-		if (fontSize > 0)
-		{
-			label.AddThemeFontSizeOverride("font_size", fontSize);
-		}
 	}
 
 	private static void ApplyDefaultMegaRichTextTheme(MegaRichTextLabel label)

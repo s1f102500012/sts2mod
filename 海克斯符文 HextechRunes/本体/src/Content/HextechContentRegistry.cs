@@ -42,8 +42,6 @@ internal static class HextechContentRegistry
 
 	internal static IReadOnlySet<Type> SelectionExcludedPlayerRuneTypes => Lookups.SelectionExcludedPlayerRuneTypes;
 
-	internal static IReadOnlySet<Type> RetiredPlayerRuneTypes => Lookups.RetiredPlayerRuneTypes;
-
 	internal static IReadOnlyList<Type> IroncladRuneTypes => Lookups.IroncladRuneTypes;
 
 	internal static IReadOnlyList<Type> SilentRuneTypes => Lookups.SilentRuneTypes;
@@ -133,7 +131,6 @@ internal static class HextechContentRegistry
 			PrismaticForgeTypes = ForgeMetadata.TypesByRarity[HextechRarityTier.Prismatic];
 			DisabledPlayerRuneTypes = PlayerRuneMetadata.TypesByFlag[PlayerRuneFlags.Disabled].ToHashSet();
 			SelectionExcludedPlayerRuneTypes = PlayerRuneMetadata.TypesByFlag[PlayerRuneFlags.SelectionExcluded].ToHashSet();
-			RetiredPlayerRuneTypes = PlayerRuneMetadata.TypesByFlag[PlayerRuneFlags.Retired].ToHashSet();
 			IroncladRuneTypes = PlayerRuneMetadata.TypesByCharacter[PlayerRuneCharacterPool.Ironclad];
 			SilentRuneTypes = PlayerRuneMetadata.TypesByCharacter[PlayerRuneCharacterPool.Silent];
 			RegentRuneTypes = PlayerRuneMetadata.TypesByCharacter[PlayerRuneCharacterPool.Regent];
@@ -168,7 +165,6 @@ internal static class HextechContentRegistry
 		public IReadOnlyList<Type> PrismaticForgeTypes { get; }
 		public IReadOnlySet<Type> DisabledPlayerRuneTypes { get; }
 		public IReadOnlySet<Type> SelectionExcludedPlayerRuneTypes { get; }
-		public IReadOnlySet<Type> RetiredPlayerRuneTypes { get; }
 		public IReadOnlyList<Type> IroncladRuneTypes { get; }
 		public IReadOnlyList<Type> SilentRuneTypes { get; }
 		public IReadOnlyList<Type> RegentRuneTypes { get; }

@@ -149,9 +149,149 @@ internal static partial class HextechCatalog
 
 	public static IReadOnlySet<ModelId> GetConfigurablePlayerRuneIds()
 	{
-		return GetAllConfigurableRuneTypes()
+		Type[] configurableTypes = GetAllConfigurableRuneTypes().ToArray();
+		EnsureUniqueModelIds(configurableTypes, ModelDb.GetId);
+		ModelId[] ids = configurableTypes
 			.Select(ModelDb.GetId)
-			.ToHashSet();
+			.OrderBy(static id => id.Category, StringComparer.Ordinal)
+			.ThenBy(static id => id.Entry, StringComparer.Ordinal)
+			.ToArray();
+		IGrouping<string, ModelId>? conflictingEntry = ids
+			.GroupBy(static id => id.Entry, StringComparer.Ordinal)
+			.FirstOrDefault(static group =>
+				group.Select(static id => id.Category)
+					.Distinct(StringComparer.Ordinal)
+					.Skip(1)
+					.Any());
+		if (conflictingEntry != null)
+		{
+			string conflictingIds = string.Join(
+				", ",
+				conflictingEntry.Select(static id => id.ToString()));
+			throw new InvalidOperationException(
+				$"Configurable player rune ModelIds must have unique Entry values because the existing configuration format stores Entry only: {conflictingIds}");
+		}
+
+		return ids.ToHashSet();
+	}
+
+	internal static void EnsureConfigurablePlayerRuneIdEntryAvailable(Type runeType)
+	{
+		EnsureConfigurablePlayerRuneIdEntryAvailable(
+			runeType,
+			GetAllConfigurableRuneTypes(),
+			ModelDb.GetId);
+	}
+
+	internal static void EnsureExternalModelIdAvailable(Type modelType)
+	{
+		IEnumerable<Type> knownModelTypes = EnumerateLoadedAbstractModelTypes()
+			.Concat(HextechContentRegistry.AllCustomRelicTypes)
+			.Concat(HextechContentRegistry.EventRelicTypes)
+			.Concat(HextechContentRegistry.CustomCardTypes)
+			.Concat(HextechCustomModelRegistry.CustomRarityModifierTypes)
+			.Append(modelType);
+		EnsureModelIdAvailable(modelType, knownModelTypes, ModelDb.GetId);
+	}
+
+	private static IEnumerable<Type> EnumerateLoadedAbstractModelTypes()
+	{
+		Type abstractModelType = typeof(AbstractModel);
+		foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+		{
+			if (assembly.IsDynamic)
+			{
+				continue;
+			}
+
+			Type[] types;
+			try
+			{
+				types = assembly.GetTypes();
+			}
+			catch (ReflectionTypeLoadException ex)
+			{
+				types = ex.Types
+					.Where(static type => type != null)
+					.Cast<Type>()
+					.ToArray();
+			}
+
+			foreach (Type type in types)
+			{
+				if (type.IsClass
+					&& !type.IsAbstract
+					&& !type.ContainsGenericParameters
+					&& abstractModelType.IsAssignableFrom(type))
+				{
+					yield return type;
+				}
+			}
+		}
+	}
+
+	internal static void EnsureConfigurablePlayerRuneIdEntryAvailable(
+		Type runeType,
+		IEnumerable<Type> existingRuneTypes,
+		Func<Type, ModelId> getModelId)
+	{
+		Type[] candidateTypes = existingRuneTypes
+			.Where(type => !HextechModelTypeIdentity.IsSame(type, runeType))
+			.Append(runeType)
+			.ToArray();
+		EnsureUniqueModelIds(candidateTypes, getModelId);
+
+		ModelId incomingId = getModelId(runeType);
+		ModelId? conflictingId = candidateTypes
+			.Where(type => !HextechModelTypeIdentity.IsSame(type, runeType))
+			.Select(getModelId)
+			.FirstOrDefault(id =>
+				string.Equals(id.Entry, incomingId.Entry, StringComparison.Ordinal)
+				&& !string.Equals(id.Category, incomingId.Category, StringComparison.Ordinal));
+		if (conflictingId != null)
+		{
+			throw new InvalidOperationException(
+				$"Configurable player rune ModelIds must have unique Entry values because the existing configuration format stores Entry only: {conflictingId}, {incomingId}");
+		}
+	}
+
+	internal static void EnsureUniqueModelIds(
+		IEnumerable<Type> modelTypes,
+		Func<Type, ModelId> getModelId)
+	{
+		Dictionary<ModelId, Type> typesById = new();
+		foreach (Type modelType in HextechModelTypeIdentity.Distinct(modelTypes))
+		{
+			ModelId id = getModelId(modelType);
+			if (typesById.TryGetValue(id, out Type? existingType)
+				&& !HextechModelTypeIdentity.IsSame(existingType, modelType))
+			{
+				throw new InvalidOperationException(
+					$"Different model types cannot share the same ModelId: "
+					+ $"{existingType.FullName} and {modelType.FullName} both resolve to {id}.");
+			}
+
+			typesById[id] = modelType;
+		}
+	}
+
+	internal static void EnsureModelIdAvailable(
+		Type modelType,
+		IEnumerable<Type> existingModelTypes,
+		Func<Type, ModelId> getModelId)
+	{
+		ModelId incomingId = getModelId(modelType);
+		Type? conflictingType = HextechModelTypeIdentity
+			.Distinct(existingModelTypes)
+			.FirstOrDefault(existingType =>
+				!HextechModelTypeIdentity.IsSame(existingType, modelType)
+				&& getModelId(existingType) == incomingId);
+		if (conflictingType != null)
+		{
+			throw new InvalidOperationException(
+				$"Different model types cannot share the same ModelId: "
+				+ $"{conflictingType.FullName} and {modelType.FullName} both resolve to {incomingId}.");
+		}
 	}
 
 	public static IReadOnlySet<ModelId> GetDefaultDisabledPlayerRuneIds()

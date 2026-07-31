@@ -16,9 +16,9 @@ internal sealed class VitalitySurgeEnemyHex : HextechEnemyHexEffect
 		return ResolveMultiplier(target.MaxHp, context.ScalingPlayerCount);
 	}
 
-	internal override decimal ModifyEnemyHealAmount(HextechEnemyHexContext context, Creature creature, decimal amount)
+	internal override decimal ModifyEnemyHealMultiplicative(HextechEnemyHexContext context, Creature creature, decimal amount)
 	{
-		return amount * ResolveMultiplier(creature.MaxHp, context.ScalingPlayerCount);
+		return ResolveMultiplier(creature.MaxHp, context.ScalingPlayerCount);
 	}
 
 	internal static decimal ResolveMultiplier(decimal maxHp, int playerCount = 1)

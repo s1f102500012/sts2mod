@@ -81,7 +81,7 @@ internal static class HextechModelPoolRegistrar
 		CleanupDuplicatePoolRegistrations(poolType, modelTypes);
 	}
 
-	private static bool IsModelAlreadyQueuedForPool(Type poolType, Type modelType)
+	internal static bool IsModelAlreadyQueuedForPool(Type poolType, Type modelType)
 	{
 		try
 		{
@@ -110,14 +110,7 @@ internal static class HextechModelPoolRegistrar
 
 	private static bool ShouldUseMobileFirstModelRegistrationWorkaround()
 	{
-		try
-		{
-			return OperatingSystem.IsAndroid();
-		}
-		catch
-		{
-			return false;
-		}
+		return HextechRuntimeRuneCompatibility.IsAndroidRuntime;
 	}
 
 	private static bool IsMobileFirstModelWorkaroundDuplicate(Type poolType, Type modelType)

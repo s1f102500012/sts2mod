@@ -1,6 +1,6 @@
 namespace HextechRunes;
 
-internal sealed class MadScientistEnemyHex : HextechEnemyHexEffect
+internal sealed class MadScientistEnemyHex : HextechEnemyHexEffect, IHextechEnemyMaxHpCoefficientProvider
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.MadScientist;
 
@@ -14,18 +14,12 @@ internal sealed class MadScientistEnemyHex : HextechEnemyHexEffect
 			return;
 		}
 
-		decimal maxHpLossPercent = context.TierValue(Kind, 0.30m, 0.15m, 0.00m);
-		if (maxHpLossPercent <= 0m)
-		{
-			return;
-		}
+		await context.Modifier.ReapplyMonsterMaxHpCoefficients(creature, maxHpBaseOverride);
+	}
 
-		int maxHpLoss = Math.Max(1, (int)Math.Floor(creature.MaxHp * maxHpLossPercent));
-		int newMaxHp = Math.Max(1, creature.MaxHp - maxHpLoss);
-		if (newMaxHp < creature.MaxHp)
-		{
-			await CreatureCmdCompat.SetMaxHp(creature, newMaxHp);
-		}
+	public decimal GetMaxHpBonusFraction(HextechEnemyHexContext context, Creature creature)
+	{
+		return -context.TierValue(Kind, 0.30m, 0.15m, 0.00m);
 	}
 
 	internal override async Task AfterEnemyDamageReceived(HextechEnemyHexContext context, Creature target, uint combatId, DamageResult result, Creature? dealer, CardModel? cardSource)

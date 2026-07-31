@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
+using MegaCrit.Sts2.Core.Models.Exceptions;
 
 namespace HextechRunes;
 
@@ -31,7 +32,7 @@ internal static class HextechKnifeHelper
 		{
 			owner = card.Owner;
 		}
-		catch
+		catch (CanonicalModelException)
 		{
 			return false;
 		}
@@ -53,7 +54,7 @@ internal static class HextechKnifeHelper
 		{
 			owner = card.Owner;
 		}
-		catch
+		catch (CanonicalModelException)
 		{
 			return false;
 		}

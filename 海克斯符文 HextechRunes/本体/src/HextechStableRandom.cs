@@ -1,3 +1,5 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+
 namespace HextechRunes;
 
 internal static class HextechStableRandom
@@ -167,15 +169,26 @@ internal static class HextechStableRandom
 			return "none";
 		}
 
+		string ownerKey;
+		try
+		{
+			Player? owner = card.Owner;
+			ownerKey = owner == null ? "owner:none" : PlayerKey(owner);
+		}
+		catch (CanonicalModelException)
+		{
+			ownerKey = "owner:canonical";
+		}
+
 		return string.Join(":",
 			CardKey(card),
-			card.Owner == null ? "owner:none" : PlayerKey(card.Owner),
+			ownerKey,
 			"play",
-			GetSafeInt(() => card.CurrentPlayIndex).ToString(),
+			card.CurrentPlayIndex.ToString(),
 			"target",
-			GetSafeCreatureKey(() => card.CurrentTarget),
+			card.CurrentTarget?.CombatId?.ToString() ?? "none",
 			"pile",
-			GetSafePileKey(card));
+			GetPileKey(card));
 	}
 
 	public static string TypeModelKey(Type type)
@@ -226,58 +239,26 @@ internal static class HextechStableRandom
 		return result;
 	}
 
-	private static int GetSafeInt(Func<int> valueFactory)
+	private static string GetPileKey(CardModel card)
 	{
-		try
-		{
-			return valueFactory();
-		}
-		catch (InvalidOperationException)
-		{
-			return -1;
-		}
-	}
-
-	private static string GetSafeCreatureKey(Func<Creature?> valueFactory)
-	{
-		try
-		{
-			Creature? creature = valueFactory();
-			return creature?.CombatId?.ToString() ?? "none";
-		}
-		catch (InvalidOperationException)
+		CardPile? pile = card.Pile;
+		if (pile == null)
 		{
 			return "none";
 		}
-	}
 
-	private static string GetSafePileKey(CardModel card)
-	{
-		try
+		IReadOnlyList<CardModel> cards = pile.Cards;
+		int index = -1;
+		for (int i = 0; i < cards.Count; i++)
 		{
-			CardPile? pile = card.Pile;
-			if (pile == null)
+			if (ReferenceEquals(cards[i], card))
 			{
-				return "none";
+				index = i;
+				break;
 			}
-
-			IReadOnlyList<CardModel> cards = pile.Cards;
-			int index = -1;
-			for (int i = 0; i < cards.Count; i++)
-			{
-				if (ReferenceEquals(cards[i], card))
-				{
-					index = i;
-					break;
-				}
-			}
-
-			return $"{pile.Type}:{index}";
 		}
-		catch (InvalidOperationException)
-		{
-			return "none";
-		}
+
+		return $"{pile.Type}:{index}";
 	}
 
 	private static void Add(ref ulong hash, string? value)

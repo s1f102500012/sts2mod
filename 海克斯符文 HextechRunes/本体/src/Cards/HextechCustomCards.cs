@@ -1,20 +1,10 @@
-using MegaCrit.Sts2.Core.Models.CardPools;
-
 namespace HextechRunes;
 
-public sealed class ElicitCard : CardModel
+public sealed class ElicitCard : HextechOwnerPoolTokenCard
 {
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
 	public override OrbEvokeType OrbEvokeType => OrbEvokeType.All;
 
 	public override string PortraitPath => HextechAssets.ElicitCardPortraitPath;
-
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
 
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
 	[
@@ -47,17 +37,9 @@ public sealed class ElicitCard : CardModel
 	}
 }
 
-public sealed class TrickMagicCard : CardModel
+public sealed class TrickMagicCard : HextechOwnerPoolTokenCard
 {
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
 	public override string PortraitPath => HextechAssets.TrickMagicCardPortraitPath;
-
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
 
 	public override IEnumerable<CardKeyword> CanonicalKeywords =>
 	[
@@ -95,17 +77,9 @@ public sealed class TrickMagicCard : CardModel
 	}
 }
 
-public sealed class CatalystCard : CardModel
+public sealed class CatalystCard : HextechOwnerPoolTokenCard
 {
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
 	public override string PortraitPath => HextechAssets.CatalystCardPortraitPath;
-
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
 
 	public override IEnumerable<CardKeyword> CanonicalKeywords =>
 	[

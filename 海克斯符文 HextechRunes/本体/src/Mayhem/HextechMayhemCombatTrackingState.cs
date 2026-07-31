@@ -47,6 +47,8 @@ internal sealed partial class HextechMayhemCombatTrackingState
 	public readonly HashSet<uint> GoldenSpatulaApplied = new();
 	public readonly HashSet<uint> DoormakerRealStartApplied = new();
 	public readonly Dictionary<uint, int> TestSubjectPhaseStartApplied = new();
+	public readonly Dictionary<uint, int> MonsterMaxHpCoefficientBase = new();
+	public readonly Dictionary<uint, int> MonsterMaxHpCoefficientProjected = new();
 	public readonly Dictionary<uint, int> TankEngineStacks = new();
 	public readonly Dictionary<uint, int> TankEngineLastAppliedRound = new();
 	public readonly Dictionary<uint, int> ShrinkEngineStacks = new();
@@ -71,6 +73,10 @@ internal sealed partial class HextechMayhemCombatTrackingState
 	public readonly HashSet<ulong> EightPennyGatePlayersTriggeredThisTurn = new();
 	[CombatTrackingClear(CombatTrackingClearPhase.PlayerTurnStart)]
 	public readonly HashSet<ulong> EightPennyGatePlayersTriggeredSecondThisTurn = new();
+	[CombatTrackingClear(CombatTrackingClearPhase.PlayerTurnStart)]
+	public readonly Dictionary<ulong, int> InspectExtraDrawsPreventedThisTurn = new();
+	[CombatTrackingClear(CombatTrackingClearPhase.PlayerTurnStart)]
+	public readonly HashSet<ulong> GripPlayersTriggeredThisTurn = new();
 	[CombatTrackingClear(CombatTrackingClearPhase.PlayerTurnStart | CombatTrackingClearPhase.PlayerTurnEnd)]
 	public int ArcanePunchPlayerAttackCardsPlayed;
 	[CombatTrackingClear(CombatTrackingClearPhase.PlayerTurnStart)]

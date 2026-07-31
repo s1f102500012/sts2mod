@@ -7,11 +7,6 @@ internal static class HextechMapLengthReducer
 	private static readonly System.Reflection.MethodInfo? SetSpoilsCoordMethod =
 		typeof(SpoilsMap).GetProperty(nameof(SpoilsMap.SpoilsCoord))?.GetSetMethod(nonPublic: true);
 
-	internal static ActMap ReduceNodeLengthByOne(IRunState runState, ActMap map, MapCoord? currentCoord)
-	{
-		return ReduceNodeLength(runState, map, currentCoord, rowsToRemove: 1);
-	}
-
 	internal static ActMap ReduceNodeLength(IRunState runState, ActMap map, MapCoord? currentCoord, int rowsToRemove)
 	{
 		if (rowsToRemove <= 0 || IsSpecialMap(map))

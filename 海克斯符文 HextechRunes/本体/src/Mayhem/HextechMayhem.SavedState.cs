@@ -120,6 +120,13 @@ internal sealed partial class HextechMayhemModifier
 	}
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public string SavedRuneSelectionJournalJson
+	{
+		get => _runContext.RuneSelectionJournal.Serialize();
+		set => _runContext.RuneSelectionJournal.Restore(value);
+	}
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int SavedHexCountRecoveryBaseline
 	{
 		get => _hexCountRecoveryBaseline;

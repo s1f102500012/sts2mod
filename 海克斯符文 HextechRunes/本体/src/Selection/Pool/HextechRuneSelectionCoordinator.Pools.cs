@@ -1,5 +1,3 @@
-using MegaCrit.Sts2.Core.Saves;
-
 namespace HextechRunes;
 
 internal static partial class HextechRuneSelectionCoordinator
@@ -102,13 +100,6 @@ internal static partial class HextechRuneSelectionCoordinator
 		}
 	}
 
-	private static RelicModel? CreateMonsterHexRelic(MonsterHexKind? monsterHex)
-	{
-		return monsterHex.HasValue
-			? MonsterHexCatalog.GetIconRelicForMonsterHex(monsterHex.Value).ToMutable()
-			: null;
-	}
-
 	private static MonsterHexKind? FirstMonsterHexOrNull(IEnumerable<MonsterHexKind>? monsterHexes)
 	{
 		if (monsterHexes == null)
@@ -122,13 +113,6 @@ internal static partial class HextechRuneSelectionCoordinator
 		}
 
 		return null;
-	}
-
-	private static MonsterHexKind? GetMonsterHexSlot(IReadOnlyList<MonsterHexKind?> monsterHexes, int slotIndex)
-	{
-		return slotIndex >= 0 && slotIndex < monsterHexes.Count
-			? monsterHexes[slotIndex]
-			: null;
 	}
 
 	private static HashSet<ModelId> CreateEnemyHexRerollExcludedIds(IEnumerable<RelicModel> options)
@@ -150,14 +134,6 @@ internal static partial class HextechRuneSelectionCoordinator
 		}
 
 		return excludedIds;
-	}
-
-	private static void MarkRelicsSeen(IEnumerable<RelicModel> relics)
-	{
-		foreach (RelicModel relic in relics)
-		{
-			SaveManager.Instance.MarkRelicAsSeen(relic);
-		}
 	}
 
 	private static HextechRarityTier GetRarityForOptions(IReadOnlyList<RelicModel> relics)

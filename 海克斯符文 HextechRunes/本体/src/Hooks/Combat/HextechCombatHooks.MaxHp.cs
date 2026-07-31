@@ -5,7 +5,7 @@ internal static partial class HextechCombatHooks
 	private static bool GainMaxHpPrefix(Creature creature, ref decimal amount, ref Task __result, out bool __state)
 	{
 		__state = false;
-		if (_handlingGoliathMaxHp
+		if (GoliathMaxHpGuard.IsActive
 			|| creature.Player is not Player player
 			|| HextechMaxHpScaling.GetPrimary(player) is not IHextechMaxHpBaseHolder primary)
 		{
@@ -23,7 +23,7 @@ internal static partial class HextechCombatHooks
 			return false;
 		}
 
-		_handlingGoliathMaxHp = true;
+		GoliathMaxHpGuard.Enter();
 		__state = true;
 		amount = delta;
 		return true;
@@ -32,7 +32,7 @@ internal static partial class HextechCombatHooks
 	private static bool LoseMaxHpPrefix(Creature creature, ref decimal amount, ref Task __result, out bool __state)
 	{
 		__state = false;
-		if (_handlingGoliathMaxHp
+		if (GoliathMaxHpGuard.IsActive
 			|| creature.Player is not Player player
 			|| HextechMaxHpScaling.GetPrimary(player) is not IHextechMaxHpBaseHolder primary)
 		{
@@ -50,7 +50,7 @@ internal static partial class HextechCombatHooks
 			return false;
 		}
 
-		_handlingGoliathMaxHp = true;
+		GoliathMaxHpGuard.Enter();
 		__state = true;
 		amount = loss;
 		return true;
@@ -59,7 +59,7 @@ internal static partial class HextechCombatHooks
 	private static bool SetMaxHpPrefix(Creature creature, ref decimal amount, out bool __state)
 	{
 		__state = false;
-		if (_handlingGoliathMaxHp
+		if (GoliathMaxHpGuard.IsActive
 			|| creature.Player is not Player player
 			|| HextechMaxHpScaling.GetPrimary(player) is not IHextechMaxHpBaseHolder primary)
 		{
@@ -67,7 +67,7 @@ internal static partial class HextechCombatHooks
 		}
 
 		primary.BaseMaxHp = (int)Math.Max(1m, amount);
-		_handlingGoliathMaxHp = true;
+		GoliathMaxHpGuard.Enter();
 		__state = true;
 		amount = HextechMaxHpScaling.GetScaledMaxHp(player, primary);
 		return true;
@@ -75,21 +75,33 @@ internal static partial class HextechCombatHooks
 
 	private static void ResetGoliathTaskPostfix(Creature creature, bool __state, ref Task __result)
 	{
+		if (__state)
+		{
+			__result = GoliathMaxHpGuard.WrapEnteredTask(__result);
+		}
+
 		if (__state || creature.Player?.GetRelic<NearDeathFeastRune>() != null)
 		{
-			__result = CompleteWithMaxHpPostfix(__result, __state, creature);
+			__result = CompleteWithMaxHpPostfix(__result, creature);
 		}
 	}
 
 	private static void ResetGoliathDecimalTaskPostfix(Creature creature, bool __state, ref Task<decimal> __result)
 	{
+		Task<decimal> original = __result;
+		Task? guarded = null;
+		if (__state)
+		{
+			guarded = GoliathMaxHpGuard.WrapEnteredTask(original);
+		}
+
 		if (__state || creature.Player?.GetRelic<NearDeathFeastRune>() != null)
 		{
-			__result = CompleteWithMaxHpPostfix(__result, __state, creature);
+			__result = CompleteWithMaxHpPostfix(original, guarded, creature);
 		}
 	}
 
-	private static async Task CompleteWithMaxHpPostfix(Task task, bool resetGoliath, Creature creature)
+	private static async Task CompleteWithMaxHpPostfix(Task task, Creature creature)
 	{
 		try
 		{
@@ -97,26 +109,24 @@ internal static partial class HextechCombatHooks
 		}
 		finally
 		{
-			if (resetGoliath)
-			{
-				_handlingGoliathMaxHp = false;
-			}
 			creature.Player?.GetRelic<NearDeathFeastRune>()?.RefreshDeathLimitDisplay();
 		}
 	}
 
-	private static async Task<decimal> CompleteWithMaxHpPostfix(Task<decimal> task, bool resetGoliath, Creature creature)
+	private static async Task<decimal> CompleteWithMaxHpPostfix(Task<decimal> task, Task? guarded, Creature creature)
 	{
 		try
 		{
+			if (guarded != null)
+			{
+				await guarded;
+				return task.GetAwaiter().GetResult();
+			}
+
 			return await task;
 		}
 		finally
 		{
-			if (resetGoliath)
-			{
-				_handlingGoliathMaxHp = false;
-			}
 			creature.Player?.GetRelic<NearDeathFeastRune>()?.RefreshDeathLimitDisplay();
 		}
 	}

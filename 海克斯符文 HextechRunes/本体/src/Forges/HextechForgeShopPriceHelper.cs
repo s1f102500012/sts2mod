@@ -12,9 +12,14 @@ internal static class HextechForgeShopPriceHelper
 				return price;
 			}
 		}
-		catch
+		catch (InvalidOperationException ex)
 		{
-			// Fall back to persisted local configuration outside an initialized run.
+			if (HextechRunLogBudget.TryConsume("forge.shop-price-config-fallback", 3))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][Forge] Could not read synchronized random forge shop price; "
+					+ $"using local configuration fallback: {ex.GetType().Name}: {ex.Message}");
+			}
 		}
 
 		return HextechRuneConfiguration.GetSnapshot().RandomForgeShopPrice;

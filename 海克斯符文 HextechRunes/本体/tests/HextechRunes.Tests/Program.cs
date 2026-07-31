@@ -1,11 +1,17 @@
+using System.Collections;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using HarmonyLib;
 using HextechRunes;
+using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Commands.Builders;
+using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.Relics;
+using MegaCrit.Sts2.Core.Factories;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.Models;
@@ -14,6 +20,7 @@ using MegaCrit.Sts2.Core.Models.Orbs;
 using MegaCrit.Sts2.Core.Models.Powers;
 using MegaCrit.Sts2.Core.Models.Relics;
 using MegaCrit.Sts2.Core.MonsterMoves.Intents;
+using MegaCrit.Sts2.Core.Runs;
 using MegaCrit.Sts2.Core.Saves.Runs;
 using MegaCrit.Sts2.Core.ValueProps;
 using System.Text.Json;
@@ -27,7 +34,9 @@ internal static partial class Program
 	private const int ChoiceKindRuneSelection = 2;
 	private const int ChoiceKindActSelectionApplied = 3;
 	private const int ChoiceKindEnemyHexAdjustment = 4;
+	private const int ChoiceKindForgeSelection = 5;
 	private const int ChoiceKindRandomRuneGrant = 6;
+	private const int ChoiceKindRelicOptionSelection = 7;
 	private const int EnemyHexAdjustmentListVersion = -2;
 	private const int StableModelIdListVersion = -3;
 
@@ -61,22 +70,48 @@ internal static partial class Program
 			new(nameof(ActSelectionAppliedRejectsWrongActOrOrdinal), ActSelectionAppliedRejectsWrongActOrOrdinal),
 			new(nameof(EnemyHexAdjustmentRoundTripKeepsAllSlots), EnemyHexAdjustmentRoundTripKeepsAllSlots),
 			new(nameof(EnemyHexAdjustmentRejectsInvalidHex), EnemyHexAdjustmentRejectsInvalidHex),
-			new(nameof(LegacyEnemyHexAdjustmentStillDecodes), LegacyEnemyHexAdjustmentStillDecodes),
+			new(nameof(EnemyHexAdjustmentRejectsUnexpectedSequence), EnemyHexAdjustmentRejectsUnexpectedSequence),
+			new(nameof(EnemyHexAdjustmentRejectsExtremeCounts), EnemyHexAdjustmentRejectsExtremeCounts),
+			new(nameof(LegacyEnemyHexAdjustmentIsRejected), LegacyEnemyHexAdjustmentIsRejected),
 			new(nameof(RandomRuneGrantRoundTripKeepsStableModelIds), RandomRuneGrantRoundTripKeepsStableModelIds),
 			new(nameof(RandomRuneGrantRejectsMalformedStableModelIdList), RandomRuneGrantRejectsMalformedStableModelIdList),
 			new(nameof(RelicOptionSelectionRoundTripRequiresMatchingOptions), RelicOptionSelectionRoundTripRequiresMatchingOptions),
+			new(nameof(OperationTokensRejectCrossedPayloads), OperationTokensRejectCrossedPayloads),
 			new(nameof(StableModelIdListCodecRoundTripsFromNonzeroCursor), StableModelIdListCodecRoundTripsFromNonzeroCursor),
 			new(nameof(StableModelIdListCodecRejectsMalformedLength), StableModelIdListCodecRejectsMalformedLength),
+			new(nameof(StableModelIdListCodecRejectsEncoderOverflow), StableModelIdListCodecRejectsEncoderOverflow),
 			new(nameof(PlayerRuneRarityConfigExcludesFullyDisabledTier), PlayerRuneRarityConfigExcludesFullyDisabledTier),
 			new(nameof(PlayerRuneRarityConfigFallsBackWhenAllTiersDisabled), PlayerRuneRarityConfigFallsBackWhenAllTiersDisabled),
 			new(nameof(RarityRollResolverFiltersWeightedRarities), RarityRollResolverFiltersWeightedRarities),
 			new(nameof(RarityRollResolverUsesOrderedUniformFallback), RarityRollResolverUsesOrderedUniformFallback),
+			new(nameof(GoldenRerollOnlyUpgradesSilverAndGold), GoldenRerollOnlyUpgradesSilverAndGold),
+			new(nameof(GoldenRerollUsesExactFivePercentWindow), GoldenRerollUsesExactFivePercentWindow),
+			new(nameof(GoldenRerollSeparatesPlayersAndKeepsConsoleLocal), GoldenRerollSeparatesPlayersAndKeepsConsoleLocal),
+			new(nameof(GoldenRerollDebugForceIsOneShot), GoldenRerollDebugForceIsOneShot),
+			new(nameof(GoldenRerollVisualKeepsAnimatingWhileOverlayIsPaused), GoldenRerollVisualKeepsAnimatingWhileOverlayIsPaused),
+			new(nameof(GoldenRerollCardThemeFollowsRerolledRuneRarity), GoldenRerollCardThemeFollowsRerolledRuneRarity),
 			new(nameof(WeightedIndexBoundarySelection), WeightedIndexBoundarySelection),
 			new(nameof(RuneSelectionCandidateConstraintsReserveCharacterAndLimitUpgrades), RuneSelectionCandidateConstraintsReserveCharacterAndLimitUpgrades),
 			new(nameof(UnconfirmedRuneSelectionCancelsInsteadOfDefaultingToFirstOption), UnconfirmedRuneSelectionCancelsInsteadOfDefaultingToFirstOption),
 			new(nameof(DestructivePickupRunesAreExcludedFromRandomRewards), DestructivePickupRunesAreExcludedFromRandomRewards),
+			new(nameof(StarterUpgradeCapsTerminateExternalUpgradeToMaxLoops), StarterUpgradeCapsTerminateExternalUpgradeToMaxLoops),
 			new(nameof(SearingAttackRuneGrantsUpgradedCard), SearingAttackRuneGrantsUpgradedCard),
 			new(nameof(CreativeAiUpgradeRuneUpgradesGeneratedPowerCards), CreativeAiUpgradeRuneUpgradesGeneratedPowerCards),
+			new(nameof(SubroutineUpgradeCombatMoveGateResetsAcrossCombats), SubroutineUpgradeCombatMoveGateResetsAcrossCombats),
+			new(nameof(PactsEndUpgradeDamageScalesWithExhaustPile), PactsEndUpgradeDamageScalesWithExhaustPile),
+			new(nameof(BrandUpgradeDamageScalesWithPermanentPlayCount), BrandUpgradeDamageScalesWithPermanentPlayCount),
+			new(nameof(BigHammerForgeBonusAvoidsHammerTimeDoubleScaling), BigHammerForgeBonusAvoidsHammerTimeDoubleScaling),
+			new(nameof(SpinToWinRecognizesSupportedDelayedResources), SpinToWinRecognizesSupportedDelayedResources),
+			new(nameof(NewCardUpgradeRunesUseExpectedTriggerRules), NewCardUpgradeRunesUseExpectedTriggerRules),
+			new(nameof(PlayerSustainRunesUseExpectedMaxHpRules), PlayerSustainRunesUseExpectedMaxHpRules),
+			new(nameof(NewRuneHookTargetsMatchSupportedGameApis), NewRuneHookTargetsMatchSupportedGameApis),
+			new(nameof(FormVfxSafetySkipsMissingHolder), FormVfxSafetySkipsMissingHolder),
+			new(nameof(FormAutoPlayBatchDispatchesOneCardPlayEvent), FormAutoPlayBatchDispatchesOneCardPlayEvent),
+			new(nameof(FormAutoPlayBatchOffsetsCardsBeforeTheyEnterPlay), FormAutoPlayBatchOffsetsCardsBeforeTheyEnterPlay),
+			new(nameof(FormAutoPlayBatchUsesOnePreparedFinalEffect), FormAutoPlayBatchUsesOnePreparedFinalEffect),
+			new(nameof(FormAutoPlayBatchCombinesOnlyEffectNeutralEnchantments), FormAutoPlayBatchCombinesOnlyEffectNeutralEnchantments),
+			new(nameof(DrawYourSwordUsesEnemyTurnStartOrbCleanup), DrawYourSwordUsesEnemyTurnStartOrbCleanup),
+			new(nameof(EnemyOmniDragonSoulUsesPlayerTurnStart), EnemyOmniDragonSoulUsesPlayerTurnStart),
 			new(nameof(FortuneForgeRewardScalesByStacks), FortuneForgeRewardScalesByStacks),
 			new(nameof(PrismaticEggIsExcludedFromThirdAct), PrismaticEggIsExcludedFromThirdAct),
 			new(nameof(MirrorReflectionCopiesCursesButNotBasicCards), MirrorReflectionCopiesCursesButNotBasicCards),
@@ -86,9 +121,18 @@ internal static partial class Program
 			new(nameof(MyriadSwordsUsesShuffleTriggerInsteadOfTurnEnd), MyriadSwordsUsesShuffleTriggerInsteadOfTurnEnd),
 			new(nameof(SovereignBladeVfxSyncUsesVanillaForgeScale), SovereignBladeVfxSyncUsesVanillaForgeScale),
 			new(nameof(SlowCookVfxUsesDedicatedPressureCookerTextures), SlowCookVfxUsesDedicatedPressureCookerTextures),
+			new(nameof(AssetResolverPrefersRawTextureBeforePackedResource), AssetResolverPrefersRawTextureBeforePackedResource),
+			new(nameof(AssetResolverRecognizesRawImagePaths), AssetResolverRecognizesRawImagePaths),
+			new(nameof(AssetResolverRejectsInvalidTextureObjects), AssetResolverRejectsInvalidTextureObjects),
+			new(nameof(AssetResolverPropagatesLoaderExceptionsWithoutCachingDirtyEntries), AssetResolverPropagatesLoaderExceptionsWithoutCachingDirtyEntries),
+			new(nameof(AssetResolverRawOnlyMissReturnsNullWithoutCaching), AssetResolverRawOnlyMissReturnsNullWithoutCaching),
 			new(nameof(CoefficientRunesStackAdditivelyWithinTheirOwnSector), CoefficientRunesStackAdditivelyWithinTheirOwnSector),
 			new(nameof(CoefficientForgesShareOneAdditiveSector), CoefficientForgesShareOneAdditiveSector),
 			new(nameof(MaxHpCoefficientSectorsMultiply), MaxHpCoefficientSectorsMultiply),
+			new(nameof(EnemyCoefficientAddsWithinHexAndMultipliesAcrossHexes), EnemyCoefficientAddsWithinHexAndMultipliesAcrossHexes),
+			new(nameof(EnemyMaxHpCoefficientSectorsUseBaseHp), EnemyMaxHpCoefficientSectorsUseBaseHp),
+			new(nameof(EnemyMaxHpLegacyMigrationRecoversMixedSinglePlayerEffects), EnemyMaxHpLegacyMigrationRecoversMixedSinglePlayerEffects),
+			new(nameof(EnemyMaxHpLegacyMigrationPreservesMultiplayerScaling), EnemyMaxHpLegacyMigrationPreservesMultiplayerScaling),
 			new(nameof(NightmareHooksEveryDarkOrbPassiveTrigger), NightmareHooksEveryDarkOrbPassiveTrigger),
 			new(nameof(NightmareEffectRunsOnceAfterEachPassiveTask), NightmareEffectRunsOnceAfterEachPassiveTask),
 			new(nameof(DiceManiacForgeRarityModifierKeepsDefaultWeightsWithoutRune), DiceManiacForgeRarityModifierKeepsDefaultWeightsWithoutRune),
@@ -96,6 +140,7 @@ internal static partial class Program
 			new(nameof(StableRandomPlayerIdentityUsesNetIdBeforeLocalSlot), StableRandomPlayerIdentityUsesNetIdBeforeLocalSlot),
 			new(nameof(StableRandomSequentialFloorsAvoidExcessClustering), StableRandomSequentialFloorsAvoidExcessClustering),
 			new(nameof(StableRandomPowerOfTwoIndexesAvoidTerminalCounterCycle), StableRandomPowerOfTwoIndexesAvoidTerminalCounterCycle),
+			new(nameof(ColorDiscoveryCandidateOrderIsPermutationInvariant), ColorDiscoveryCandidateOrderIsPermutationInvariant),
 			new(nameof(RandomForgeShopRelicUpdatesDisplayedPrice), RandomForgeShopRelicUpdatesDisplayedPrice),
 			new(nameof(ActSelectionGatePreventsReentryAndClearsCurrentRun), ActSelectionGatePreventsReentryAndClearsCurrentRun),
 			new(nameof(ActSelectionGateClearsStaleRun), ActSelectionGateClearsStaleRun),
@@ -110,23 +155,32 @@ internal static partial class Program
 				new(nameof(NetworkChoiceTimeoutUsesNominalWallClockSeconds), NetworkChoiceTimeoutUsesNominalWallClockSeconds),
 				new(nameof(CombatTrackingPerTurnProcLimitsResetOncePerRound), CombatTrackingPerTurnProcLimitsResetOncePerRound),
 				new(nameof(MindOverMatterFirstDrawTrackingResetsPerPlayerTurn), MindOverMatterFirstDrawTrackingResetsPerPlayerTurn),
+				new(nameof(HungryExhaustsZeroOneOrTwoCardsByTier), HungryExhaustsZeroOneOrTwoCardsByTier),
+				new(nameof(InspectBlocksOnlyTheConfiguredExtraDrawTriggers), InspectBlocksOnlyTheConfiguredExtraDrawTriggers),
+				new(nameof(GripConsumesOnlyTheFirstManualCardTrigger), GripConsumesOnlyTheFirstManualCardTrigger),
+				new(nameof(HungryInspectAndGripShareEightPennyGateTexture), HungryInspectAndGripShareEightPennyGateTexture),
 				new(nameof(CombatTrackingGlobalProcOrdinalsSerializeAndReset), CombatTrackingGlobalProcOrdinalsSerializeAndReset),
 				new(nameof(CombatTrackingPlayerRuneProcOrdinalPeekDoesNotConsume), CombatTrackingPlayerRuneProcOrdinalPeekDoesNotConsume),
 			new(nameof(CombatTrackingSerializationIsCultureInvariant), CombatTrackingSerializationIsCultureInvariant),
 			new(nameof(SavedPropertyManifestMatchesCheckedInList), SavedPropertyManifestMatchesCheckedInList),
+			new(nameof(SavedPropertyPreInitRegistrationLeavesWireTablesUntouched), SavedPropertyPreInitRegistrationLeavesWireTablesUntouched),
+			new(nameof(SavedPropertyLateCarrierRegistrationFailsClosed), SavedPropertyLateCarrierRegistrationFailsClosed),
+			new(nameof(SavedPropertySameNameCarrierStillRequiresPerTypeCache), SavedPropertySameNameCarrierStillRequiresPerTypeCache),
+			new(nameof(SavedPropertyLateExternalRegistrationLeavesNoPartialState), SavedPropertyLateExternalRegistrationLeavesNoPartialState),
 			new(nameof(ConfigMigrationForceResetsBelowV15), ConfigMigrationForceResetsBelowV15),
 			new(nameof(ConfigMigrationV15BaselineReachesCurrentDefault), ConfigMigrationV15BaselineReachesCurrentDefault),
 			new(nameof(ConfigMigrationV25AddsNewDefaultDisables), ConfigMigrationV25AddsNewDefaultDisables),
 			new(nameof(ConfigMigrationCurrentVersionPreservesCustomDisabledIds), ConfigMigrationCurrentVersionPreservesCustomDisabledIds),
-				new(nameof(MayhemRunContextResetForNewRunClearsState), MayhemRunContextResetForNewRunClearsState),
+			new(nameof(MayhemRunContextResetForNewRunClearsState), MayhemRunContextResetForNewRunClearsState),
+			new(nameof(RuneSelectionJournalRoundTripsInStableOrder), RuneSelectionJournalRoundTripsInStableOrder),
+			new(nameof(RuneSelectionJournalRejectsConflictingSelections), RuneSelectionJournalRejectsConflictingSelections),
+			new(nameof(AppliedRuneSelectionJournalDoesNotRequireInventoryPresence), AppliedRuneSelectionJournalDoesNotRequireInventoryPresence),
 			new(nameof(MayhemRunContextResetForEndlessLoopCarriesActiveMonsterHex), MayhemRunContextResetForEndlessLoopCarriesActiveMonsterHex),
 			new(nameof(MayhemRunContextDebugResetSetsOnlyRequestedMonsterHex), MayhemRunContextDebugResetSetsOnlyRequestedMonsterHex),
 			new(nameof(PlayerRuneMetadataHasUniqueTypes), PlayerRuneMetadataHasUniqueTypes),
 			new(nameof(PlayerRuneMetadataMatchesContentRegistrySlices), PlayerRuneMetadataMatchesContentRegistrySlices),
 			new(nameof(PlayerRuneMetadataPreservesCharacterOrder), PlayerRuneMetadataPreservesCharacterOrder),
 			new(nameof(PlayerRuneMetadataClassifiesConfigStates), PlayerRuneMetadataClassifiesConfigStates),
-			new(nameof(WellLaidPlansUpgradeRuneIsRetiredButSaveCompatible), WellLaidPlansUpgradeRuneIsRetiredButSaveCompatible),
-			new(nameof(SnailFormRuneIsRetiredButSaveCompatible), SnailFormRuneIsRetiredButSaveCompatible),
 			new(nameof(PlayerRuneMetadataCatalogOutputsMatchCatalogQueries), PlayerRuneMetadataCatalogOutputsMatchCatalogQueries),
 			new(nameof(PlayerRuneMetadataFallbacksAreStable), PlayerRuneMetadataFallbacksAreStable),
 			new(nameof(ForgeMetadataHasUniqueTypes), ForgeMetadataHasUniqueTypes),
@@ -135,6 +189,7 @@ internal static partial class Program
 			new(nameof(MonsterHexMetadataHasUniqueKinds), MonsterHexMetadataHasUniqueKinds),
 			new(nameof(MonsterHexMetadataMatchesContentRegistrySlices), MonsterHexMetadataMatchesContentRegistrySlices),
 			new(nameof(MonsterHexMetadataKeepsDisabledKindsOutOfRarityPools), MonsterHexMetadataKeepsDisabledKindsOutOfRarityPools),
+			new(nameof(EnemyHexHoverTipsUseExpectedPowerModels), EnemyHexHoverTipsUseExpectedPowerModels),
 			new(nameof(EnemyFossilStalkerUsesExpectedSuckTiers), EnemyFossilStalkerUsesExpectedSuckTiers),
 			new(nameof(EnemyTungstenRodReducesEachHpLossByTier), EnemyTungstenRodReducesEachHpLossByTier),
 			new(nameof(EnemySlowHexesUseExpectedBaselinesAndTiers), EnemySlowHexesUseExpectedBaselinesAndTiers),
@@ -156,11 +211,14 @@ internal static partial class Program
 			new(nameof(NextTurnDamageDoesNotRetriggerCompensation), NextTurnDamageDoesNotRetriggerCompensation),
 			new(nameof(EnemyCompensationSkipsOutbreakPoisonResponse), EnemyCompensationSkipsOutbreakPoisonResponse),
 			new(nameof(EnemyCompensationSkipsSleightOfFleshResponse), EnemyCompensationSkipsSleightOfFleshResponse),
+			new(nameof(WatchOutGrapefruitFoodPoolHonorsCharacterAndUniqueRelics), WatchOutGrapefruitFoodPoolHonorsCharacterAndUniqueRelics),
+			new(nameof(UniversalScopeChancesAddBeforeSingleRoll), UniversalScopeChancesAddBeforeSingleRoll),
 			new(nameof(UniversalScopeUpgradeRestorationKeepsCapturedLevels), UniversalScopeUpgradeRestorationKeepsCapturedLevels),
 			new(nameof(ColorlessCardHelperTreatsRegentGeneratedCardsAsColorless), ColorlessCardHelperTreatsRegentGeneratedCardsAsColorless),
 			new(nameof(IllusoryWeaponPenNibPrefixesCanReturnSkippedTask), IllusoryWeaponPenNibPrefixesCanReturnSkippedTask),
 			new(nameof(AttackCommandCompatibilityRestoresNullExecuteResult), AttackCommandCompatibilityRestoresNullExecuteResult),
 			new(nameof(MultiplayerGameplaySignatureExcludesRuntimeSavedProperties), MultiplayerGameplaySignatureExcludesRuntimeSavedProperties),
+			new(nameof(MultiplayerGameplayEntryIncludesReadableProtocolVersion), MultiplayerGameplayEntryIncludesReadableProtocolVersion),
 			new(nameof(SavedPropertyNetIdCanonicalizationIsInjectionOrderIndependent), SavedPropertyNetIdCanonicalizationIsInjectionOrderIndependent),
 			new(nameof(SavedPropertyNetIdBitSizeMatchesGameFormula), SavedPropertyNetIdBitSizeMatchesGameFormula),
 			new(nameof(CompensationReplacementGuardScopesAsyncWork), CompensationReplacementGuardScopesAsyncWork),
@@ -168,6 +226,7 @@ internal static partial class Program
 			new(nameof(EventRewardTransactionCommitsSequentially), EventRewardTransactionCommitsSequentially),
 			new(nameof(EventRewardTransactionRejectsLateRecordsAndSecondCommit), EventRewardTransactionRejectsLateRecordsAndSecondCommit),
 			new(nameof(EventRewardTransactionTryRecordSkipsLateAsyncRewards), EventRewardTransactionTryRecordSkipsLateAsyncRewards),
+			new(nameof(DoubleVisionCopiesWaxStateWithoutCopyingMeltedState), DoubleVisionCopiesWaxStateWithoutCopyingMeltedState),
 			new(nameof(DoubleVisionDustyTomeSinglePlayerCopiesRelicWithoutAncientCardEffect), DoubleVisionDustyTomeSinglePlayerCopiesRelicWithoutAncientCardEffect),
 			new(nameof(DoubleVisionDustyTomeSaveLoadPreservesAncientCard), DoubleVisionDustyTomeSaveLoadPreservesAncientCard),
 			new(nameof(DoubleVisionDustyTomeEventMultiplayerRunsOnEveryPeerWithoutBroadcast), DoubleVisionDustyTomeEventMultiplayerRunsOnEveryPeerWithoutBroadcast),
@@ -176,6 +235,7 @@ internal static partial class Program
 			new(nameof(MonsterHexRollerResolveNewHexesPreservesPrimaryAndAvoidsDuplicates), MonsterHexRollerResolveNewHexesPreservesPrimaryAndAvoidsDuplicates),
 			new(nameof(MonsterHexRollerBuildRerollPoolHonorsIconExclusionsThenFallbacks), MonsterHexRollerBuildRerollPoolHonorsIconExclusionsThenFallbacks),
 			new(nameof(ExternalConfigDisabledIdsPreserveUnloadedContent), ExternalConfigDisabledIdsPreserveUnloadedContent),
+			new(nameof(ExternalModelIdConflictsAreRejectedBeforeRegistration), ExternalModelIdConflictsAreRejectedBeforeRegistration),
 			new(nameof(ExternalPlayerRuneRegistrationUpdatesCatalog), ExternalPlayerRuneRegistrationUpdatesCatalog),
 			new(nameof(ExternalEventRelicRegistrationUpdatesRegistry), ExternalEventRelicRegistrationUpdatesRegistry),
 			new(nameof(ExternalForgeRegistrationUpdatesCatalog), ExternalForgeRegistrationUpdatesCatalog),
@@ -320,6 +380,7 @@ internal static partial class Program
 
 	private static void EnemyHexAdjustmentRoundTripKeepsAllSlots()
 	{
+		const int OperationToken = 112233;
 		EnemyHexAdjustmentPayload source = new(
 			ActIndex: 0,
 			Sequence: 12,
@@ -332,25 +393,27 @@ internal static partial class Program
 			RerollCounts: [ 2, -3 ],
 			IsFinal: true);
 
-		PlayerChoiceResult result = HextechChoiceCodec.CreateEnemyHexAdjustment(source);
+		PlayerChoiceResult result = HextechChoiceCodec.CreateEnemyHexAdjustment(OperationToken, source);
 
-		Expect(HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, 0, out EnemyHexAdjustmentPayload decoded), "enemy adjustment should decode");
+		Expect(HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, OperationToken, 0, 12, out EnemyHexAdjustmentPayload decoded), "enemy adjustment should decode");
 		Equal(0, decoded.ActIndex, "act");
 		Equal(12, decoded.Sequence, "sequence");
 		Equal(true, decoded.IsFinal, "final flag");
 		SequenceEqual(source.MonsterHexes, decoded.MonsterHexes, "monster hex slots");
 		SequenceEqual(new[] { 2, 0, 0 }, decoded.RerollCounts, "reroll counts");
-		Expect(!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, 1, out _), "wrong act should be rejected");
+		Expect(!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, OperationToken, 1, 12, out _), "wrong act should be rejected");
 	}
 
 	private static void EnemyHexAdjustmentRejectsInvalidHex()
 	{
+		const int OperationToken = 223344;
 		PlayerChoiceResult result = PlayerChoiceResult.FromIndexes(new List<int>
 		{
 			Magic,
 			ChoiceKindEnemyHexAdjustment,
 			0,
 			1,
+			OperationToken,
 			EnemyHexAdjustmentListVersion,
 			0,
 			1,
@@ -358,10 +421,67 @@ internal static partial class Program
 			0
 		});
 
-		Expect(!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, 0, out _), "invalid monster hex enum should be rejected");
+		Expect(!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, OperationToken, 0, 1, out _), "invalid monster hex enum should be rejected");
 	}
 
-	private static void LegacyEnemyHexAdjustmentStillDecodes()
+	private static void EnemyHexAdjustmentRejectsUnexpectedSequence()
+	{
+		const int OperationToken = 334455;
+		EnemyHexAdjustmentPayload source = new(
+			ActIndex: 1,
+			Sequence: 3,
+			MonsterHexes: [ MonsterHexKind.FrostWraith ],
+			RerollCounts: [ 0 ],
+			IsFinal: false);
+		PlayerChoiceResult result = HextechChoiceCodec.CreateEnemyHexAdjustment(OperationToken, source);
+
+		Expect(
+			HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, OperationToken, 1, 3, out _),
+			"exact enemy adjustment sequence should decode");
+		Expect(
+			!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, OperationToken, 1, 2, out _),
+			"stale enemy adjustment sequence should be rejected");
+		Expect(
+			!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, OperationToken, 1, 4, out _),
+			"future enemy adjustment sequence should be rejected");
+	}
+
+	private static void EnemyHexAdjustmentRejectsExtremeCounts()
+	{
+		const int OperationToken = 445566;
+		PlayerChoiceResult extremeHexCount = PlayerChoiceResult.FromIndexes(
+		[
+			Magic,
+			ChoiceKindEnemyHexAdjustment,
+			0,
+			0,
+			OperationToken,
+			EnemyHexAdjustmentListVersion,
+			0,
+			int.MaxValue
+		]);
+		Expect(
+			!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(extremeHexCount, OperationToken, 0, 0, out _),
+			"extreme enemy hex count should be rejected without allocation");
+
+		PlayerChoiceResult extremeRerollCount = PlayerChoiceResult.FromIndexes(
+		[
+			Magic,
+			ChoiceKindEnemyHexAdjustment,
+			0,
+			0,
+			OperationToken,
+			EnemyHexAdjustmentListVersion,
+			0,
+			0,
+			int.MaxValue
+		]);
+		Expect(
+			!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(extremeRerollCount, OperationToken, 0, 0, out _),
+			"extreme enemy reroll count should be rejected without allocation");
+	}
+
+	private static void LegacyEnemyHexAdjustmentIsRejected()
 	{
 		PlayerChoiceResult result = PlayerChoiceResult.FromIndexes(new List<int>
 		{
@@ -375,45 +495,46 @@ internal static partial class Program
 			1
 		});
 
-		Expect(HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, 1, out EnemyHexAdjustmentPayload decoded), "legacy enemy adjustment should decode");
-		Equal(1, decoded.ActIndex, "act");
-		Equal(9, decoded.Sequence, "sequence");
-		SequenceEqual(new MonsterHexKind?[] { MonsterHexKind.FrostWraith }, decoded.MonsterHexes, "legacy monster hex");
-		SequenceEqual(new[] { 2 }, decoded.RerollCounts, "legacy reroll count");
-		Equal(true, decoded.IsFinal, "legacy final flag");
+		Expect(
+			!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, 556677, 1, 9, out _),
+			"legacy enemy adjustment payload should be rejected after the protocol gate");
 	}
 
 	private static void RandomRuneGrantRoundTripKeepsStableModelIds()
 	{
+		const int OperationToken = 667788;
 		ModelId[] source =
 		[
 			new("HEXTECH_TEST", "FIRST_RUNE"),
 			new("HEXTECH_TEST", "SECOND_RUNE")
 		];
 
-		PlayerChoiceResult result = HextechChoiceCodec.CreateRandomRuneGrant(source);
+		PlayerChoiceResult result = HextechChoiceCodec.CreateRandomRuneGrant(OperationToken, source);
 
-		Expect(HextechChoiceCodec.TryDecodeRandomRuneGrant(result, out List<ModelId> decoded), "random grant should decode");
+		Expect(HextechChoiceCodec.TryDecodeRandomRuneGrant(result, OperationToken, out List<ModelId> decoded), "random grant should decode");
 		SequenceEqual(source, decoded, "stable model ids");
-		Expect(HextechChoiceCodec.IsRandomRuneGrant(result), "random grant predicate");
+		Expect(HextechChoiceCodec.IsRandomRuneGrant(result, OperationToken), "random grant predicate");
 	}
 
 	private static void RandomRuneGrantRejectsMalformedStableModelIdList()
 	{
+		const int OperationToken = 778899;
 		PlayerChoiceResult tooManyIds = PlayerChoiceResult.FromIndexes(new List<int>
 		{
 			Magic,
 			ChoiceKindRandomRuneGrant,
+			OperationToken,
 			StableModelIdListVersion,
 			65
 		});
 
-		Expect(!HextechChoiceCodec.TryDecodeRandomRuneGrant(tooManyIds, out _), "oversized stable id list should be rejected");
+		Expect(!HextechChoiceCodec.TryDecodeRandomRuneGrant(tooManyIds, OperationToken, out _), "oversized stable id list should be rejected");
 
 		PlayerChoiceResult badSerializedId = PlayerChoiceResult.FromIndexes(new List<int>
 		{
 			Magic,
 			ChoiceKindRandomRuneGrant,
+			OperationToken,
 			StableModelIdListVersion,
 			1,
 			3,
@@ -422,23 +543,141 @@ internal static partial class Program
 			'D'
 		});
 
-		Expect(!HextechChoiceCodec.TryDecodeRandomRuneGrant(badSerializedId, out _), "malformed model id should be rejected");
+		Expect(!HextechChoiceCodec.TryDecodeRandomRuneGrant(badSerializedId, OperationToken, out _), "malformed model id should be rejected");
+
+		PlayerChoiceResult runeSelectionWithOutOfRangeLegacyOrdinal = PlayerChoiceResult.FromIndexes(new List<int>
+		{
+			Magic,
+			ChoiceKindRuneSelection,
+			1,
+			2,
+			0,
+			0,
+			1,
+			int.MaxValue
+		});
+		Expect(
+			!HextechChoiceCodec.TryDecodeRuneSelection(runeSelectionWithOutOfRangeLegacyOrdinal, 1, 2, out _, out _, out _),
+			"out-of-range legacy rune selection ordinal should be rejected");
+
+		PlayerChoiceResult forgeSelectionWithOutOfRangeLegacyOrdinal = PlayerChoiceResult.FromIndexes(new List<int>
+		{
+			Magic,
+			ChoiceKindForgeSelection,
+			OperationToken,
+			0,
+			1,
+			int.MaxValue
+		});
+		Expect(
+			!HextechChoiceCodec.TryDecodeForgeSelection(forgeSelectionWithOutOfRangeLegacyOrdinal, OperationToken, out _, out _),
+			"out-of-range legacy forge selection ordinal should be rejected");
+		Expect(
+			HextechChoiceCodec.IsMalformedForgeSelectionEnvelope(forgeSelectionWithOutOfRangeLegacyOrdinal, OperationToken),
+			"malformed forge selection envelope should remain identifiable");
+
+		PlayerChoiceResult malformedRelicOptionSelection = PlayerChoiceResult.FromIndexes(new List<int>
+		{
+			Magic,
+			ChoiceKindRelicOptionSelection,
+			OperationToken,
+			0,
+			StableModelIdListVersion
+		});
+		Expect(
+			HextechChoiceCodec.IsMalformedRelicOptionSelectionEnvelope(malformedRelicOptionSelection, OperationToken),
+			"malformed relic option envelope should remain identifiable");
+
+		PlayerChoiceResult randomGrantWithOutOfRangeLegacyOrdinal = PlayerChoiceResult.FromIndexes(new List<int>
+		{
+			Magic,
+			ChoiceKindRandomRuneGrant,
+			OperationToken,
+			1,
+			int.MaxValue
+		});
+		Expect(
+			!HextechChoiceCodec.TryDecodeRandomRuneGrant(randomGrantWithOutOfRangeLegacyOrdinal, OperationToken, out _),
+			"out-of-range legacy random grant ordinal should be rejected");
 	}
 
 	private static void RelicOptionSelectionRoundTripRequiresMatchingOptions()
 	{
+		const int OperationToken = 889900;
 		RelicModel[] options = CreateRuneSelectionTestOptions(2);
 		ModelId[] optionIds = options
 			.Select(static relic => relic.CanonicalInstance?.Id ?? relic.Id)
 			.ToArray();
-		PlayerChoiceResult result = HextechChoiceCodec.CreateRelicOptionSelection(1, options);
+		PlayerChoiceResult result = HextechChoiceCodec.CreateRelicOptionSelection(OperationToken, 1, options);
 
-		Expect(HextechChoiceCodec.IsRelicOptionSelection(result, options), "matching relic option selection should be expected");
-		Expect(HextechChoiceCodec.TryDecodeRelicOptionSelection(result, out int selectedIndex, out List<ModelId> decodedOptionIds), "relic option selection should decode");
+		Expect(HextechChoiceCodec.IsRelicOptionSelection(result, OperationToken, options), "matching relic option selection should be expected");
+		Expect(HextechChoiceCodec.TryDecodeRelicOptionSelection(result, OperationToken, out int selectedIndex, out List<ModelId> decodedOptionIds), "relic option selection should decode");
 		Equal(1, selectedIndex, "selected relic option index");
 		SequenceEqual(optionIds, decodedOptionIds, "relic option ids");
-		Expect(!HextechChoiceCodec.IsRelicOptionSelection(result, options.Reverse().ToArray()), "reordered relic options should not be expected");
-		Expect(!HextechChoiceCodec.IsRelicOptionSelection(result, CreateRuneSelectionTestOptions(3)), "different relic option count should not be expected");
+		Expect(!HextechChoiceCodec.IsRelicOptionSelection(result, OperationToken, options.Reverse().ToArray()), "reordered relic options should not be expected");
+		Expect(!HextechChoiceCodec.IsRelicOptionSelection(result, OperationToken, CreateRuneSelectionTestOptions(3)), "different relic option count should not be expected");
+	}
+
+	private static void OperationTokensRejectCrossedPayloads()
+	{
+		const uint ChoiceId = 42;
+		const ulong PlayerNetId = 9001;
+		int forgeToken = HextechChoiceCodec.ComputeOperationToken(
+			"forge-selection",
+			ChoiceId,
+			PlayerNetId,
+			"source:0");
+		int sameForgeToken = HextechChoiceCodec.ComputeOperationToken(
+			"forge-selection",
+			ChoiceId,
+			PlayerNetId,
+			"source:0");
+		int crossedForgeToken = HextechChoiceCodec.ComputeOperationToken(
+			"forge-selection",
+			ChoiceId,
+			PlayerNetId,
+			"source:1");
+		Equal(forgeToken, sameForgeToken, "operation token must be stable");
+		Expect(forgeToken != crossedForgeToken, "different stable contexts should produce different operation tokens");
+
+		RelicModel[] options = CreateRuneSelectionTestOptions(2);
+		PlayerChoiceResult forge = HextechChoiceCodec.CreateForgeSelection(forgeToken, 0, options);
+		Expect(HextechChoiceCodec.TryDecodeForgeSelection(forge, forgeToken, out _, out _), "matching forge operation should decode");
+		Expect(!HextechChoiceCodec.TryDecodeForgeSelection(forge, crossedForgeToken, out _, out _), "crossed forge operation should be rejected");
+
+		int relicToken = HextechChoiceCodec.ComputeOperationToken(
+			"relic-option-selection",
+			ChoiceId,
+			PlayerNetId,
+			"relic-source");
+		PlayerChoiceResult relic = HextechChoiceCodec.CreateRelicOptionSelection(relicToken, 1, options);
+		Expect(!HextechChoiceCodec.TryDecodeRelicOptionSelection(relic, relicToken + 1, out _, out _), "crossed relic operation should be rejected");
+
+		int randomToken = HextechChoiceCodec.ComputeOperationToken(
+			"random-rune-grant",
+			ChoiceId,
+			PlayerNetId,
+			"consume:HEXTECH_TEST:RUNE");
+		PlayerChoiceResult random = HextechChoiceCodec.CreateRandomRuneGrant(
+			randomToken,
+			[ new ModelId("HEXTECH_TEST", "RUNE") ]);
+		Expect(!HextechChoiceCodec.TryDecodeRandomRuneGrant(random, randomToken + 1, out _), "crossed random grant operation should be rejected");
+
+		int enemyToken = HextechChoiceCodec.ComputeOperationToken(
+			"enemy-hex-adjustment",
+			ChoiceId,
+			PlayerNetId,
+			"act=1;sequence=2");
+		EnemyHexAdjustmentPayload enemyPayload = new(
+			ActIndex: 1,
+			Sequence: 2,
+			MonsterHexes: [ MonsterHexKind.FrostWraith ],
+			RerollCounts: [ 0 ],
+			IsFinal: true);
+		PlayerChoiceResult enemy = HextechChoiceCodec.CreateEnemyHexAdjustment(enemyToken, enemyPayload);
+		Expect(
+			!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(enemy, enemyToken + 1, 1, 2, out _),
+			"crossed enemy adjustment operation should be rejected");
 	}
 
 	private static void NetworkChoiceTimeoutUsesNominalWallClockSeconds()
@@ -462,6 +701,8 @@ internal static partial class Program
 		tracking.EnemyPorcupineTriggersThisTurn[8] = 1;
 		tracking.EightPennyGatePlayersTriggeredThisTurn.Add(9);
 		tracking.EightPennyGatePlayersTriggeredSecondThisTurn.Add(10);
+		tracking.InspectExtraDrawsPreventedThisTurn[11] = 2;
+		tracking.GripPlayersTriggeredThisTurn.Add(12);
 		tracking.MonsterDebuffActionProcKeysThisTurn.Add("debuff-action");
 
 		tracking.PreparePlayerSideTurnEnd();
@@ -470,6 +711,8 @@ internal static partial class Program
 		Equal(1, tracking.EnemyPorcupineTriggersThisTurn.Count, "player side end should keep porcupine round proc count");
 		Equal(1, tracking.EightPennyGatePlayersTriggeredThisTurn.Count, "player side end should keep eight penny gate first round proc count");
 		Equal(1, tracking.EightPennyGatePlayersTriggeredSecondThisTurn.Count, "player side end should keep eight penny gate second round proc count");
+		Equal(1, tracking.InspectExtraDrawsPreventedThisTurn.Count, "player side end should keep inspect draw count");
+		Equal(1, tracking.GripPlayersTriggeredThisTurn.Count, "player side end should keep grip proc count");
 
 		tracking.PrepareEnemySideTurnStart();
 
@@ -484,6 +727,8 @@ internal static partial class Program
 		Equal(1, tracking.EnemyPorcupineTriggersThisTurn.Count, "enemy side start should keep porcupine round proc count");
 		Equal(1, tracking.EightPennyGatePlayersTriggeredThisTurn.Count, "enemy side start should keep eight penny gate first round proc count");
 		Equal(1, tracking.EightPennyGatePlayersTriggeredSecondThisTurn.Count, "enemy side start should keep eight penny gate second round proc count");
+		Equal(1, tracking.InspectExtraDrawsPreventedThisTurn.Count, "enemy side start should keep inspect draw count");
+		Equal(1, tracking.GripPlayersTriggeredThisTurn.Count, "enemy side start should keep grip proc count");
 		Equal(1, tracking.MonsterDebuffActionProcKeysThisTurn.Count, "enemy side start should keep monster debuff round guard");
 
 		tracking.PreparePlayerSideTurnStart();
@@ -499,6 +744,8 @@ internal static partial class Program
 		Equal(0, tracking.EnemyPorcupineTriggersThisTurn.Count, "player side start should reset porcupine round proc count");
 		Equal(0, tracking.EightPennyGatePlayersTriggeredThisTurn.Count, "player side start should reset eight penny gate first round proc count");
 		Equal(0, tracking.EightPennyGatePlayersTriggeredSecondThisTurn.Count, "player side start should reset eight penny gate second round proc count");
+		Equal(0, tracking.InspectExtraDrawsPreventedThisTurn.Count, "player side start should reset inspect draw count");
+		Equal(0, tracking.GripPlayersTriggeredThisTurn.Count, "player side start should reset grip proc count");
 		Equal(0, tracking.MonsterDebuffActionProcKeysThisTurn.Count, "player side start should reset monster debuff round guard");
 	}
 
@@ -522,17 +769,80 @@ internal static partial class Program
 		Expect(MindOverMatterEnemyHex.TryConsumeFirstDraw(restored, 11), "the next player turn should trigger again");
 	}
 
+	private static void HungryExhaustsZeroOneOrTwoCardsByTier()
+	{
+		HextechMayhemCombatTrackingState tracking = new();
+		Expect(!EightPennyGateEnemyHex.TryConsumeExhaustSlot(tracking, 1, 0), "tier one should exhaust no cards");
+		Expect(EightPennyGateEnemyHex.TryConsumeExhaustSlot(tracking, 2, 1), "tier two should exhaust the first card");
+		Expect(!EightPennyGateEnemyHex.TryConsumeExhaustSlot(tracking, 2, 1), "tier two should not exhaust the second card");
+		Expect(EightPennyGateEnemyHex.TryConsumeExhaustSlot(tracking, 3, 2), "tier three should exhaust the first card");
+		Expect(EightPennyGateEnemyHex.TryConsumeExhaustSlot(tracking, 3, 2), "tier three should exhaust the second card");
+		Expect(!EightPennyGateEnemyHex.TryConsumeExhaustSlot(tracking, 3, 2), "tier three should not exhaust the third card");
+	}
+
+	private static void InspectBlocksOnlyTheConfiguredExtraDrawTriggers()
+	{
+		HextechMayhemCombatTrackingState tracking = new();
+		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 1, 2, fromHandDraw: true), "normal hand draw should never be blocked");
+		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 1, 0, fromHandDraw: false), "tier one should block no extra draws");
+		Expect(IInspectEnemyHex.TryPreventExtraDraw(tracking, 2, 1, fromHandDraw: false), "tier two should block the first extra draw trigger");
+		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 2, 1, fromHandDraw: false), "tier two should allow the second extra draw trigger");
+		Expect(IInspectEnemyHex.TryPreventExtraDraw(tracking, 3, 2, fromHandDraw: false), "tier three should block the first extra draw trigger");
+		Expect(IInspectEnemyHex.TryPreventExtraDraw(tracking, 3, 2, fromHandDraw: false), "tier three should block the second extra draw trigger");
+		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 3, 2, fromHandDraw: false), "tier three should allow the third extra draw trigger");
+
+		string serialized = tracking.Serialize();
+		HextechMayhemCombatTrackingState restored = new();
+		restored.Restore(serialized);
+		Equal(2, restored.InspectExtraDrawsPreventedThisTurn[3], "inspect draw count should survive a mid-turn save/load");
+	}
+
+	private static void GripConsumesOnlyTheFirstManualCardTrigger()
+	{
+		HextechMayhemCombatTrackingState tracking = new();
+		Expect(!IGripEnemyHex.TryConsumeFirstCard(tracking, 1, 0), "tier one should consume no trigger");
+		Expect(IGripEnemyHex.TryConsumeFirstCard(tracking, 2, 1), "tier two should consume the first card trigger");
+		Expect(!IGripEnemyHex.TryConsumeFirstCard(tracking, 2, 1), "tier two should ignore later card triggers");
+		Expect(IGripEnemyHex.TryConsumeFirstCard(tracking, 3, 2), "tier three should consume the first card trigger");
+		Expect(!IGripEnemyHex.TryConsumeFirstCard(tracking, 3, 2), "tier three should ignore later card triggers");
+
+		string serialized = tracking.Serialize();
+		HextechMayhemCombatTrackingState restored = new();
+		restored.Restore(serialized);
+		SetEqual(new ulong[] { 2, 3 }, restored.GripPlayersTriggeredThisTurn, "grip guards should survive a mid-turn save/load");
+	}
+
+	private static void HungryInspectAndGripShareEightPennyGateTexture()
+	{
+		const string expected = "res://HextechRunes/images/relics/eightPennyGateRune.png";
+		Equal(expected, HextechAssets.TryGetCustomRelicIconPath(new HungryHex()), "hungry texture");
+		Equal(expected, HextechAssets.TryGetCustomRelicIconPath(new InspectHex()), "inspect texture");
+		Equal(expected, HextechAssets.TryGetCustomRelicIconPath(new GripHex()), "grip texture");
+	}
+
 	private static void CombatTrackingGlobalProcOrdinalsSerializeAndReset()
 	{
+		Expect(!HextechEnemyHexContext.IsRoundIntervalDue(1, 3), "round intervals should not trigger on round one");
+		Expect(!HextechEnemyHexContext.IsRoundIntervalDue(3, 3), "three-round interval should wait until round four");
+		Expect(HextechEnemyHexContext.IsRoundIntervalDue(4, 3), "three-round interval should trigger on round four");
+		Expect(HextechEnemyHexContext.IsRoundIntervalDue(8, 3), "three-round interval should trigger again on round eight");
+		Expect(HextechEnemyHexContext.IsRoundIntervalDue(3, 2), "two-round interval should trigger on round three");
+		Expect(HextechEnemyHexContext.IsRoundIntervalDue(2, 1), "one-round interval should trigger on round two");
+		Expect(!HextechEnemyHexContext.IsRoundIntervalDue(4, 0), "nonpositive round intervals should stay disabled");
+
 		HextechMayhemCombatTrackingState tracking = new();
 		Equal(0, HextechCombatProcTracker.ConsumeGlobalProcInCombat(tracking, "enemy-archmage:net:1"), "first global proc ordinal");
 		Equal(1, HextechCombatProcTracker.ConsumeGlobalProcInCombat(tracking, "enemy-archmage:net:1"), "second global proc ordinal");
+		const string roundIntervalKey = "round-once:DivineIntervention:4";
+		Equal(0, HextechCombatProcTracker.ConsumeGlobalProcInCombat(tracking, roundIntervalKey), "first interval proc in a round");
+		Equal(1, HextechCombatProcTracker.ConsumeGlobalProcInCombat(tracking, roundIntervalKey), "extra turn should not repeat an interval proc");
 
 		string serialized = tracking.Serialize();
 		HextechMayhemCombatTrackingState restored = new();
 		restored.Restore(serialized);
 
 		Equal(2, restored.GlobalProcsThisCombat["enemy-archmage:net:1"], "global proc count should restore");
+		Equal(2, restored.GlobalProcsThisCombat[roundIntervalKey], "round interval guard should restore");
 		Equal(2, HextechCombatProcTracker.ConsumeGlobalProcInCombat(restored, "enemy-archmage:net:1"), "restored next global proc ordinal");
 
 		restored.PreparePlayerSideTurnStart();
@@ -571,6 +881,8 @@ internal static partial class Program
 		HextechCombatProcTracker.ConsumeGlobalProcInCombat(tracking, "enemy:net:1:Bpower");
 		HextechCombatProcTracker.ConsumeGlobalProcInCombat(tracking, "enemy:net:1:co-op");
 		HextechCombatProcTracker.ConsumeGlobalProcInCombat(tracking, "enemy:net:1:coop");
+		tracking.MonsterMaxHpCoefficientBase[17] = 143;
+		tracking.MonsterMaxHpCoefficientProjected[17] = 187;
 
 		System.Globalization.CultureInfo original = System.Globalization.CultureInfo.CurrentCulture;
 		try
@@ -590,6 +902,11 @@ internal static partial class Program
 			int upperIndex = serialized[0].IndexOf("Bpower", StringComparison.Ordinal);
 			int lowerIndex = serialized[0].IndexOf("apower", StringComparison.Ordinal);
 			Expect(upperIndex >= 0 && lowerIndex >= 0 && upperIndex < lowerIndex, "combat tracking keys should sort ordinally (B before a)");
+
+			HextechMayhemCombatTrackingState restored = new();
+			restored.Restore(serialized[0]);
+			Equal(143, restored.MonsterMaxHpCoefficientBase[17], "enemy max HP coefficient base should survive combat tracking restore");
+			Equal(187, restored.MonsterMaxHpCoefficientProjected[17], "enemy max HP coefficient projection should survive combat tracking restore");
 		}
 		finally
 		{
@@ -724,6 +1041,203 @@ internal static partial class Program
 			$"SavedProperty manifest drift; actual list:\n{string.Join("\n", actual)}");
 	}
 
+	private static void SavedPropertyPreInitRegistrationLeavesWireTablesUntouched()
+	{
+#if STS2_109_OR_NEWER
+		Type cacheType = typeof(MegaCrit.Sts2.Core.Multiplayer.Serialization.ModelIdSerializationCache);
+		FieldInfo initializedField = cacheType.GetField(
+			"_initialized",
+			BindingFlags.NonPublic | BindingFlags.Static)
+			?? throw new InvalidOperationException("0.109 SavedProperty cache initialized field should exist");
+		string[] wireFieldNames =
+		[
+			"_savedPropertyCache",
+			"_propertyNameToNetIdMap",
+			"_netIdToPropertyNameMap"
+		];
+		Dictionary<string, (object? Value, int? Count)> before = wireFieldNames.ToDictionary(
+			static name => name,
+			name => SnapshotStaticCollection(cacheType, name),
+			StringComparer.Ordinal);
+		bool originalInitialized = initializedField.GetValue(null) is true;
+		try
+		{
+			initializedField.SetValue(null, false);
+			HextechSavedPropertyBootstrap.InjectModelType(typeof(PreInitSavedPropertyCarrier));
+		}
+		finally
+		{
+			initializedField.SetValue(null, originalInitialized);
+		}
+
+		foreach (string fieldName in wireFieldNames)
+		{
+			(object? afterValue, int? afterCount) = SnapshotStaticCollection(cacheType, fieldName);
+			(object? beforeValue, int? beforeCount) = before[fieldName];
+			Expect(ReferenceEquals(beforeValue, afterValue), $"{fieldName} instance should not change before official Init");
+			Equal(beforeCount, afterCount, $"{fieldName} count before official Init");
+		}
+#else
+		HextechSavedPropertyBootstrap.InjectModelType(typeof(PreInitSavedPropertyCarrier));
+		ModelId id = ModelDb.GetId<PreInitSavedPropertyCarrier>();
+		SavedProperties? properties = SavedProperties.FromInternal(new PreInitSavedPropertyCarrier(), id);
+		Expect(
+			properties?.ints?.Any(static property => property.name == "PreInitCounter") == true,
+			"0.107 should still inject a SavedProperty carrier explicitly");
+#endif
+	}
+
+	private static void SavedPropertyLateCarrierRegistrationFailsClosed()
+	{
+#if STS2_109_OR_NEWER
+		ExpectThrows<InvalidOperationException>(
+			() => HextechRunesApi.RegisterSavedPropertyCarrier<LateSavedPropertyCarrier>(),
+			"0.109 should reject a SavedProperty carrier missing from the initialized per-type cache");
+#endif
+	}
+
+	private static void SavedPropertySameNameCarrierStillRequiresPerTypeCache()
+	{
+#if STS2_109_OR_NEWER
+		Type cacheType = typeof(MegaCrit.Sts2.Core.Multiplayer.Serialization.ModelIdSerializationCache);
+		Action[] restore =
+		[
+			CaptureStaticCollectionRestore(cacheType, "_savedPropertyCache"),
+			CaptureStaticCollectionRestore(cacheType, "_propertyNameToNetIdMap"),
+			CaptureStaticCollectionRestore(cacheType, "_netIdToPropertyNameMap")
+		];
+		try
+		{
+			MegaCrit.Sts2.Core.Multiplayer.Serialization.ModelIdSerializationCache
+				.CacheSavedPropertiesForTypeDebug(typeof(SameNameSavedPropertyCarrierA));
+			HextechSavedPropertyBootstrap.EnsureModelTypeRegistrationAllowed(
+				typeof(SameNameSavedPropertyCarrierA));
+			ExpectThrows<InvalidOperationException>(
+				() => HextechSavedPropertyBootstrap.EnsureModelTypeRegistrationAllowed(
+					typeof(SameNameSavedPropertyCarrierB)),
+				"a globally known SavedProperty name must not hide a missing per-type carrier cache");
+		}
+		finally
+		{
+			foreach (Action restoreCollection in restore.Reverse())
+			{
+				restoreCollection();
+			}
+		}
+#endif
+	}
+
+	private static void SavedPropertyLateExternalRegistrationLeavesNoPartialState()
+	{
+#if STS2_109_OR_NEWER
+		Type runeType = typeof(LateExternalRegistrationRune);
+		int registryVersion = HextechExternalContentRegistry.Version;
+		int registrationCount = HextechExternalContentRegistry
+			.GetPlayerRuneRegistrations()
+			.Count;
+		Expect(
+			!HextechModelPoolRegistrar.IsModelAlreadyQueuedForPool(
+				typeof(MegaCrit.Sts2.Core.Models.RelicPools.SharedRelicPool),
+				runeType),
+			"late test rune should not start in the shared relic pool queue");
+
+		ExpectThrows<InvalidOperationException>(
+			() => HextechRunesApi.RegisterPlayerRune<LateExternalRegistrationRune>(
+				HextechRarityTier.Silver),
+			"late external registration with an uncached SavedProperty should fail before mutation");
+
+		Equal(registryVersion, HextechExternalContentRegistry.Version, "late failure registry version");
+		Equal(
+			registrationCount,
+			HextechExternalContentRegistry.GetPlayerRuneRegistrations().Count,
+			"late failure registration count");
+		Expect(
+			!HextechExternalContentRegistry
+				.GetPlayerRuneRegistrations()
+				.Any(registration => registration.Type == runeType),
+			"late failure should not enter the external player rune registry");
+		Expect(
+			!HextechModelPoolRegistrar.IsModelAlreadyQueuedForPool(
+				typeof(MegaCrit.Sts2.Core.Models.RelicPools.SharedRelicPool),
+				runeType),
+			"late failure should not enter the shared relic pool queue");
+#endif
+	}
+
+	private static (object? Value, int? Count) SnapshotStaticCollection(Type type, string fieldName)
+	{
+		FieldInfo field = type.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Static)
+			?? throw new InvalidOperationException($"{type.FullName}.{fieldName} should exist");
+		object? value = field.GetValue(null);
+		int? count = value switch
+		{
+			ICollection collection => collection.Count,
+			null => null,
+			_ => value.GetType().GetProperty("Count")?.GetValue(value) as int?
+		};
+		return (value, count);
+	}
+
+	private static Action CaptureStaticCollectionRestore(Type type, string fieldName)
+	{
+		FieldInfo field = type.GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Static)
+			?? throw new InvalidOperationException($"{type.FullName}.{fieldName} should exist");
+		object value = field.GetValue(null)
+			?? throw new InvalidOperationException($"{type.FullName}.{fieldName} should not be null");
+		if (value is IDictionary dictionary)
+		{
+			DictionaryEntry[] entries = dictionary
+				.Cast<DictionaryEntry>()
+				.ToArray();
+			return () =>
+			{
+				dictionary.Clear();
+				foreach (DictionaryEntry entry in entries)
+				{
+					dictionary.Add(entry.Key, entry.Value);
+				}
+			};
+		}
+		if (value is IList list)
+		{
+			object?[] items = list
+				.Cast<object?>()
+				.ToArray();
+			return () =>
+			{
+				list.Clear();
+				foreach (object? item in items)
+				{
+					list.Add(item);
+				}
+			};
+		}
+
+		throw new InvalidOperationException(
+			$"{type.FullName}.{fieldName} is not a mutable dictionary or list");
+	}
+
+	private static void RunBeforeSavedPropertyCacheInitialization(Action action)
+	{
+#if STS2_109_OR_NEWER
+		FieldInfo initializedField = typeof(MegaCrit.Sts2.Core.Multiplayer.Serialization.ModelIdSerializationCache)
+			.GetField("_initialized", BindingFlags.NonPublic | BindingFlags.Static)
+			?? throw new InvalidOperationException("0.109 SavedProperty cache initialized field should exist");
+		bool originalInitialized = initializedField.GetValue(null) is true;
+		try
+		{
+			initializedField.SetValue(null, false);
+			action();
+		}
+		finally
+		{
+			initializedField.SetValue(null, originalInitialized);
+		}
+#else
+		action();
+#endif
+	}
+
 	private static void StableModelIdListCodecRoundTripsFromNonzeroCursor()
 	{
 		ModelId[] source =
@@ -752,6 +1266,31 @@ internal static partial class Program
 		Expect(!HextechStableModelIdListCodec.TryDecode(payload, 0, out List<ModelId> decoded, out int nextCursor), "oversized stable model id length should be rejected");
 		Expect(decoded.Count == 0, "malformed stable model id list should not keep partial ids");
 		Equal(0, nextCursor, "failed stable model id decode should keep original cursor");
+	}
+
+	private static void StableModelIdListCodecRejectsEncoderOverflow()
+	{
+		ModelId id = new("HEXTECH_TEST", "ENTRY");
+		ExpectThrows<ArgumentOutOfRangeException>(
+			() => HextechStableModelIdListCodec.Append(
+				[],
+				Enumerable.Repeat(id, HextechStableModelIdListCodec.MaxCount + 1)),
+			"stable ModelId encoder should reject more than 64 items");
+
+		ModelId oversized = new(
+			new string('C', 64),
+			new string('E', HextechStableModelIdListCodec.MaxSerializedLength));
+		ExpectThrows<ArgumentException>(
+			() => HextechStableModelIdListCodec.Append([], [ oversized ]),
+			"stable ModelId encoder should reject a serialized ID longer than 128 characters");
+
+		Expect(
+			!HextechStableModelIdListCodec.TryDecode(
+				[ StableModelIdListVersion, 0 ],
+				-1,
+				out _,
+				out _),
+			"stable ModelId decoder should reject a negative cursor");
 	}
 
 	private static void PlayerRuneRarityConfigExcludesFullyDisabledTier()
@@ -806,6 +1345,134 @@ internal static partial class Program
 		SequenceEqual(Enum.GetValues<HextechRarityTier>(), HextechRarityRollResolver.GetUniformRarityOrder([]), "empty enabled fallback order");
 		Expect(HextechRarityRollResolver.HasAllRarities(Enum.GetValues<HextechRarityTier>()), "all-rarity detection");
 		Expect(!HextechRarityRollResolver.HasAllRarities(order), "partial-rarity detection");
+	}
+
+	private static void GoldenRerollOnlyUpgradesSilverAndGold()
+	{
+		Expect(
+			HextechGoldenRerollRules.TryGetUpgradedRarity(
+				HextechRarityTier.Silver,
+				out HextechRarityTier upgradedSilver),
+			"silver should be eligible for a golden reroll");
+		Equal(HextechRarityTier.Gold, upgradedSilver, "silver golden reroll target");
+
+		Expect(
+			HextechGoldenRerollRules.TryGetUpgradedRarity(
+				HextechRarityTier.Gold,
+				out HextechRarityTier upgradedGold),
+			"gold should be eligible for a golden reroll");
+		Equal(HextechRarityTier.Prismatic, upgradedGold, "gold golden reroll target");
+
+		Expect(
+			!HextechGoldenRerollRules.TryGetUpgradedRarity(
+				HextechRarityTier.Prismatic,
+				out HextechRarityTier unchangedPrismatic),
+			"prismatic should not be eligible for a golden reroll");
+		Equal(HextechRarityTier.Prismatic, unchangedPrismatic, "prismatic fallback target");
+	}
+
+	private static void GoldenRerollUsesExactFivePercentWindow()
+	{
+		for (int roll = 0; roll < 100; roll++)
+		{
+			Equal(
+				roll < HextechGoldenRerollRules.ActivationPercent,
+				HextechGoldenRerollRules.ShouldActivateForRoll(
+					HextechRarityTier.Silver,
+					hasUpgradedCandidates: true,
+					roll),
+				$"silver golden reroll roll {roll}");
+		}
+
+		Expect(
+			!HextechGoldenRerollRules.ShouldActivateForRoll(
+				HextechRarityTier.Prismatic,
+				hasUpgradedCandidates: true,
+				percentRoll: 0),
+			"prismatic should not activate even on a winning roll");
+		Expect(
+			!HextechGoldenRerollRules.ShouldActivateForRoll(
+				HextechRarityTier.Gold,
+				hasUpgradedCandidates: false,
+				percentRoll: 0),
+			"gold should not activate when the upgraded pool is unavailable");
+	}
+
+	private static void GoldenRerollSeparatesPlayersAndKeepsConsoleLocal()
+	{
+		string[] firstPlayerSalt = HextechGoldenRerollRules.BuildSaltParts(
+			actIndex: 1,
+			choiceOrdinal: 0,
+			playerKey: "net:100");
+		string[] secondPlayerSalt = HextechGoldenRerollRules.BuildSaltParts(
+			actIndex: 1,
+			choiceOrdinal: 0,
+			playerKey: "net:200");
+
+		Expect(
+			!firstPlayerSalt.SequenceEqual(secondPlayerSalt),
+			"different multiplayer players must receive independent golden reroll rolls");
+		Equal("net:100", firstPlayerSalt[^1], "first player golden reroll salt");
+		Equal("net:200", secondPlayerSalt[^1], "second player golden reroll salt");
+		Expect(
+			!new GoldenRerollConsoleCmd().IsNetworked,
+			"golden reroll test command must only affect the issuing client");
+	}
+
+	private static void GoldenRerollDebugForceIsOneShot()
+	{
+		HextechGoldenRerollDebug.ResetForTests();
+		HextechGoldenRerollDebug.ForceCurrentOrNext(out bool activatedCurrent);
+		Expect(!activatedCurrent, "force without an open selection should target the next eligible selection");
+		Expect(HextechGoldenRerollDebug.IsNextEligibleForced, "next eligible selection should be forced");
+		Expect(HextechGoldenRerollDebug.ConsumeNextEligibleForce(), "first eligible selection should consume the force");
+		Expect(!HextechGoldenRerollDebug.ConsumeNextEligibleForce(), "force should not leak to another player or selection");
+		Expect(!HextechGoldenRerollDebug.IsNextEligibleForced, "consumed force should clear");
+	}
+
+	private static void GoldenRerollVisualKeepsAnimatingWhileOverlayIsPaused()
+	{
+		Expect(
+			HextechGoldenRerollVisual.ShaderCode.Contains("uniform float animation_time", StringComparison.Ordinal),
+			"golden reroll shader should receive an explicit animation clock");
+		Expect(
+			HextechGoldenRerollVisual.ShaderCode.Contains("sweep_position", StringComparison.Ordinal),
+			"golden reroll shader should include a visible moving sweep");
+		Expect(
+			HextechGoldenRerollVisual.ShaderCode.Contains("sparkles", StringComparison.Ordinal),
+			"golden reroll shader should include animated noise sparkles");
+		MethodInfo? processOverride = typeof(HextechGoldenRerollVisual).GetMethod(
+			"_Process",
+			BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly);
+		Expect(
+			processOverride == null,
+			"golden reroll animation should not depend on an unreliable dynamic Control _Process callback");
+		Expect(
+			typeof(HextechGoldenRerollVisual).GetMethod(
+				"StartAnimationLoop",
+				BindingFlags.Public | BindingFlags.Instance) != null,
+			"golden reroll animation should expose the ProcessFrame loop started after overlay open");
+	}
+
+	private static void GoldenRerollCardThemeFollowsRerolledRuneRarity()
+	{
+		foreach (HextechRarityTier rarity in Enum.GetValues<HextechRarityTier>())
+		{
+			Type runeType = HextechCatalog.GetConfigurablePlayerRuneTypesForRarity(rarity).First();
+			RelicModel rune = (RelicModel)Activator.CreateInstance(runeType)!;
+			string expected = rarity switch
+			{
+				HextechRarityTier.Silver => "SILVER",
+				HextechRarityTier.Prismatic => "PRISMATIC",
+				_ => "GOLD"
+			};
+			Equal(
+				expected,
+				HextechRuneSelectionScreen.DetermineCardRarityKey(
+					rune,
+					HextechSelectionMetadataMode.PlayerRune),
+				$"{rarity} rerolled card theme");
+		}
 	}
 
 	private static void WeightedIndexBoundarySelection()
@@ -911,12 +1578,64 @@ internal static partial class Program
 
 	private static void SearingAttackRuneGrantsUpgradedCard()
 	{
+		Expect(typeof(HextechOwnerPoolTokenCard).IsAbstract, "owner-pool token card base should stay abstract");
+		Expect(
+			!HextechCustomModelRegistry.CustomCardTypes.Contains(typeof(HextechOwnerPoolTokenCard)),
+			"owner-pool token card base must not enter the concrete model registry");
+		Equal(
+			HextechCustomModelRegistry.CustomCardTypes.Count,
+			HextechCustomModelRegistry.CustomCardTypes.Count(
+				static type => typeof(HextechOwnerPoolTokenCard).IsAssignableFrom(type) && !type.IsAbstract),
+			"all registered custom cards should use the owner-pool token card contract");
+
 		SearingAttackCard card = CreateMutableTestModel<SearingAttackCard>();
 
 		SearingAttackRune.UpgradeGrantedCard(card);
 
 		Equal(1, card.CurrentUpgradeLevel, "granted Searing Attack upgrade level");
 		Equal(16m, card.DynamicVars.Damage.BaseValue, "granted Searing Attack damage");
+	}
+
+	private static void StarterUpgradeCapsTerminateExternalUpgradeToMaxLoops()
+	{
+		Equal(999, HextechStarterUpgradeHooks.UpgradeLevelCap, "starter multi-upgrade cap");
+		Equal(
+			999,
+			HextechStarterUpgradeHooks.ResolveOwnedMaxUpgradeLevel(0),
+			"owned basic cards with the matching rune use the +999 cap");
+		Equal(
+			1001,
+			HextechStarterUpgradeHooks.ResolveOwnedMaxUpgradeLevel(1001),
+			"owned legacy over-cap cards remain loadable but cannot grow further");
+		Equal(
+			1,
+			HextechStarterUpgradeHooks.ResolveUnownedMaxUpgradeLevel(0, isDeserializing: false),
+			"new unowned cards keep the vanilla cap");
+		Equal(
+			1,
+			HextechStarterUpgradeHooks.ResolveUnownedMaxUpgradeLevel(998, isDeserializing: false),
+			"ordinary unowned cards do not inherit the rune cap");
+		Equal(
+			1001,
+			HextechStarterUpgradeHooks.ResolveUnownedMaxUpgradeLevel(1000, isDeserializing: true),
+			"legacy over-cap saves can replay the next upgrade level");
+
+		int simulatedUpgradeLevel = 0;
+		int upgradeCount = 0;
+		while (simulatedUpgradeLevel < HextechStarterUpgradeHooks.ResolveUnownedMaxUpgradeLevel(
+			simulatedUpgradeLevel,
+			isDeserializing: false))
+		{
+			simulatedUpgradeLevel++;
+			upgradeCount++;
+			Expect(upgradeCount <= 1, "UpgradeAllCards-style loop must terminate at the vanilla cap");
+		}
+
+		Equal(1, simulatedUpgradeLevel, "UpgradeAllCards-style loop final level");
+		Equal(1, upgradeCount, "UpgradeAllCards-style loop iteration count");
+
+		SearingAttackCard searingAttack = CreateMutableTestModel<SearingAttackCard>();
+		Equal(999, searingAttack.MaxUpgradeLevel, "Searing Attack cap");
 	}
 
 	private static void CreativeAiUpgradeRuneUpgradesGeneratedPowerCards()
@@ -926,6 +1645,83 @@ internal static partial class Program
 		Expect(CreativeAiUpgradeRune.UpgradeGeneratedCard(card), "Creative AI should generate an upgraded Power card");
 		Equal(1, card.CurrentUpgradeLevel, "Creative AI generated card upgrade level");
 		Expect(!CreativeAiUpgradeRune.UpgradeGeneratedCard(card), "an already upgraded generated card should not be upgraded twice");
+
+		ExpectCombatGenerationFilters(
+			GetAsyncStateMachineMoveNext(typeof(BlankCheckRune).GetMethod(nameof(BlankCheckRune.AfterPlayerTurnStart))!),
+			nameof(BlankCheckRune));
+		ExpectCombatGenerationFilters(
+			GetAsyncStateMachineMoveNext(typeof(MindOverMatterRune).GetMethod(nameof(MindOverMatterRune.BeforeHandDraw))!),
+			nameof(MindOverMatterRune));
+		ExpectCombatGenerationFilters(
+			GetAsyncStateMachineMoveNext(typeof(SingularityAIRune).GetMethod(nameof(SingularityAIRune.BeforeHandDraw))!),
+			nameof(SingularityAIRune));
+		ExpectCombatGenerationFilters(
+			typeof(DeadwoodRune).GetMethod("CreateRandomCombatCard", BindingFlags.Instance | BindingFlags.NonPublic)!,
+			nameof(DeadwoodRune));
+		ExpectCombatGenerationFilters(
+			typeof(CorruptedBranchRune).GetMethod("CreateRandomCombatCard", BindingFlags.Instance | BindingFlags.NonPublic)!,
+			nameof(CorruptedBranchRune));
+		ExpectCombatGenerationFilters(
+			typeof(ColorDiscoveryRune).GetMethod("GetOtherCharacterCards", BindingFlags.NonPublic | BindingFlags.Static)!,
+			nameof(ColorDiscoveryRune));
+	}
+
+	private static void SubroutineUpgradeCombatMoveGateResetsAcrossCombats()
+	{
+		SubroutineUpgradeRune rune = new();
+
+		Expect(rune.TryConsumeCombatStartMove(), "first combat-start move should be consumed");
+		Expect(!rune.TryConsumeCombatStartMove(), "same combat should reject a second move");
+
+		rune.BeforeCombatStart().GetAwaiter().GetResult();
+		Expect(rune.TryConsumeCombatStartMove(), "combat start should reset the move gate");
+
+		rune.AfterCombatEnd(null!).GetAwaiter().GetResult();
+		Expect(rune.TryConsumeCombatStartMove(), "combat end should clear the move gate");
+	}
+
+	private static MethodInfo GetAsyncStateMachineMoveNext(MethodInfo asyncMethod)
+	{
+		Type stateMachineType = asyncMethod.GetCustomAttribute<AsyncStateMachineAttribute>()?.StateMachineType
+			?? throw new InvalidOperationException($"{asyncMethod.DeclaringType?.Name}.{asyncMethod.Name} is not async");
+		return stateMachineType.GetMethod("MoveNext", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
+			?? throw new MissingMethodException(stateMachineType.FullName, "MoveNext");
+	}
+
+	private static void ExpectCombatGenerationFilters(MethodBase method, string label)
+	{
+		List<MethodInfo> calledMethods = [];
+		CollectReferencedMethods(method, calledMethods, []);
+		Expect(
+			calledMethods.Any(static called => called.DeclaringType == typeof(CardFactory)
+				&& called.Name == nameof(CardFactory.FilterForCombat)),
+			$"{label} should use CardFactory.FilterForCombat");
+		Expect(
+			calledMethods.Any(static called => called.DeclaringType == typeof(CardModel)
+				&& called.Name == "get_CanBeGeneratedByModifiers"),
+			$"{label} should reject cards that modifiers cannot generate");
+	}
+
+	private static void CollectReferencedMethods(
+		MethodBase method,
+		List<MethodInfo> referencedMethods,
+		HashSet<MethodBase> visited)
+	{
+		if (!visited.Add(method))
+		{
+			return;
+		}
+
+		foreach (MethodInfo referenced in PatchProcessor.GetOriginalInstructions(method)
+			.Select(static instruction => instruction.operand)
+			.OfType<MethodInfo>())
+		{
+			referencedMethods.Add(referenced);
+			if (referenced.DeclaringType?.Assembly == typeof(BlankCheckRune).Assembly)
+			{
+				CollectReferencedMethods(referenced, referencedMethods, visited);
+			}
+		}
 	}
 
 	private static void FortuneForgeRewardScalesByStacks()
@@ -1067,6 +1863,104 @@ internal static partial class Program
 			[7.5m, 15m, 30m]);
 
 		Equal(4.73718375m, multiplier, "rune sectors should multiply after HP forge bonuses are added into one sector");
+	}
+
+	private static void EnemyCoefficientAddsWithinHexAndMultipliesAcrossHexes()
+	{
+		decimal oneHex = HextechEnemyCoefficientHelper.CombineBonusFractionsByHex(
+		[
+			(MonsterHexKind.TankEngine, 0.05m),
+			(MonsterHexKind.TankEngine, 0.05m),
+			(MonsterHexKind.TankEngine, 0.05m),
+			(MonsterHexKind.TankEngine, 0.05m),
+			(MonsterHexKind.TankEngine, 0.05m)
+		]);
+		Equal(1.25m, oneHex, "five Tank Engine contributions should add inside one enemy hex sector");
+
+		decimal crossHex = HextechEnemyCoefficientHelper.CombineBonusFractionsByHex(
+		[
+			(MonsterHexKind.Goliath, 0.20m),
+			(MonsterHexKind.AstralBody, 0.30m)
+		]);
+		Equal(1.56m, crossHex, "different enemy hex sectors should multiply");
+	}
+
+	private static void EnemyMaxHpCoefficientSectorsUseBaseHp()
+	{
+		decimal scale = HextechEnemyCoefficientHelper.CombineBonusFractionsByHex(
+		[
+			(MonsterHexKind.Goliath, 0.20m),
+			(MonsterHexKind.AstralBody, 0.20m),
+			(MonsterHexKind.GoldenSpatula, 0.25m),
+			(MonsterHexKind.MadScientist, -0.30m)
+		]);
+
+		Equal(1.26m, scale, "enemy max HP hex sectors");
+		Equal(126m, Math.Floor(100m * scale), "enemy max HP should derive once from the tracked base HP");
+	}
+
+	private static void EnemyMaxHpLegacyMigrationRecoversMixedSinglePlayerEffects()
+	{
+		Equal(
+			100,
+			HextechLegacyEnemyMaxHpMigration.ResolveBaseMaxHp(
+				currentMaxHp: 113,
+				rawMonsterMaxHp: 100,
+				appliedFixedBonusFractions: [0.20m, 0.30m, 0.25m],
+				madScientistLossFraction: 0.30m,
+				tankEngineStacks: 5),
+			"legacy max HP migration should reverse fixed targets, Mad Scientist and compounded Tank Engine stacks");
+		Equal(
+			100,
+			HextechLegacyEnemyMaxHpMigration.ResolveBaseMaxHp(
+				currentMaxHp: 130,
+				rawMonsterMaxHp: 100,
+				appliedFixedBonusFractions: [0.20m, 0.30m],
+				madScientistLossFraction: 0m,
+				tankEngineStacks: 0),
+			"an old fixed target masks smaller unknown scaling, so migration should use the raw monster base");
+		Equal(
+			100,
+			HextechLegacyEnemyMaxHpMigration.ResolveBaseMaxHp(
+				currentMaxHp: 156,
+				rawMonsterMaxHp: null,
+				appliedFixedBonusFractions: [0.20m, 0.30m],
+				madScientistLossFraction: 0m,
+				tankEngineStacks: 0),
+			"legacy max HP migration should reverse chained fixed bonuses when the raw monster base is unavailable");
+
+		int rawlessMixedBase = HextechLegacyEnemyMaxHpMigration.ResolveBaseMaxHp(
+			currentMaxHp: 110,
+			rawMonsterMaxHp: null,
+			appliedFixedBonusFractions: [0.20m, 0.30m],
+			madScientistLossFraction: 0.30m,
+			tankEngineStacks: 0);
+		Equal(
+			110m,
+			Math.Floor(rawlessMixedBase * 1.20m * 1.30m * 0.70m),
+			"rawless legacy migration should preserve the observed max HP after the new coefficient projection");
+	}
+
+	private static void EnemyMaxHpLegacyMigrationPreservesMultiplayerScaling()
+	{
+		Equal(
+			200,
+			HextechLegacyEnemyMaxHpMigration.ResolveBaseMaxHp(
+				currentMaxHp: 161,
+				rawMonsterMaxHp: 100,
+				appliedFixedBonusFractions: [0.20m, 0.30m],
+				madScientistLossFraction: 0.30m,
+				tankEngineStacks: 3),
+			"legacy max HP migration should retain a multiplayer-scaled base above every old fixed target");
+		Equal(
+			200,
+			HextechLegacyEnemyMaxHpMigration.ResolveBaseMaxHp(
+				currentMaxHp: 200,
+				rawMonsterMaxHp: 100,
+				appliedFixedBonusFractions: [],
+				madScientistLossFraction: 0m,
+				tankEngineStacks: 0),
+			"a fresh externally-scaled enemy should keep its current max HP as the coefficient base");
 	}
 
 	private static void NightmareHooksEveryDarkOrbPassiveTrigger()
@@ -1358,6 +2252,28 @@ internal static partial class Program
 		Equal(9, HextechRuneConfiguration.ClampRerollLimit(99), "finite values clamp to nine");
 	}
 
+	private static void ColorDiscoveryCandidateOrderIsPermutationInvariant()
+	{
+		CardModel[] candidates =
+		[
+			CreateMutableTestModel<SearingAttackCard>(),
+			CreateMutableTestModel<FeelTheBurnCard>(),
+			CreateMutableTestModel<WhiteHoleCard>()
+		];
+		string[] forward = ColorDiscoveryRune.OrderCandidatesForStableSelection(candidates)
+			.Select(HextechStableRandom.CardKey)
+			.ToArray();
+		string[] reversed = ColorDiscoveryRune.OrderCandidatesForStableSelection(candidates.Reverse())
+			.Select(HextechStableRandom.CardKey)
+			.ToArray();
+
+		SequenceEqual(forward, reversed, "Color Discovery candidates should ignore source enumeration order");
+		SequenceEqual(
+			forward.OrderBy(static key => key, StringComparer.Ordinal),
+			forward,
+			"Color Discovery candidates should use ordinal CardKey order");
+	}
+
 	private static void RandomForgeShopRelicUpdatesDisplayedPrice()
 	{
 		RandomForgeShopRelic relic = new();
@@ -1445,6 +2361,11 @@ internal static partial class Program
 		context.MonsterHexStrengthTierFloor = 3;
 		context.EnemyTezcatarasMercyCombatCounter = 4;
 		context.HostUsesBetterMultiplayerScaling = true;
+		context.RuneSelectionJournal.RecordSelected(
+			0,
+			0,
+			11,
+			new ModelId("HEXTECH_TEST", "RESET_ME"));
 
 		context.ResetForNewRun([ 7, -1, 2 ], [ 2, 7, -1 ]);
 
@@ -1457,6 +2378,78 @@ internal static partial class Program
 		Equal("", context.ChoiceHistory.SavedTelemetryChoicesJson, "new-run telemetry choices should reset");
 		Equal(0, context.CombatTracking.EnemyProtectiveVeilTurnCounter, "new-run combat tracking should reset");
 		Equal(true, context.HostUsesBetterMultiplayerScaling, "new-run should preserve host scaling flag until act roll refreshes it");
+		Expect(
+			!context.RuneSelectionJournal.TryGet(0, 0, 11, out _),
+			"new-run rune selection journal should reset");
+	}
+
+	private static void RuneSelectionJournalRoundTripsInStableOrder()
+	{
+		HextechRuneSelectionJournalState state = new();
+		ModelId later = new("HEXTECH_TEST", "LATER");
+		ModelId earlier = new("HEXTECH_TEST", "EARLIER");
+		state.RecordSelected(2, 1, 99, later);
+		state.RecordSelected(0, 0, 7, earlier);
+		state.MarkApplied(2, 1, 99, later);
+		Expect(state.HasEntriesForAct(0), "journal should report a pending operation for act zero");
+		Expect(state.HasEntriesForAct(2), "journal should retain completed operations until the run resets");
+		Expect(!state.HasEntriesForAct(1), "journal should not report an unrelated act");
+
+		string json = state.Serialize();
+		Expect(
+			json.IndexOf("EARLIER", StringComparison.Ordinal)
+				< json.IndexOf("LATER", StringComparison.Ordinal),
+			"journal JSON should sort operations by act, ordinal and player id");
+
+		HextechRuneSelectionJournalState restored = new();
+		restored.Restore(json);
+		Expect(
+			restored.TryGet(0, 0, 7, out HextechRuneSelectionJournalEntry earlierEntry),
+			"earlier journal entry should restore");
+		Equal(earlier, earlierEntry.SelectedId, "restored earlier selected ModelId");
+		Equal(false, earlierEntry.Applied, "restored earlier applied state");
+		Expect(
+			restored.TryGet(2, 1, 99, out HextechRuneSelectionJournalEntry laterEntry),
+			"later journal entry should restore");
+		Equal(later, laterEntry.SelectedId, "restored later selected ModelId");
+		Equal(true, laterEntry.Applied, "restored later applied state");
+	}
+
+	private static void RuneSelectionJournalRejectsConflictingSelections()
+	{
+		HextechRuneSelectionJournalState state = new();
+		ModelId selected = new("HEXTECH_TEST", "SELECTED");
+		ModelId conflicting = new("HEXTECH_TEST", "CONFLICTING");
+
+		Expect(state.RecordSelected(1, 2, 33, selected), "first journal selection should be recorded");
+		Expect(!state.RecordSelected(1, 2, 33, selected), "same journal selection should be idempotent");
+		ExpectThrows<InvalidOperationException>(
+			() => state.RecordSelected(1, 2, 33, conflicting),
+			"same operation must reject a different selected ModelId");
+		Expect(state.MarkApplied(1, 2, 33, selected), "first applied transition should be recorded");
+		Expect(!state.MarkApplied(1, 2, 33, selected), "applied transition should be idempotent");
+		ExpectThrows<InvalidOperationException>(
+			() => state.MarkApplied(1, 2, 33, conflicting),
+			"applied transition must reject a different ModelId");
+	}
+
+	private static void AppliedRuneSelectionJournalDoesNotRequireInventoryPresence()
+	{
+		Expect(
+			!HextechRuneSelectionJournalState.RequiresRelicObtain(
+				applied: true,
+				currentlyOwned: false),
+			"an applied journal entry must not replay after a self-consuming rune leaves the inventory");
+		Expect(
+			!HextechRuneSelectionJournalState.RequiresRelicObtain(
+				applied: false,
+				currentlyOwned: true),
+			"an inventory-boundary recovery should mark the pending entry instead of obtaining it twice");
+		Expect(
+			HextechRuneSelectionJournalState.RequiresRelicObtain(
+				applied: false,
+				currentlyOwned: false),
+			"only a pending and absent journal entry should resume relic obtain");
 	}
 
 	private static void MayhemRunContextResetForEndlessLoopCarriesActiveMonsterHex()
@@ -1534,7 +2527,6 @@ internal static partial class Program
 		SequenceEqual(metadata.TypesByRarity[HextechRarityTier.Prismatic], HextechContentRegistry.PrismaticRuneTypes, "prismatic runes");
 		SetEqual(metadata.TypesByFlag[PlayerRuneFlags.Disabled], HextechContentRegistry.DisabledPlayerRuneTypes, "default disabled runes");
 		SetEqual(metadata.TypesByFlag[PlayerRuneFlags.SelectionExcluded], HextechContentRegistry.SelectionExcludedPlayerRuneTypes, "selection excluded runes");
-		SetEqual(metadata.TypesByFlag[PlayerRuneFlags.Retired], HextechContentRegistry.RetiredPlayerRuneTypes, "retired runes");
 		SetEqual(metadata.TypesByFlag[PlayerRuneFlags.FirstActExcluded], HextechContentRegistry.FirstActExcludedRuneTypes, "first act excluded runes");
 		SetEqual(metadata.TypesByFlag[PlayerRuneFlags.ThirdActExcluded], HextechContentRegistry.ThirdActExcludedRuneTypes, "third act excluded runes");
 		SequenceEqual(metadata.TypesByFlag[PlayerRuneFlags.AttributeConversionExclusive], HextechContentRegistry.AttributeConversionExclusiveRuneTypes, "attribute conversion exclusive runes");
@@ -1584,45 +2576,6 @@ internal static partial class Program
 		Expect(HextechCatalog.IsPlayerRuneTypeVisible(selectionExcluded.Type), "catalog selection excluded visibility");
 		Expect(!HextechCatalog.IsPlayerRuneTypeConfigurable(selectionExcluded.Type), "catalog selection excluded configurability");
 		Expect(!HextechCatalog.IsPlayerRuneTypeSelectable(selectionExcluded.Type), "catalog selection excluded selectability");
-	}
-
-	private static void WellLaidPlansUpgradeRuneIsRetiredButSaveCompatible()
-	{
-		Type retiredType = typeof(WellLaidPlansUpgradeRune);
-		PlayerRuneMetadataCatalog metadata = HextechContentRegistry.PlayerRuneMetadata;
-
-		Expect(metadata.IsRegistered(retiredType), "retired Well-Laid Plans rune model should remain registered for old saves");
-		Expect(metadata.HasFlag(retiredType, PlayerRuneFlags.Retired), "Well-Laid Plans rune should carry the retired flag");
-		Expect(HextechContentRegistry.RetiredPlayerRuneTypes.Contains(retiredType), "retired registry slice should contain Well-Laid Plans");
-		Expect(!HextechCatalog.IsPlayerRuneTypeVisible(retiredType), "retired Well-Laid Plans rune should be hidden");
-		Expect(!HextechCatalog.IsPlayerRuneTypeConfigurable(retiredType), "retired Well-Laid Plans rune should not be configurable");
-		Expect(!HextechCatalog.IsPlayerRuneTypeSelectable(retiredType), "retired Well-Laid Plans rune should not be selectable");
-		Expect(
-			HextechCatalog.GetAllCustomRelicTypes().Contains(retiredType),
-			"retired Well-Laid Plans rune model should remain in custom model registration for old saves");
-	}
-
-	private static void SnailFormRuneIsRetiredButSaveCompatible()
-	{
-		Type retiredType = typeof(SnailFormRune);
-		PlayerRuneMetadataCatalog metadata = HextechContentRegistry.PlayerRuneMetadata;
-
-		Expect(metadata.IsRegistered(retiredType), "retired Pell's Laziness model should remain registered for old saves");
-		Expect(metadata.HasFlag(retiredType, PlayerRuneFlags.Retired), "Pell's Laziness should carry the retired flag");
-		Expect(HextechContentRegistry.RetiredPlayerRuneTypes.Contains(retiredType), "retired registry slice should contain Pell's Laziness");
-		Expect(!HextechCatalog.IsPlayerRuneTypeVisible(retiredType), "retired Pell's Laziness should be hidden");
-		Expect(!HextechCatalog.IsPlayerRuneTypeConfigurable(retiredType), "retired Pell's Laziness should not be configurable");
-		Expect(!HextechCatalog.IsPlayerRuneTypeSelectable(retiredType), "retired Pell's Laziness should not be selectable");
-		Expect(
-			HextechCatalog.GetAllCustomRelicTypes().Contains(retiredType),
-			"retired Pell's Laziness model should remain in custom model registration for old saves");
-
-		MethodInfo[] powerMethods = typeof(HextechPlayerSlowPower).GetMethods(
-			BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-		MethodInfo[] legacyRuneMethods = typeof(SnailFormRune).GetMethods(
-			BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly);
-		Expect(powerMethods.All(static method => method.Name != "AfterCardPlayed"), "custom Slow power should not add a second card-play increment");
-		Expect(legacyRuneMethods.Any(static method => method.Name == "AfterCardPlayed"), "retired Pell's Laziness should preserve its old card-play behavior for loaded saves");
 	}
 
 	private static void PlayerRuneMetadataCatalogOutputsMatchCatalogQueries()
@@ -1755,7 +2708,54 @@ internal static partial class Program
 		Expect(HextechMonsterInteractionPolicy.IsStructuralMonsterBuff(new SandpitPower()), "sandpit power should be structural");
 		Expect(!HextechMonsterInteractionPolicy.IsStructuralMonsterBuff(new StrengthPower()), "ordinary strength should not be structural");
 		Expect(HextechMonsterInteractionPolicy.IsMonsterMechanismBuff(new PersonalHivePower()), "personal hive should not be mirrored to players");
+		Expect(HextechMonsterInteractionPolicy.IsMonsterMechanismBuff(new HextechPlayerSlowPower()), "custom Slow should not be mirrored to players");
 		Expect(!HextechMonsterInteractionPolicy.IsMonsterMechanismBuff(new StrengthPower()), "ordinary strength should remain mirrorable");
+	}
+
+	private static void EnemyHexHoverTipsUseExpectedPowerModels()
+	{
+		SequenceEqual(
+			new[] { typeof(DisintegrationPower) },
+			MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(MonsterHexKind.Doomsday),
+			"enemy Doomsday should explain Disintegration");
+		SequenceEqual(
+			new[] { typeof(DisintegrationPower) },
+			MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(MonsterHexKind.Omega),
+			"enemy Omega should explain Disintegration");
+		SequenceEqual(
+			new[] { typeof(DoomPower) },
+			MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(MonsterHexKind.OminousPact),
+			"enemy Ominous Pact should explain Doom");
+		SequenceEqual(
+			new[] { typeof(SkittishPower) },
+			MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(MonsterHexKind.PhantasmalGardener),
+			"enemy Phantasmal Gardener should explain Skittish");
+		SequenceEqual(
+			new[] { typeof(ChainsOfBindingPower) },
+			MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(MonsterHexKind.Queen),
+			"enemy Queen should explain Chains of Binding");
+		SequenceEqual(
+			new[] { typeof(ArtifactPower), typeof(PlatingPower), typeof(RegenPower) },
+			MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(MonsterHexKind.HailToTheKing),
+			"enemy Hail to the King should explain all three powers");
+		SequenceEqual(
+			new[] { typeof(WeakPower), typeof(FrailPower), typeof(VulnerablePower) },
+			MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(MonsterHexKind.OmniDragonSoul),
+			"enemy Omni Dragon Soul should explain all three debuffs");
+		SequenceEqual(
+			new[] { typeof(TaintedPower) },
+			MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(MonsterHexKind.ArcanePunch),
+			"enemy Arcane Punch should explain Tainted");
+
+		foreach (MonsterHexKind hex in HextechContentRegistry.AllMonsterHexKinds)
+		{
+			IReadOnlyList<Type> powerTypes = MonsterHexCatalog.GetEnemyHexPowerHoverTipTypes(hex);
+			Equal(powerTypes.Count, powerTypes.Distinct().Count(), $"enemy {hex} hover-tip power types should be unique");
+			foreach (Type powerType in powerTypes)
+			{
+				Expect(typeof(PowerModel).IsAssignableFrom(powerType), $"enemy {hex} hover-tip type should be a power model: {powerType}");
+			}
+		}
 	}
 
 	private static void EnemyJeweledGauntletUsesExpectedStrengthTierChances()
@@ -1790,16 +2790,15 @@ internal static partial class Program
 		Equal(0m, HextechPlayerSlowPower.PlayerCombatStartAmount, "Ancient Statue player Slow baseline");
 		Equal(0m, HextechPlayerSlowPower.EnemyCombatStartAmount, "Hundred Refinements enemy Slow baseline");
 		Equal(0, HextechPlayerSlowPower.RoundStartAmount, "enemy Slow hexes reset to zero each round");
-		Equal(-90m, HextechPlayerSlowPower.LegacySnailCombatStartAmount, "retired Snail Form keeps its old-save baseline");
 		HextechPlayerSlowPower slow = new();
 		Equal(MegaCrit.Sts2.Core.Entities.Powers.PowerType.Buff, slow.Type, "custom Slow should be classified as a buff");
 		Equal(MegaCrit.Sts2.Core.Entities.Powers.PowerType.Buff, slow.GetTypeForAmount(8m), "positive Hundred Refinements changes should not trigger debuff reactions");
 		Equal(8m, HextechPlayerSlowPower.NormalizeEnemyReductionAmount(-8m), "legacy negative Hundred Refinements Slow should migrate by magnitude");
-		Equal(5, AncientStatueEnemyHex.ResolveCardSlowGain(0), "Ancient Statue tier zero fallback Slow gain");
-		Equal(5, AncientStatueEnemyHex.ResolveCardSlowGain(1), "Ancient Statue tier one Slow gain");
-		Equal(8, AncientStatueEnemyHex.ResolveCardSlowGain(2), "Ancient Statue tier two Slow gain");
-		Equal(10, AncientStatueEnemyHex.ResolveCardSlowGain(3), "Ancient Statue tier three Slow gain");
-		Equal(10, AncientStatueEnemyHex.ResolveCardSlowGain(99), "Ancient Statue high-tier Slow gain clamp");
+		Equal(3, AncientStatueEnemyHex.ResolveCardSlowGain(0), "Ancient Statue tier zero fallback Slow gain");
+		Equal(3, AncientStatueEnemyHex.ResolveCardSlowGain(1), "Ancient Statue tier one Slow gain");
+		Equal(5, AncientStatueEnemyHex.ResolveCardSlowGain(2), "Ancient Statue tier two Slow gain");
+		Equal(8, AncientStatueEnemyHex.ResolveCardSlowGain(3), "Ancient Statue tier three Slow gain");
+		Equal(8, AncientStatueEnemyHex.ResolveCardSlowGain(99), "Ancient Statue high-tier Slow gain clamp");
 		Equal(3, HundredRefinementsEnemyHex.ResolveSlowReduction(0), "Hundred Refinements tier zero fallback Slow reduction");
 		Equal(3, HundredRefinementsEnemyHex.ResolveSlowReduction(1), "Hundred Refinements tier one Slow reduction");
 		Equal(5, HundredRefinementsEnemyHex.ResolveSlowReduction(2), "Hundred Refinements tier two Slow reduction");
@@ -2032,6 +3031,60 @@ internal static partial class Program
 		Expect(!HextechNextTurnDamagePower.IsResolvingDamage, "next-turn damage guard should reset after guarded work");
 	}
 
+	private static void UniversalScopeChancesAddBeforeSingleRoll()
+	{
+		Equal(15, UniversalScopeRuneBase.CombineChancePercent([ 15 ]), "one scope keeps its own chance");
+		Equal(45, UniversalScopeRuneBase.CombineChancePercent([ 15, 30 ]), "two scope chances add directly");
+		Equal(95, UniversalScopeRuneBase.CombineChancePercent([ 15, 30, 50 ]), "all scope chances add directly");
+		Equal(100, UniversalScopeRuneBase.CombineChancePercent([ 50, 50, 30 ]), "combined chance is capped at certainty");
+	}
+
+	private static void WatchOutGrapefruitFoodPoolHonorsCharacterAndUniqueRelics()
+	{
+		IReadOnlyList<Type> commonPool = WatchOutGrapefruitRune.BuildFoodRelicCandidates(
+			isRegent: false,
+			hasIceCream: false,
+			hasNutritiousSoup: false);
+		Type[] requestedCommonRelics =
+		[
+			typeof(ChosenCheese),
+			typeof(LastingCandy),
+			typeof(NutritiousSoup),
+			typeof(BoneTea),
+			typeof(EmberTea)
+		];
+		foreach (Type relicType in requestedCommonRelics)
+		{
+			Expect(commonPool.Contains(relicType), $"common food pool should contain {relicType.Name}");
+		}
+		Expect(!commonPool.Contains(typeof(LunarPastry)), "non-Regent food pool should exclude Lunar Pastry");
+		Equal(commonPool.Count, commonPool.Distinct().Count(), "common food pool should not contain duplicate relic types");
+
+		IReadOnlyList<Type> regentPool = WatchOutGrapefruitRune.BuildFoodRelicCandidates(
+			isRegent: true,
+			hasIceCream: false,
+			hasNutritiousSoup: false);
+		Expect(regentPool.Contains(typeof(LunarPastry)), "Regent food pool should contain Lunar Pastry");
+		Equal(commonPool.Count + 1, regentPool.Count, "Regent food pool should add only Lunar Pastry");
+
+		IReadOnlyList<Type> iceCreamOwnedPool = WatchOutGrapefruitRune.BuildFoodRelicCandidates(
+			isRegent: true,
+			hasIceCream: true,
+			hasNutritiousSoup: false);
+		Expect(!iceCreamOwnedPool.Contains(typeof(IceCream)), "owned Ice Cream should stay excluded");
+		Expect(iceCreamOwnedPool.Contains(typeof(LunarPastry)), "Ice Cream exclusion should keep Regent Lunar Pastry");
+		Equal(regentPool.Count - 1, iceCreamOwnedPool.Count, "owning Ice Cream should remove exactly one candidate");
+
+		IReadOnlyList<Type> nutritiousSoupOwnedPool = WatchOutGrapefruitRune.BuildFoodRelicCandidates(
+			isRegent: true,
+			hasIceCream: false,
+			hasNutritiousSoup: true);
+		Expect(!nutritiousSoupOwnedPool.Contains(typeof(NutritiousSoup)), "owned Nutritious Soup should stay excluded");
+		Expect(nutritiousSoupOwnedPool.Contains(typeof(IceCream)), "Nutritious Soup exclusion should keep Ice Cream");
+		Expect(nutritiousSoupOwnedPool.Contains(typeof(LunarPastry)), "Nutritious Soup exclusion should keep Regent Lunar Pastry");
+		Equal(regentPool.Count - 1, nutritiousSoupOwnedPool.Count, "owning Nutritious Soup should remove exactly one candidate");
+	}
+
 	private static void UniversalScopeUpgradeRestorationKeepsCapturedLevels()
 	{
 		Equal(3, CardTransformUpgradeHelper.GetUpgradeRestorationSteps(0, 3, 30), "restore all lost multi-upgrade levels");
@@ -2100,6 +3153,304 @@ internal static partial class Program
 		return model;
 	}
 
+	private static void PactsEndUpgradeDamageScalesWithExhaustPile()
+	{
+		Equal(0m, PactsEndUpgradeRune.CalculateBonusDamage(0, 6m), "empty exhaust pile bonus");
+		Equal(30m, PactsEndUpgradeRune.CalculateBonusDamage(5, 6m), "five-card exhaust pile bonus");
+		Equal(0m, PactsEndUpgradeRune.CalculateBonusDamage(-1, 6m), "negative exhaust count clamps");
+	}
+
+	private static void BrandUpgradeDamageScalesWithPermanentPlayCount()
+	{
+		Equal(1m, BrandUpgradeRune.CalculateDamageMultiplier(0, 2m), "zero brand plays");
+		Equal(1.02m, BrandUpgradeRune.CalculateDamageMultiplier(1, 2m), "one brand play");
+		Equal(1.20m, BrandUpgradeRune.CalculateDamageMultiplier(10, 2m), "ten brand plays");
+	}
+
+	private static void BigHammerForgeBonusAvoidsHammerTimeDoubleScaling()
+	{
+		Equal(15m, BigHammerRune.CalculateForgeAmount(10m, 50m, sourceAlreadyIncludesBonus: false), "direct forge bonus");
+		Equal(15m, BigHammerRune.CalculateForgeAmount(15m, 50m, sourceAlreadyIncludesBonus: true), "hammer time propagated forge");
+	}
+
+	private static void SpinToWinRecognizesSupportedDelayedResources()
+	{
+		Expect(SpinToWinRune.IsConvertiblePower(new DrawCardsNextTurnPower()), "next-turn draw should convert");
+		Expect(SpinToWinRune.IsConvertiblePower(new EnergyNextTurnPower()), "next-turn energy should convert");
+		Expect(SpinToWinRune.IsConvertiblePower(new SummonNextTurnPower()), "next-turn summon should convert");
+		Expect(SpinToWinRune.IsConvertiblePower(new StarNextTurnPower()), "next-turn stars should convert");
+		Expect(!SpinToWinRune.IsConvertiblePower(new StrengthPower()), "unrelated powers should remain unchanged");
+	}
+
+	private static void NewCardUpgradeRunesUseExpectedTriggerRules()
+	{
+		Expect(StormUpgradeRune.ShouldTrigger(CardType.Power, hasUpgradeRune: false), "vanilla Storm should still trigger for Power cards");
+		Expect(!StormUpgradeRune.ShouldTrigger(CardType.Attack, hasUpgradeRune: false), "vanilla Storm should ignore Attacks");
+		Expect(StormUpgradeRune.ShouldTrigger(CardType.Attack, hasUpgradeRune: true), "upgraded Storm should trigger for Attacks");
+		Expect(StormUpgradeRune.ShouldTrigger(CardType.Skill, hasUpgradeRune: true), "upgraded Storm should trigger for Skills");
+		Expect(ReanimateUpgradeRune.ShouldCountDeath(wasRemovalPrevented: false), "Reanimate should count Minion and Small Hand deaths like Melancholy");
+		Expect(!ReanimateUpgradeRune.ShouldCountDeath(wasRemovalPrevented: true), "Reanimate should ignore a death that was prevented");
+		Equal(7, BodySlamUpgradeRune.CalculateFisticuffsBlock(7, 0), "Body Slam should count total damage like Fisticuffs");
+		Equal(10, BodySlamUpgradeRune.CalculateFisticuffsBlock(7, 3), "Body Slam should add overkill damage like Fisticuffs");
+		Equal(7, WroughtInWarUpgradeRune.CalculateFisticuffsBlock(7, 0), "Wrought in War should count total damage like Fisticuffs");
+		Equal(10, WroughtInWarUpgradeRune.CalculateFisticuffsBlock(7, 3), "Wrought in War should add overkill damage like Fisticuffs");
+		Expect(DecisionsDecisionsUpgradeRune.CanSelectCard(isUnplayable: false), "Decisions should allow playable cards of any type");
+		Expect(!DecisionsDecisionsUpgradeRune.CanSelectCard(isUnplayable: true), "Decisions should still reject Unplayable cards");
+		Equal(3, DecisionsDecisionsUpgradeRune.AddRequestedPlayCount(1, 3), "Decisions should resolve all three plays inside one card-play wrapper");
+		Equal(4, DecisionsDecisionsUpgradeRune.AddRequestedPlayCount(2, 3), "Decisions replay count should combine additively with another replay");
+	}
+
+	private static void PlayerSustainRunesUseExpectedMaxHpRules()
+	{
+		Equal(0, DevilsDanceRune.CountMaxHpTriggers(0, 2, 3), "Devil's Dance should wait for three Attacks");
+		Equal(1, DevilsDanceRune.CountMaxHpTriggers(2, 3, 3), "Devil's Dance should trigger on the third Attack");
+		Equal(2, DevilsDanceRune.CountMaxHpTriggers(2, 7, 3), "Devil's Dance should preserve thresholds across turns");
+		Equal(1, AncientWineRune.CalculateHealAmount(99, 1m), "Ancient Wine should floor one-percent healing with a minimum of one");
+		Equal(2, AncientWineRune.CalculateHealAmount(250, 1m), "Ancient Wine should heal one percent of Max HP");
+		Equal(2, SturdyRune.CalculateHealAmount(100, 50, 2m, 50m, 5m), "Sturdy should use two percent at exactly half HP");
+		Equal(5, SturdyRune.CalculateHealAmount(100, 49, 2m, 50m, 5m), "Sturdy should use five percent below half HP");
+	}
+
+	private static void NewRuneHookTargetsMatchSupportedGameApis()
+	{
+#if STS2_110_OR_NEWER
+		Expect(typeof(Outbreak).GetMethod(
+			"OnPlay",
+			BindingFlags.Instance | BindingFlags.NonPublic,
+			[
+				typeof(PlayerChoiceContext),
+				typeof(CardPlay)
+			]) != null,
+			"0.110 outbreak card response guard target");
+		Expect(
+			HextechFormVfxSafetyHooks.ResolveAddFormVfxTarget().GetParameters()
+				.Select(static parameter => parameter.ParameterType)
+				.SequenceEqual([typeof(MegaCrit.Sts2.Core.Nodes.Vfx.Forms.NFormVfx)]),
+			"0.110 form VFX add safety target");
+		Equal(
+			0,
+			HextechFormVfxSafetyHooks.ResolveRemoveFormVfxTarget().GetParameters().Length,
+			"0.110 form VFX removal safety target arity");
+#else
+		Expect(typeof(OutbreakPower).GetMethods(BindingFlags.Instance | BindingFlags.Public)
+			.Any(method => method.Name == "AfterPowerAmountChanged"),
+			"legacy outbreak power response guard target");
+#endif
+		Expect(typeof(PactsEnd).GetMethod("get_CanDealDamage", BindingFlags.Instance | BindingFlags.NonPublic) != null, "pacts end private condition hook target");
+		Expect(typeof(CorrosiveWavePower).GetMethod(nameof(CorrosiveWavePower.AfterSideTurnEnd), BindingFlags.Instance | BindingFlags.Public) != null, "corrosive wave turn-end hook target");
+		Expect(typeof(PoisonPower).GetMethod(nameof(PoisonPower.CalculateTotalDamageNextTurn), BindingFlags.Instance | BindingFlags.Public) != null, "poison preview hook target");
+		Expect(typeof(OblivionPower).GetMethod(nameof(OblivionPower.AfterSideTurnEnd), BindingFlags.Instance | BindingFlags.Public) != null, "oblivion turn-end hook target");
+		Expect(typeof(BodySlam).GetMethod("OnPlay", BindingFlags.Instance | BindingFlags.NonPublic) != null, "body slam play hook target");
+		Expect(typeof(WroughtInWar).GetMethod("OnPlay", BindingFlags.Instance | BindingFlags.NonPublic) != null, "wrought in war play hook target");
+		Expect(typeof(DecisionsDecisions).GetMethod("OnPlay", BindingFlags.Instance | BindingFlags.NonPublic) != null, "decisions play hook target");
+		Expect(typeof(CardSelectCmd).GetMethod(
+			nameof(CardSelectCmd.FromHand),
+			BindingFlags.Static | BindingFlags.Public,
+			[
+				typeof(PlayerChoiceContext),
+				typeof(Player),
+				typeof(CardSelectorPrefs),
+				typeof(Func<CardModel, bool>),
+				typeof(AbstractModel)
+			]) != null,
+			"decisions hand-selection hook target");
+		Expect(typeof(MegaCrit.Sts2.Core.Hooks.Hook).GetMethod(
+			nameof(MegaCrit.Sts2.Core.Hooks.Hook.BeforeCardPlayed),
+			BindingFlags.Static | BindingFlags.Public,
+			[
+				typeof(ICombatState),
+				typeof(CardPlay)
+			]) != null,
+			"form batch before-card-played hook target");
+		Expect(typeof(MegaCrit.Sts2.Core.Hooks.Hook).GetMethod(
+			nameof(MegaCrit.Sts2.Core.Hooks.Hook.AfterCardPlayed),
+			BindingFlags.Static | BindingFlags.Public,
+			[
+				typeof(ICombatState),
+				typeof(PlayerChoiceContext),
+				typeof(CardPlay)
+			]) != null,
+			"form batch after-card-played hook target");
+		Expect(typeof(MegaCrit.Sts2.Core.Hooks.Hook).GetMethod(
+			nameof(MegaCrit.Sts2.Core.Hooks.Hook.AfterCardChangedPiles),
+			BindingFlags.Static | BindingFlags.Public,
+			[
+				typeof(IRunState),
+				typeof(ICombatState),
+				typeof(CardModel),
+				typeof(PileType),
+				typeof(AbstractModel)
+			]) != null,
+			"form batch changed-piles hook target");
+		Expect(typeof(CardModel).GetMethod(
+			"PlayPowerCardFlyVfx",
+			BindingFlags.Instance | BindingFlags.NonPublic) != null,
+			"form batch power-card VFX hook target");
+		Expect(typeof(PileTypeExtensions).GetMethod(
+			nameof(PileTypeExtensions.GetTargetPosition),
+			BindingFlags.Static | BindingFlags.Public,
+			[
+				typeof(PileType),
+				typeof(MegaCrit.Sts2.Core.Nodes.Cards.NCard)
+			]) != null,
+			"form batch entry target-position hook target");
+		Expect(typeof(CardModel).GetMethod(
+			"GeneratePlayCount",
+			BindingFlags.Instance | BindingFlags.NonPublic,
+			[
+				typeof(ICombatState),
+				typeof(Creature)
+			]) != null,
+			"form batch play-count generation target");
+		foreach (Type formType in new[] { typeof(DemonForm), typeof(EchoForm), typeof(ReaperForm), typeof(SerpentForm), typeof(VoidForm) })
+		{
+			Expect(formType.GetMethod(
+				"OnPlay",
+				BindingFlags.Instance | BindingFlags.NonPublic,
+				[
+					typeof(PlayerChoiceContext),
+					typeof(CardPlay)
+				]) != null,
+				$"combined {formType.Name} play hook target");
+		}
+	}
+
+	private static void FormVfxSafetySkipsMissingHolder()
+	{
+		Expect(
+			!HextechFormVfxSafetyHooks.ShouldRunOriginal(hasFormVfxHolder: false),
+			"form VFX should be skipped when a custom character has no holder");
+		Expect(
+			HextechFormVfxSafetyHooks.ShouldRunOriginal(hasFormVfxHolder: true),
+			"form VFX should retain vanilla behavior when the holder exists");
+	}
+
+	private static void FormAutoPlayBatchDispatchesOneCardPlayEvent()
+	{
+		DemonForm firstCard = new();
+		DemonForm secondCard = new();
+		DemonForm outsideCard = new();
+		HextechFormAutoPlayBatchState batch = new([firstCard, secondCard]);
+		CardPlay firstPlay = CreateCardPlay(firstCard, playIndex: 0, playCount: 2);
+		CardPlay firstReplay = CreateCardPlay(firstCard, playIndex: 1, playCount: 2);
+		CardPlay secondPlay = CreateCardPlay(secondCard);
+		CardPlay outsidePlay = CreateCardPlay(outsideCard);
+
+		Expect(batch.ShouldDispatchCardPlayedHook(firstPlay), "form batch should dispatch BeforeCardPlayed for the first real play");
+		Expect(batch.ShouldDispatchCardPlayedHook(firstPlay), "form batch should dispatch AfterCardPlayed for the same first play");
+		Expect(!batch.ShouldDispatchCardPlayedHook(firstReplay), "form batch should suppress replay hooks after its first event");
+		Expect(!batch.ShouldDispatchCardPlayedHook(secondPlay), "form batch should suppress hooks for later form cards");
+		Expect(batch.ShouldDispatchCardPlayedHook(outsidePlay), "form batch should not suppress nested non-batch cards");
+
+		using (batch.BeginPowerCardFlyVfxPreview([firstCard, secondCard]))
+		{
+			Expect(batch.ShouldPlayPowerCardFlyVfx(firstCard), "form batch should show the first card in its group VFX");
+			Expect(batch.ShouldPlayPowerCardFlyVfx(secondCard), "form batch should show later cards in its group VFX");
+		}
+		Expect(!batch.ShouldPlayPowerCardFlyVfx(firstCard), "form batch should suppress the first card's built-in duplicate VFX");
+		Expect(!batch.ShouldPlayPowerCardFlyVfx(secondCard), "form batch should suppress later cards' built-in duplicate VFX");
+		Expect(batch.ShouldPlayPowerCardFlyVfx(outsideCard), "form batch should not suppress VFX for non-batch cards");
+		Expect(!batch.ShouldDispatchCardChangedPilesHook(firstCard, PileType.Play, PileType.Play), "form batch should suppress its synthetic Play-to-Play pile event");
+		Expect(batch.ShouldDispatchCardChangedPilesHook(firstCard, PileType.Hand, PileType.Play), "form batch should keep the real move into the Play pile");
+		Expect(batch.ShouldDispatchCardChangedPilesHook(outsideCard, PileType.Play, PileType.Play), "form batch should not suppress pile hooks for non-batch cards");
+	}
+
+	private static void FormAutoPlayBatchOffsetsCardsBeforeTheyEnterPlay()
+	{
+		DemonForm firstCard = new();
+		DemonForm middleCard = new();
+		DemonForm lastCard = new();
+		DemonForm outsideCard = new();
+		HextechFormAutoPlayBatchState batch = new([firstCard, middleCard, lastCard]);
+
+		Expect(batch.TryGetHorizontalOffset(firstCard, out float firstOffset), "first form should have an entry offset");
+		Expect(batch.TryGetHorizontalOffset(middleCard, out float middleOffset), "middle form should have an entry offset");
+		Expect(batch.TryGetHorizontalOffset(lastCard, out float lastOffset), "last form should have an entry offset");
+		Equal(-190f, firstOffset, "first form should enter left of center");
+		Equal(0f, middleOffset, "middle form should enter at center");
+		Equal(190f, lastOffset, "last form should enter right of center");
+		Expect(!batch.TryGetHorizontalOffset(outsideCard, out _), "non-batch cards should keep the vanilla play target");
+	}
+
+	private static void FormAutoPlayBatchUsesOnePreparedFinalEffect()
+	{
+		DemonForm primary = new();
+		DemonForm secondary = new();
+		HextechFormAutoPlayBatchState batch = new([primary, secondary]);
+		HextechFormCardResult result = new(null!, PileType.None, CardPilePosition.Bottom);
+
+		batch.PrepareCombinedResolution(primary, 8m, 1, result);
+		Expect(batch.ShouldUsePreparedPlayCount(primary), "combined primary should bypass a second play-count query");
+		Equal(1, batch.PreparedPlayCount, "combined primary should execute its summed effect once");
+		Expect(!batch.ShouldUsePreparedPlayCount(secondary), "combined secondary should not intercept unrelated play-count queries");
+		Expect(batch.TryGetPreparedResult(primary, out HextechFormCardResult preparedResult), "combined primary should reuse its prepared result");
+		Equal(PileType.None, preparedResult.PileType, "combined primary should preserve its prepared result pile");
+		Expect(batch.TryGetCombinedAmount(primary, out decimal amount), "combined primary should expose one final effect amount");
+		Equal(8m, amount, "combined final effect should use the summed form amount");
+		Expect(!batch.TryGetCombinedAmount(secondary, out _), "combined effect should only replace the representative card OnPlay");
+
+		batch.FinishCombinedResolution();
+		Expect(!batch.ShouldUsePreparedPlayCount(primary), "combined state should clear after the representative finishes");
+		Expect(!batch.TryGetCombinedAmount(primary, out _), "combined amount should not leak past the batch");
+	}
+
+	private static void FormAutoPlayBatchCombinesOnlyEffectNeutralEnchantments()
+	{
+		Expect(HextechFormAutoPlayHooks.IsCombinedEffectSafeEnchantment(null), "unenchanted forms should combine");
+		Expect(
+			HextechFormAutoPlayHooks.IsCombinedEffectSafeEnchantment(new MegaCrit.Sts2.Core.Models.Enchantments.Clone()),
+			"forms enchanted only with Clone should combine");
+		Expect(
+			!HextechFormAutoPlayHooks.IsCombinedEffectSafeEnchantment(new MegaCrit.Sts2.Core.Models.Enchantments.Sharp()),
+			"forms with effect-changing enchantments should keep the per-card path");
+		Expect(
+			!HextechFormAutoPlayHooks.IsCombinedEffectSafeEnchantment(new UniversalSpiral()),
+			"forms with replay enchantments should keep the per-card path");
+	}
+
+	private static CardPlay CreateCardPlay(CardModel card, int playIndex = 0, int playCount = 1)
+	{
+		return new CardPlay
+		{
+			Card = card,
+#if STS2_109_OR_NEWER
+			Player = null!,
+#endif
+			Target = null,
+			ResultPile = PileType.Discard,
+			Resources = new ResourceInfo
+			{
+				EnergySpent = 0,
+				EnergyValue = 0,
+				StarsSpent = 0,
+				StarValue = 0
+			},
+			IsAutoPlay = true,
+			PlayIndex = playIndex,
+			PlayCount = playCount
+		};
+	}
+
+	private static void DrawYourSwordUsesEnemyTurnStartOrbCleanup()
+	{
+		MethodInfo[] runeMethods = typeof(DrawYourSwordRune).GetMethods(
+			BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+		Expect(runeMethods.Any(method => method.Name == nameof(DrawYourSwordRune.BeforeSideTurnStart)), "Draw Your Sword should clean up Orbs from a side-turn-start hook");
+
+		MethodInfo[] hookMethods = typeof(HextechPlayerRuneHooks).GetMethods(
+			BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic);
+		Expect(hookMethods.All(method => method.Name != "OrbChannelPrefix"), "Draw Your Sword should no longer intercept Orb channeling");
+		Expect(hookMethods.All(method => method.Name != "InstallDrawYourSwordHooks"), "Draw Your Sword should not install the old Orb channel hook");
+	}
+
+	private static void EnemyOmniDragonSoulUsesPlayerTurnStart()
+	{
+		MethodInfo[] declaredMethods = typeof(OmniDragonSoulEnemyHex).GetMethods(
+			BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly);
+		Expect(declaredMethods.Any(method => method.Name == "BeforePlayerSideTurnStart"), "enemy Omni Dragon Soul should apply its debuff at player turn start");
+		Expect(declaredMethods.All(method => method.Name != "BeforeEnemySideTurnStart"), "enemy Omni Dragon Soul should no longer apply its debuff at enemy turn start");
+	}
+
 	private static void CompensationReplacementGuardScopesAsyncWork()
 	{
 		Expect(!HextechCombatHooks.IsApplyingCompensationReplacement, "compensation replacement guard should start inactive");
@@ -2119,6 +3470,45 @@ internal static partial class Program
 		guarded.GetAwaiter().GetResult();
 		Expect(sawActiveAfterAwait, "compensation replacement guard should remain active after await inside guarded work");
 		Expect(!HextechCombatHooks.IsApplyingCompensationReplacement, "compensation replacement guard should reset after guarded work");
+
+		HextechScopedDepthGuard enteredTaskGuard = new();
+		TaskCompletionSource enteredTaskGate = new(TaskCreationOptions.RunContinuationsAsynchronously);
+		bool enteredTaskActiveBeforeAwait = false;
+		bool enteredTaskActiveAfterAwait = false;
+		bool afterCompletionSawInactiveGuard = false;
+
+		async Task ObserveEnteredTask()
+		{
+			enteredTaskActiveBeforeAwait = enteredTaskGuard.IsActive;
+			await enteredTaskGate.Task;
+			enteredTaskActiveAfterAwait = enteredTaskGuard.IsActive;
+		}
+
+		enteredTaskGuard.Enter();
+		Task enteredTask = ObserveEnteredTask();
+		Task wrappedEnteredTask = enteredTaskGuard.WrapEnteredTask(
+			enteredTask,
+			() =>
+			{
+				afterCompletionSawInactiveGuard = !enteredTaskGuard.IsActive;
+				return Task.CompletedTask;
+			});
+
+		Expect(enteredTaskActiveBeforeAwait, "entered task guard should be active before the original task awaits");
+		Expect(!enteredTaskGuard.IsActive, "wrapping an entered task should immediately unwind the caller context");
+		enteredTaskGate.SetResult();
+		wrappedEnteredTask.GetAwaiter().GetResult();
+		Expect(enteredTaskActiveAfterAwait, "entered task guard should remain active after await inside the original task");
+		Expect(afterCompletionSawInactiveGuard, "entered task completion callback should run after the guarded context exits");
+		Expect(!enteredTaskGuard.IsActive, "entered task guard should remain inactive in the caller after completion");
+
+		enteredTaskGuard.Enter();
+		enteredTaskGuard.Enter();
+		Task nestedSynchronousTask = enteredTaskGuard.WrapEnteredTask(Task.CompletedTask);
+		Expect(enteredTaskGuard.IsActive, "wrapping a completed nested task should preserve the parent guard scope");
+		nestedSynchronousTask.GetAwaiter().GetResult();
+		enteredTaskGuard.Exit();
+		Expect(!enteredTaskGuard.IsActive, "nested completed task guard should unwind exactly one depth");
 	}
 
 	private static void CompensationReplacementSuppressesSleightOfFleshResponse()
@@ -2197,9 +3587,23 @@ internal static partial class Program
 		Expect(committed.SequenceEqual([1]), "late inherited reward must not enter the committed event batch");
 	}
 
+	private static void DoubleVisionCopiesWaxStateWithoutCopyingMeltedState()
+	{
+		DustyTome source = CreateBareTestDustyTome();
+		source.IsWax = true;
+		source.IsMelted = true;
+		DustyTome copy = CreateBareTestDustyTome();
+
+		DoubleVisionRune.CopyWaxState(source, copy);
+
+		Expect(copy.IsWax, "Double Vision should preserve wax on a copied relic");
+		Expect(!copy.IsMelted, "Double Vision should not copy an already-melted state");
+	}
+
 	private static void DoubleVisionDustyTomeSinglePlayerCopiesRelicWithoutAncientCardEffect()
 	{
 		DustyTome source = CreateTestDustyTome();
+		source.IsWax = true;
 		DustyTome? unrelated = null;
 		int obtainCount = 0;
 		int ancientCardGrantCount = 0;
@@ -2240,15 +3644,21 @@ internal static partial class Program
 		Equal(0, broadcastCount, "single-player Dusty Tome broadcast count");
 		Expect(!ReferenceEquals(source, copy), "DoubleVision should create a second Dusty Tome instance");
 		Equal(source.AncientCard, copy.AncientCard, "copied Dusty Tome AncientCard");
+		Expect(copy.IsWax, "copied Dusty Tome should preserve wax");
 		Expect(!DoubleVisionRune.ShouldSuppressDustyTomeAfterObtained(copy), "Dusty Tome suppression must end after obtain");
 	}
 
 	private static void DoubleVisionDustyTomeSaveLoadPreservesAncientCard()
 	{
 		DustyTome source = CreateTestDustyTome();
-		// 测试宿主不会执行原版 ModelIdSerializationCache.Init；显式注入这个原版载体，
-		// 等价于真实启动时游戏自动收录 DustyTome 的 [SavedProperty]。
+#if STS2_109_OR_NEWER
+		// 测试宿主不会执行原版 Init；仅在测试进程用官方 Debug 入口补齐原版载体。
+		// 生产代码仍禁止调用该入口，以免绕过 0.109 的 SavedProperty wire hash。
+		MegaCrit.Sts2.Core.Multiplayer.Serialization.ModelIdSerializationCache
+			.CacheSavedPropertiesForTypeDebug(typeof(DustyTome));
+#else
 		HextechSavedPropertyBootstrap.InjectModelType(typeof(DustyTome));
+#endif
 		DustyTome copy = DoubleVisionRune.DuplicateDustyTomeSpecializedForTest(
 			source,
 			syncReward: false,
@@ -2428,14 +3838,96 @@ internal static partial class Program
 		SequenceEqual(rarityPool.Where(hex => hex != currentHex), fallbackPool, "reroll pool should fall back to non-current rarity pool when known exclusions exhaust it");
 	}
 
+	private static void ExternalModelIdConflictsAreRejectedBeforeRegistration()
+	{
+		Type playerCollisionType = typeof(BurningBlood);
+		Type forgeCollisionType = typeof(Anchor);
+		Equal(
+			ModelDb.GetId<MegaCrit.Sts2.Core.Models.Relics.BurningBlood>(),
+			ModelDb.GetId(playerCollisionType),
+			"test player rune should collide with the vanilla Burning Blood ModelId");
+		Equal(
+			ModelDb.GetId<MegaCrit.Sts2.Core.Models.Relics.Anchor>(),
+			ModelDb.GetId(forgeCollisionType),
+			"test forge should collide with the vanilla Anchor ModelId");
+
+		int registryVersion = HextechExternalContentRegistry.Version;
+		int playerRuneCount = HextechExternalContentRegistry.GetPlayerRuneRegistrations().Count;
+		int forgeCount = HextechExternalContentRegistry.GetForgeRegistrations().Count;
+		int eventRelicCount = HextechExternalContentRegistry.GetEventRelicTypes().Count;
+		InvalidOperationException universeConflict = ExpectThrows<InvalidOperationException>(
+			() => HextechCatalog.EnsureExternalModelIdAvailable(playerCollisionType),
+			"external ModelId validation should include vanilla model types");
+		Expect(
+			universeConflict.Message.Contains("same ModelId", StringComparison.Ordinal),
+			"vanilla collision should come from the ModelId validator");
+		ExpectThrows<InvalidOperationException>(
+			() => RunBeforeSavedPropertyCacheInitialization(() =>
+				HextechRunesApi.RegisterPlayerRune<BurningBlood>(HextechRarityTier.Silver)),
+			"player rune API should reject a vanilla ModelId collision before registration");
+		ExpectThrows<InvalidOperationException>(
+			() => RunBeforeSavedPropertyCacheInitialization(() =>
+				HextechRunesApi.RegisterEventRelic<BurningBlood>()),
+			"event relic API should reject a vanilla ModelId collision before registration");
+		ExpectThrows<InvalidOperationException>(
+			() => RunBeforeSavedPropertyCacheInitialization(() =>
+				HextechRunesApi.RegisterForge<Anchor>(HextechRarityTier.Gold)),
+			"forge API should reject a vanilla ModelId collision before registration");
+		Equal(registryVersion, HextechExternalContentRegistry.Version, "ModelId collision registry version");
+		Equal(playerRuneCount, HextechExternalContentRegistry.GetPlayerRuneRegistrations().Count, "ModelId collision player rune count");
+		Equal(forgeCount, HextechExternalContentRegistry.GetForgeRegistrations().Count, "ModelId collision forge count");
+		Equal(eventRelicCount, HextechExternalContentRegistry.GetEventRelicTypes().Count, "ModelId collision event relic count");
+		Expect(
+			!HextechModelPoolRegistrar.IsModelAlreadyQueuedForPool(
+				typeof(MegaCrit.Sts2.Core.Models.RelicPools.SharedRelicPool),
+				playerCollisionType),
+			"colliding player rune should not enter the shared relic pool queue");
+		Expect(
+			!HextechModelPoolRegistrar.IsModelAlreadyQueuedForPool(
+				typeof(MegaCrit.Sts2.Core.Models.RelicPools.SharedRelicPool),
+				forgeCollisionType),
+			"colliding forge should not enter the shared relic pool queue");
+		Expect(
+			!HextechModelPoolRegistrar.IsModelAlreadyQueuedForPool(
+				typeof(MegaCrit.Sts2.Core.Models.RelicPools.EventRelicPool),
+				playerCollisionType),
+			"colliding event relic should not enter the event relic pool queue");
+
+		Type existingType = typeof(ExternalRegistrationEventRelic);
+		Type incomingType = typeof(ExternalRegistrationTestRune);
+		Dictionary<Type, ModelId> duplicateIds = new()
+		{
+			[existingType] = new ModelId("HEXTECH_TEST", "DUPLICATE"),
+			[incomingType] = new ModelId("HEXTECH_TEST", "DUPLICATE")
+		};
+		ExpectThrows<InvalidOperationException>(
+			() => HextechCatalog.EnsureUniqueModelIds(
+				[ existingType, incomingType ],
+				type => duplicateIds[type]),
+			"different external model types must not share a full ModelId");
+
+		Dictionary<Type, ModelId> duplicateEntries = new()
+		{
+			[existingType] = new ModelId("EXTERNAL_A", "SAME_ENTRY"),
+			[incomingType] = new ModelId("EXTERNAL_B", "SAME_ENTRY")
+		};
+		ExpectThrows<InvalidOperationException>(
+			() => HextechCatalog.EnsureConfigurablePlayerRuneIdEntryAvailable(
+				incomingType,
+				[ existingType ],
+				type => duplicateEntries[type]),
+			"configurable external runes must reject duplicate Entry values across categories");
+	}
+
 	private static void ExternalPlayerRuneRegistrationUpdatesCatalog()
 	{
 		Type runeType = typeof(ExternalRegistrationTestRune);
 		Expect(!HextechCatalog.IsPlayerRuneTypeVisible(runeType), "external rune should not be visible before registration");
-		HextechRunesApi.RegisterPlayerRune<ExternalRegistrationTestRune>(
-			HextechRarityTier.Gold,
-			tagKey: "COMPREHENSIVE",
-			assetModId: "HextechRunes.Tests");
+		RunBeforeSavedPropertyCacheInitialization(() =>
+			HextechRunesApi.RegisterPlayerRune<ExternalRegistrationTestRune>(
+				HextechRarityTier.Gold,
+				tagKey: "COMPREHENSIVE",
+				assetModId: "HextechRunes.Tests"));
 		Expect(HextechCatalog.IsPlayerRuneTypeVisible(runeType), "external rune should be visible after registration");
 		Expect(HextechCatalog.IsPlayerRuneTypeConfigurable(runeType), "external rune should be configurable after registration");
 		Expect(HextechCatalog.IsPlayerRuneTypeSelectable(runeType), "external rune should be selectable after registration");
@@ -2448,15 +3940,22 @@ internal static partial class Program
 	{
 		Type relicType = typeof(ExternalRegistrationEventRelic);
 		Expect(!HextechContentRegistry.EventRelicTypes.Contains(relicType), "external event relic should not be registered initially");
-		HextechRunesApi.RegisterEventRelic<ExternalRegistrationEventRelic>("HextechRunes.Tests");
+		RunBeforeSavedPropertyCacheInitialization(() =>
+			HextechRunesApi.RegisterEventRelic<ExternalRegistrationEventRelic>("HextechRunes.Tests"));
 		Expect(HextechContentRegistry.EventRelicTypes.Contains(relicType), "external event relic should be registered");
+		RunBeforeSavedPropertyCacheInitialization(() =>
+			HextechRunesApi.RegisterEventRelic<ExternalRegistrationEventRelic>("HextechRunes.Tests"));
+		Equal(1, HextechExternalContentRegistry.GetEventRelicTypes().Count(type => type == relicType), "idempotent event relic registration count");
 	}
 
 	private static void ExternalForgeRegistrationUpdatesCatalog()
 	{
 		Type forgeType = typeof(ExternalRegistrationForge);
 		Expect(!HextechContentRegistry.AllForgeTypes.Contains(forgeType), "external forge should not be registered initially");
-		HextechRunesApi.RegisterForge<ExternalRegistrationForge>(HextechRarityTier.Prismatic, "HextechRunes.Tests");
+		RunBeforeSavedPropertyCacheInitialization(() =>
+			HextechRunesApi.RegisterForge<ExternalRegistrationForge>(
+				HextechRarityTier.Prismatic,
+				"HextechRunes.Tests"));
 		Expect(HextechContentRegistry.AllForgeTypes.Contains(forgeType), "external forge should enter all forge types");
 		Expect(HextechContentRegistry.PrismaticForgeTypes.Contains(forgeType), "external forge should enter prismatic pool");
 		Expect(HextechCatalog.GetForgeTypesForRarity(HextechRarityTier.Prismatic).Contains(forgeType), "external forge should enter catalog rarity pool");
@@ -2484,13 +3983,19 @@ internal static partial class Program
 		ModelId id = ModelDb.GetId<ExternalRegistrationEnchantment>();
 		const string iconPath = "res://HextechRunes.Tests/images/enchantments/externalRegistrationEnchantment.png";
 		Expect(HextechExternalContentRegistry.GetEnchantmentIconPath(id) == null, "external enchantment icon should not be registered initially");
-		HextechRunesApi.RegisterEnchantmentIcon<ExternalRegistrationEnchantment>(iconPath);
+		RunBeforeSavedPropertyCacheInitialization(() =>
+		{
+			HextechRunesApi.RegisterSavedPropertyCarrier<ExternalRegistrationEnchantment>();
+			HextechRunesApi.RegisterEnchantmentIcon<ExternalRegistrationEnchantment>(iconPath);
+		});
 		Equal(iconPath, HextechExternalContentRegistry.GetEnchantmentIconPath(id), "external enchantment icon path");
 
+#if !STS2_109_OR_NEWER
 		SavedProperties? props = SavedProperties.FromInternal(new ExternalRegistrationEnchantment(), id);
 		Expect(
 			props?.ints?.Any(static property => property.name == "PersistentCounter" && property.value == 7) == true,
-			"external enchantment saved property should be registered");
+			"0.107 explicit SavedProperty carrier registration should inject the property");
+#endif
 	}
 
 	private static void IllusoryWeaponPenNibPrefixesCanReturnSkippedTask()
@@ -2529,6 +4034,25 @@ internal static partial class Program
 		Expect(!gameplaySignature.Contains("savedProps=", StringComparison.Ordinal), "gameplay signature must not include runtime SavedProperties state");
 		Expect(diagnosticSignature.Contains("savedProps=", StringComparison.Ordinal), "diagnostic signature should still include SavedProperties state");
 		Expect(!string.Equals(gameplaySignature, diagnosticSignature, StringComparison.Ordinal), "diagnostic signature should remain more detailed than gameplay signature");
+	}
+
+	private static void MultiplayerGameplayEntryIncludesReadableProtocolVersion()
+	{
+		Equal(
+			"HextechRunes-0.8.1-net1",
+			HextechMultiplayerCompatibilityHooks.BuildGameplayCompatibilityEntry("HextechRunes", "0.8.1"),
+			"gameplay compatibility entry should expose the short network protocol version");
+
+		string diagnosticSignature = HextechMultiplayerCompatibilityHooks.BuildModNetworkSignature(
+			"HextechRunes",
+			"0.8.1",
+			null,
+			"",
+			"",
+			includeSavedProperties: false);
+		Expect(
+			diagnosticSignature.Contains("protocol=net1", StringComparison.Ordinal),
+			"diagnostic signature should expose the same network protocol version");
 	}
 
 	private static void SavedPropertyNetIdCanonicalizationIsInjectionOrderIndependent()
@@ -2597,10 +4121,48 @@ internal static partial class Program
 	{
 	}
 
+	private sealed class BurningBlood : HextechRelicBase
+	{
+	}
+
+	private sealed class Anchor : HextechForgeBase
+	{
+	}
+
 	private sealed class ExternalRegistrationEnchantment : EnchantmentModel
 	{
 		[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 		private int PersistentCounter { get; set; } = 7;
+	}
+
+	private sealed class PreInitSavedPropertyCarrier : EnchantmentModel
+	{
+		[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+		private int PreInitCounter { get; set; } = 3;
+	}
+
+	private sealed class LateSavedPropertyCarrier : EnchantmentModel
+	{
+		[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+		private int LateCounter { get; set; } = 5;
+	}
+
+	private sealed class SameNameSavedPropertyCarrierA : EnchantmentModel
+	{
+		[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+		private int SharedCounter { get; set; } = 1;
+	}
+
+	private sealed class SameNameSavedPropertyCarrierB : EnchantmentModel
+	{
+		[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+		private int SharedCounter { get; set; } = 2;
+	}
+
+	private sealed class LateExternalRegistrationRune : HextechRelicBase
+	{
+		[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+		private int LateExternalCounter { get; set; } = 1;
 	}
 
 	private sealed class RuneSelectionTestRelicA : RelicModel
@@ -2668,16 +4230,16 @@ internal static partial class Program
 		}
 	}
 
-	private static void ExpectThrows<TException>(Action action, string message)
+	private static TException ExpectThrows<TException>(Action action, string message)
 		where TException : Exception
 	{
 		try
 		{
 			action();
 		}
-		catch (TException)
+		catch (TException ex)
 		{
-			return;
+			return ex;
 		}
 
 		throw new InvalidOperationException(message);

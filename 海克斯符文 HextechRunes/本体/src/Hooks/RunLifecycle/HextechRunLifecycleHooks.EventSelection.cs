@@ -98,7 +98,7 @@ internal static partial class HextechRunLifecycleHooks
 			return false;
 		}
 
-		if (GetMayhemModifier(currentRunState)?.IsActResolved(currentRunState.CurrentActIndex) == true)
+		if (HextechMayhemModifier.FindIn(currentRunState)?.IsActResolved(currentRunState.CurrentActIndex) == true)
 		{
 			return false;
 		}

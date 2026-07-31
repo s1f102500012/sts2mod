@@ -113,11 +113,8 @@ public sealed class CorruptedBranchRune : HextechRelicBase
 			return null;
 		}
 
-		List<CardModel> pool = CardFactory
-			.FilterForCombat(Owner.Character.CardPool.GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint))
-			.Where(static card => card.CanBeGeneratedByModifiers)
-			.OrderBy(HextechStableRandom.CardKey, StringComparer.Ordinal)
-			.ToList();
+		List<CardModel> pool = BuildStableCombatGenerationPool(
+			Owner.Character.CardPool.GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint));
 		if (pool.Count == 0)
 		{
 			return null;
@@ -157,13 +154,10 @@ public sealed class CorruptedBranchRune : HextechRelicBase
 			typedPool = pool.Where(card => card.Type == chosenType).ToList();
 		}
 
-		CardModel canonicalCard = HextechStableRandom.Pick(
+		return PickStableGeneratedCard(
+			combatState,
 			typedPool,
-			(RunState)Owner.RunState,
-			HextechStableRandom.CardKey,
 			[.. saltParts, HextechStableRandom.CardPileKey(typedPool)]);
-
-		return combatState.CreateCard(canonicalCard, Owner);
 	}
 
 	private static void ApplyPersistentInnate(CardModel card)

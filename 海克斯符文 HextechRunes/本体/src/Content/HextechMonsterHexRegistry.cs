@@ -81,7 +81,7 @@ internal static class HextechMonsterHexRegistry
 		Monster<ProteinShakeRune>(MonsterHexKind.ProteinShake, HextechRarityTier.Prismatic),
 		Monster<GoldenSpatulaRune>(MonsterHexKind.GoldenSpatula, HextechRarityTier.Prismatic),
 		Monster<HailToTheKingRune>(MonsterHexKind.HailToTheKing, HextechRarityTier.Prismatic),
-		Monster<EightPennyGateRune>(MonsterHexKind.EightPennyGate, HextechRarityTier.Prismatic),
+		Monster<HungryHex>(MonsterHexKind.EightPennyGate, HextechRarityTier.Prismatic),
 		Monster<DuffsVintageRune>(MonsterHexKind.DuffsVintage, HextechRarityTier.Prismatic),
 		Monster<HastyScribbleRune>(MonsterHexKind.HastyScribble, HextechRarityTier.Prismatic),
 		Monster<LagavulinMatriarchHex>(MonsterHexKind.LagavulinMatriarch, HextechRarityTier.Prismatic),
@@ -130,7 +130,9 @@ internal static class HextechMonsterHexRegistry
 		Monster<HundredRefinementsHex>(MonsterHexKind.HundredRefinements, HextechRarityTier.Gold),
 		Monster<VitalitySurgeRune>(MonsterHexKind.VitalitySurge, HextechRarityTier.Gold),
 		Monster<AncientStatueHex>(MonsterHexKind.AncientStatue, HextechRarityTier.Prismatic),
-		Monster<ByrdonisHex>(MonsterHexKind.Byrdonis, HextechRarityTier.Prismatic)
+		Monster<ByrdonisHex>(MonsterHexKind.Byrdonis, HextechRarityTier.Prismatic),
+		Monster<InspectHex>(MonsterHexKind.IInspect, HextechRarityTier.Prismatic),
+		Monster<GripHex>(MonsterHexKind.IGrip, HextechRarityTier.Prismatic)
 	];
 
 	private static MonsterHexRegistration Monster<TRelic>(

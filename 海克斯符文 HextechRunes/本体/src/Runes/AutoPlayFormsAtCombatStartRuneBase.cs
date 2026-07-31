@@ -3,7 +3,8 @@ namespace HextechRunes;
 /// <summary>
 /// 「升级：XX形态」系共用基类:每场战斗开始时,自动打出你所有的目标能力牌(TCard),
 /// 类似注能附魔——形态不再占用手牌与抽牌流。触发时机照抄固态时间:首个玩家回合开始后
-/// (牌堆与打出管线就绪),以每场一次标志防重复;打出走 HextechAutoPlayHelper 正常路径(免费)。
+/// (牌堆与打出管线就绪),以每场一次标志防重复;普通形态牌合并结算最终 Power,
+/// 仅有克隆附魔的牌也可合并;其他附魔/负面附着牌回退原版逐张路径,整批只派发一次打出牌钩子。
 /// 补卡/无刷新门槛由 CardUpgradeRuneBase 提供。
 /// </summary>
 public abstract class AutoPlayFormsAtCombatStartRuneBase<TCard> : CardUpgradeRuneBase<TCard>
@@ -59,17 +60,39 @@ public abstract class AutoPlayFormsAtCombatStartRuneBase<TCard> : CardUpgradeRun
 		try
 		{
 			Flash();
-			// 压制打出期间的 EndTurn(虚空形态 OnPlay 自带),开局自动打出不吃掉玩家首回合。
+			// 整批从进场动画起共用展开布局;安全场景只结算一次合计 Power,兼容场景仍走
+			// 原版逐张路径。虚空形态的 EndTurn 在同一确定性作用域内压掉,不吃掉首回合。
+			using (HextechFormAutoPlayHooks.BeginCardPlayBatch(cards))
 			using (HextechFormAutoPlayHooks.BeginEndTurnSuppression())
 			{
-				foreach (TCard card in cards)
+				IReadOnlyList<CardPileAddResult> moveResults = await CardPileCmd.Add(
+					cards,
+					PileType.Play,
+					CardPilePosition.Bottom);
+				List<CardModel> cardsInPlay = moveResults
+					.Where(result => result.success && result.cardAdded.Pile?.Type == PileType.Play)
+					.Select(result => result.cardAdded)
+					.ToList();
+
+				await HextechFormAutoPlayHooks.PlayCardBatchVfx(cardsInPlay);
+
+				if (await HextechFormAutoPlayHooks.TryPlayCombinedFinalEffect(choiceContext, cardsInPlay))
 				{
-					if (card.Pile?.Type is not (PileType.Draw or PileType.Hand or PileType.Discard))
+					return;
+				}
+
+				foreach (CardModel card in cardsInPlay)
+				{
+					if (card.Pile?.Type != PileType.Play)
 					{
 						continue;
 					}
 
-					await HextechAutoPlayHelper.AutoPlayOrMoveToResultPile(choiceContext, card, target: null);
+					await HextechAutoPlayHelper.AutoPlayOrMoveToResultPile(
+						choiceContext,
+						card,
+						target: null,
+						skipCardPileVisuals: true);
 				}
 			}
 		}

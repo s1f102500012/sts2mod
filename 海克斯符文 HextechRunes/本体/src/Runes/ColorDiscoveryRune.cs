@@ -91,17 +91,22 @@ public sealed class ColorDiscoveryRune : HextechRelicBase
 		List<CardModel> options = [];
 		for (int i = 0; i < DynamicVars.Cards.IntValue && candidates.Count > 0; i++)
 		{
-			CardModel canonicalCard = HextechStableRandom.Pick(
+			CardModel? card = PickStableGeneratedCard(
+				combatState,
 				candidates,
-				(RunState)Owner.RunState,
-				HextechStableRandom.CardKey,
+				out ModelId canonicalCardId,
 				"color-discovery-option",
 				HextechStableRandom.PlayerKey(Owner),
 				combatState.RoundNumber.ToString(),
 				i.ToString(),
 				HextechStableRandom.CardPileKey(candidates));
-			options.Add(combatState.CreateCard(canonicalCard, Owner));
-			candidates.RemoveAll(card => card.Id == canonicalCard.Id);
+			if (card == null)
+			{
+				break;
+			}
+
+			options.Add(card);
+			candidates.RemoveAll(candidate => candidate.Id == canonicalCardId);
 		}
 
 		return options;
@@ -110,14 +115,22 @@ public sealed class ColorDiscoveryRune : HextechRelicBase
 	private static IEnumerable<CardModel> GetOtherCharacterCards(Player player)
 	{
 		ModelId ownerPoolId = player.Character.CardPool.Id;
-		return GetCharacterPools()
+		IEnumerable<CardModel> candidates = GetCharacterPools()
 			.Where(pool => !pool.Id.Equals(ownerPoolId))
-			.SelectMany(pool => pool.GetUnlockedCards(player.UnlockState, player.RunState.CardMultiplayerConstraint))
-			.Where(static card => card.Rarity is not CardRarity.Basic and not CardRarity.Ancient
-				&& card.CanBeGeneratedInCombat
-				&& card.CanBeGeneratedByModifiers)
+			.SelectMany(pool => CardFactory.FilterForCombat(
+				pool.GetUnlockedCards(player.UnlockState, player.RunState.CardMultiplayerConstraint)))
+			.Where(static card => card.CanBeGeneratedByModifiers)
 			.GroupBy(static card => card.Id)
 			.Select(static group => group.First());
+		return OrderCandidatesForStableSelection(candidates);
+	}
+
+	internal static IReadOnlyList<CardModel> OrderCandidatesForStableSelection(
+		IEnumerable<CardModel> candidates)
+	{
+		return candidates
+			.OrderBy(HextechStableRandom.CardKey, StringComparer.Ordinal)
+			.ToArray();
 	}
 
 	private static IEnumerable<CardPoolModel> GetCharacterPools()

@@ -3,17 +3,38 @@ namespace HextechRunes;
 internal static class HextechStableModelIdListCodec
 {
 	public const int Version = -3;
-	private const int MaxCount = 64;
-	private const int MaxLength = 128;
+	public const int MaxCount = 64;
+	public const int MaxSerializedLength = 128;
 
 	public static void Append(List<int> payload, IEnumerable<ModelId> modelIds)
 	{
 		ModelId[] ids = modelIds.ToArray();
+		if (ids.Length > MaxCount)
+		{
+			throw new ArgumentOutOfRangeException(
+				nameof(modelIds),
+				ids.Length,
+				$"ModelId payload count must not exceed {MaxCount}.");
+		}
+
+		string[] serializedIds = new string[ids.Length];
+		for (int i = 0; i < ids.Length; i++)
+		{
+			string serialized = ids[i].ToString();
+			if (serialized.Length > MaxSerializedLength)
+			{
+				throw new ArgumentException(
+					$"Serialized ModelId length must not exceed {MaxSerializedLength}: {serialized.Length}.",
+					nameof(modelIds));
+			}
+
+			serializedIds[i] = serialized;
+		}
+
 		payload.Add(Version);
 		payload.Add(ids.Length);
-		foreach (ModelId id in ids)
+		foreach (string serialized in serializedIds)
 		{
-			string serialized = id.ToString();
 			payload.Add(serialized.Length);
 			foreach (char ch in serialized)
 			{
@@ -26,13 +47,13 @@ internal static class HextechStableModelIdListCodec
 	{
 		modelIds = [];
 		nextCursor = cursor;
-		if (payload.Count <= cursor || payload[cursor] != Version)
+		if (!HasRemaining(payload, cursor, 1) || payload[cursor] != Version)
 		{
 			return false;
 		}
 
 		cursor++;
-		if (payload.Count <= cursor)
+		if (!HasRemaining(payload, cursor, 1))
 		{
 			return false;
 		}
@@ -45,13 +66,13 @@ internal static class HextechStableModelIdListCodec
 
 		for (int i = 0; i < count; i++)
 		{
-			if (payload.Count <= cursor)
+			if (!HasRemaining(payload, cursor, 1))
 			{
 				return false;
 			}
 
 			int length = payload[cursor++];
-			if (length < 0 || length > MaxLength || payload.Count < cursor + length)
+			if (length < 0 || length > MaxSerializedLength || !HasRemaining(payload, cursor, length))
 			{
 				return false;
 			}
@@ -83,5 +104,13 @@ internal static class HextechStableModelIdListCodec
 
 		nextCursor = cursor;
 		return true;
+	}
+
+	private static bool HasRemaining(IReadOnlyList<int> payload, int cursor, int count)
+	{
+		return cursor >= 0
+			&& count >= 0
+			&& cursor <= payload.Count
+			&& count <= payload.Count - cursor;
 	}
 }

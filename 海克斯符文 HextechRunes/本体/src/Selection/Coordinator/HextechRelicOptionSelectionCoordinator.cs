@@ -1,7 +1,7 @@
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Nodes.Screens;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
-using MegaCrit.Sts2.Core.Saves;
+using static HextechRunes.HextechSelectionHelpers;
 
 namespace HextechRunes;
 
@@ -38,49 +38,73 @@ internal static class HextechRelicOptionSelectionCoordinator
 			return null;
 		}
 
-		PlayerChoiceSynchronizer? synchronizer = await HextechRuneSelectionCoordinator.WaitForPlayerChoiceSynchronizerAsync(runManager);
-		if (synchronizer == null)
-		{
-			if (HextechRuneSelectionCoordinator.IsLocalPlayer(runManager, player))
-			{
-				return await SelectLocalRelic(player, options, context);
-			}
-
-			Log.Warn($"[{ModInfo.Id}][RelicOptionChoice] Choice synchronizer unavailable for remote player={player.NetId}; defaulting to first option context={context}");
-			return options[0];
-		}
+		PlayerChoiceSynchronizer synchronizer = await HextechRuneSelectionCoordinator.WaitForPlayerChoiceSynchronizerAsync(runManager);
 
 		uint choiceId = synchronizer.ReserveChoiceId(player);
+		int operationToken = HextechChoiceCodec.ComputeOperationToken(
+			"relic-option-selection",
+			choiceId,
+			player.NetId,
+			context);
 		if (HextechRuneSelectionCoordinator.IsLocalPlayer(runManager, player))
 		{
-			RelicModel? selected = await SelectLocalRelic(player, options, context);
-			if (selected == null)
+			try
 			{
-				HextechLog.Info($"[{ModInfo.Id}][RelicOptionChoice] Local selection aborted: player={player.NetId} choiceId={choiceId} context={context}");
-				return null;
-			}
+				RelicModel? selected = await SelectLocalRelic(player, options, context);
+				if (selected == null)
+				{
+					uint canceledChoiceId = HextechRuneSelectionCoordinator.SyncLocalHextechChoice(
+						synchronizer,
+						player,
+						choiceId,
+						HextechChoiceCodec.CreateRelicOptionSelection(operationToken, selectedIndex: -1, options),
+						$"relic-option-choice {context}");
+					HextechLog.Info($"[{ModInfo.Id}][RelicOptionChoice] Local selection canceled: player={player.NetId} choiceId={canceledChoiceId} context={context}");
+					return null;
+				}
 
-			int selectedIndex = IndexOfRelic(options, selected);
-			if (selectedIndex < 0)
+				int selectedIndex = IndexOfRelicById(options, selected);
+				if (selectedIndex < 0)
+				{
+					string message = $"Local relic option selection is not in the synchronized option set: player={player.NetId} context={context}";
+					throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"relic-option-choice {context}", message);
+				}
+
+				if (!runManager.NetService.IsConnected)
+				{
+					throw new OperationCanceledException(
+						$"Local relic option selection ended after multiplayer disconnected: player={player.NetId} context={context}");
+				}
+
+				PlayerChoiceResult result = HextechChoiceCodec.CreateRelicOptionSelection(
+					operationToken,
+					selectedIndex,
+					options);
+				uint sentChoiceId = HextechRuneSelectionCoordinator.SyncLocalHextechChoice(
+					synchronizer,
+					player,
+					choiceId,
+					result,
+					$"relic-option-choice {context}");
+
+				HextechLog.Info($"[{ModInfo.Id}][RelicOptionChoice] Sync local: player={player.NetId} choiceId={sentChoiceId} index={selectedIndex} context={context}");
+				return selected;
+			}
+			catch (HextechChoiceProtocolException)
 			{
-				Log.Warn($"[{ModInfo.Id}][RelicOptionChoice] Local selection not in option set: player={player.NetId} context={context}");
-				return null;
+				throw;
 			}
-
-			if (!runManager.NetService.IsConnected)
+			catch (OperationCanceledException) when (!runManager.NetService.IsConnected)
 			{
-				Log.Warn($"[{ModInfo.Id}][RelicOptionChoice] Local selection ignored because multiplayer service is disconnected: player={player.NetId} context={context}");
-				return null;
+				throw;
 			}
-
-			PlayerChoiceResult result = HextechChoiceCodec.CreateRelicOptionSelection(selectedIndex, options);
-			if (!HextechRuneSelectionCoordinator.TrySyncLocalHextechChoice(synchronizer, player, choiceId, result, $"relic-option-choice {context}", out uint sentChoiceId))
+			catch (Exception ex)
 			{
-				Log.Warn($"[{ModInfo.Id}][RelicOptionChoice] Sync local failed: player={player.NetId} choiceId={choiceId} index={selectedIndex} context={context}");
+				string message =
+					$"Local relic option transaction failed after reserving choice: " +
+					$"player={player.NetId} choiceId={choiceId} context={context}";
+				throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"relic-option-choice {context}", message, ex);
 			}
-
-			HextechLog.Info($"[{ModInfo.Id}][RelicOptionChoice] Sync local: player={player.NetId} choiceId={sentChoiceId} index={selectedIndex} context={context}");
-			return selected;
 		}
 
 		HextechLog.Info($"[{ModInfo.Id}][RelicOptionChoice] Wait remote: player={player.NetId} choiceId={choiceId} context={context}");
@@ -89,10 +113,10 @@ internal static class HextechRelicOptionSelectionCoordinator
 			(RunState)player.RunState,
 			player,
 			choiceId,
-			result => HextechChoiceCodec.IsRelicOptionSelection(result, options),
+			result => HextechChoiceCodec.IsRelicOptionSelection(result, operationToken, options),
 			$"relic-option-choice {context}");
 		HextechLog.Info($"[{ModInfo.Id}][RelicOptionChoice] Remote received: player={player.NetId} choiceId={receivedChoiceId} context={context}");
-		return ResolveRemoteRelicOptionChoice(player, options, remoteChoice, context);
+		return ResolveRemoteRelicOptionChoice(player, options, remoteChoice, operationToken, context);
 	}
 
 	private static async Task<RelicModel?> SelectLocalRelic(Player player, IReadOnlyList<RelicModel> options, string context)
@@ -125,74 +149,64 @@ internal static class HextechRelicOptionSelectionCoordinator
 
 	private static async Task<bool> WaitForOverlayStackAsync()
 	{
-		for (int i = 0; i < 60; i++)
-		{
-			if (NOverlayStack.Instance != null)
-			{
-				return true;
-			}
-
-			await Task.Yield();
-		}
-
-		return NOverlayStack.Instance != null;
+		return await WaitForSingletonAsync(static () => NOverlayStack.Instance) != null;
 	}
 
-	private static RelicModel ResolveRemoteRelicOptionChoice(Player player, IReadOnlyList<RelicModel> fallbackOptions, PlayerChoiceResult remoteChoice, string context)
+	private static RelicModel? ResolveRemoteRelicOptionChoice(
+		Player player,
+		IReadOnlyList<RelicModel> expectedOptions,
+		PlayerChoiceResult remoteChoice,
+		int expectedOperationToken,
+		string context)
 	{
-		if (!HextechChoiceCodec.TryDecodeRelicOptionSelection(remoteChoice, out int selectedIndex, out List<ModelId> optionIds))
+		string payloadDump = HextechChoiceCodec.TryGetIndexPayload(remoteChoice, out List<int> payload)
+			? $"[{string.Join(",", payload)}]"
+			: remoteChoice.ToString();
+		if (!HextechChoiceCodec.TryDecodeRelicOptionSelection(
+			remoteChoice,
+			expectedOperationToken,
+			out int selectedIndex,
+			out List<ModelId> optionIds))
 		{
-			Log.Warn($"[{ModInfo.Id}][RelicOptionChoice] Malformed payload: player={player.NetId} context={context} result={remoteChoice}");
-			return fallbackOptions[0];
+			string message = $"[{ModInfo.Id}][RelicOptionChoice] Malformed payload: player={player.NetId} context={context} payload={payloadDump}";
+			Log.Error(message);
+			throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"relic-option-choice {context}", message);
 		}
 
-		IReadOnlyList<RelicModel> finalOptions = fallbackOptions;
-		if (optionIds.Count > 0)
+		if (selectedIndex == -1)
 		{
-			try
-			{
-				finalOptions = optionIds.Select(static id => ModelDb.GetById<RelicModel>(id)).ToList();
-			}
-			catch (Exception ex)
-			{
-				Log.Warn($"[{ModInfo.Id}][RelicOptionChoice] Failed to load synced option model; falling back to local options: player={player.NetId} context={context} error={ex.Message}");
-			}
+			HextechLog.Info($"[{ModInfo.Id}][RelicOptionChoice] Remote selection canceled: player={player.NetId} context={context}");
+			return null;
 		}
 
-		if (selectedIndex < 0 || selectedIndex >= finalOptions.Count)
+		if (optionIds.Count != expectedOptions.Count)
 		{
-			Log.Warn($"[{ModInfo.Id}][RelicOptionChoice] Invalid selected index: player={player.NetId} index={selectedIndex} count={finalOptions.Count} context={context}");
-			return finalOptions.FirstOrDefault() ?? fallbackOptions[0];
+			string message =
+				$"[{ModInfo.Id}][RelicOptionChoice] Synced option count mismatch: player={player.NetId} " +
+				$"expected={expectedOptions.Count} actual={optionIds.Count} context={context} payload={payloadDump}";
+			Log.Error(message);
+			throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"relic-option-choice {context}", message);
 		}
 
-		return finalOptions[selectedIndex];
-	}
-
-	private static int IndexOfRelic(IReadOnlyList<RelicModel> options, RelicModel? selected)
-	{
-		if (selected == null)
+		if (selectedIndex < 0 || selectedIndex >= optionIds.Count)
 		{
-			return -1;
+			string message = $"[{ModInfo.Id}][RelicOptionChoice] Invalid selected index: player={player.NetId} index={selectedIndex} count={optionIds.Count} context={context} payload={payloadDump}";
+			Log.Error(message);
+			throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"relic-option-choice {context}", message);
 		}
 
-		ModelId selectedId = selected.CanonicalInstance?.Id ?? selected.Id;
-		for (int i = 0; i < options.Count; i++)
+		try
 		{
-			ModelId optionId = options[i].CanonicalInstance?.Id ?? options[i].Id;
-			if (optionId == selectedId)
-			{
-				return i;
-			}
+			return ModelDb.GetById<RelicModel>(optionIds[selectedIndex]);
 		}
-
-		return -1;
-	}
-
-	private static void MarkRelicsSeen(IReadOnlyList<RelicModel> relics)
-	{
-		foreach (RelicModel relic in relics)
+		catch (Exception ex)
 		{
-			SaveManager.Instance.MarkRelicAsSeen(relic);
+			string message =
+				$"[{ModInfo.Id}][RelicOptionChoice] Failed to load synced selected model: player={player.NetId} " +
+				$"index={selectedIndex} context={context} id={optionIds[selectedIndex]}";
+			Log.Error($"{message} error={ex}");
+			throw HextechRuneSelectionCoordinator.CreateProtocolFailure($"relic-option-choice {context}", message, ex);
 		}
 	}
+
 }

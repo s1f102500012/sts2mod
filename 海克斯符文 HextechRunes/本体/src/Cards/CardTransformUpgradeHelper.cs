@@ -5,6 +5,23 @@ namespace HextechRunes;
 
 internal static class CardTransformUpgradeHelper
 {
+	public static bool CanTransformToRandomCard(CardModel card)
+	{
+		if (!card.IsTransformable || card.Pile?.Type != PileType.Hand)
+		{
+			return false;
+		}
+
+		try
+		{
+			return CardFactory.GetDefaultTransformationOptions(card, card.CombatState != null).Any();
+		}
+		catch (InvalidOperationException)
+		{
+			return false;
+		}
+	}
+
 	public static CardTransformation CreateRandomOptionTransformation(
 		CardModel original,
 		IEnumerable<CardModel> replacementOptions,

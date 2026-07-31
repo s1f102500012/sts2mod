@@ -1,18 +1,8 @@
-using MegaCrit.Sts2.Core.Models.CardPools;
-
 namespace HextechRunes;
 
-public sealed class FeelTheBurnCard : CardModel
+public sealed class FeelTheBurnCard : HextechOwnerPoolTokenCard
 {
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
 	public override string PortraitPath => HextechAssets.FeelTheBurnCardPortraitPath;
-
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
 
 	public override IEnumerable<CardKeyword> CanonicalKeywords => [CardKeyword.Retain];
 

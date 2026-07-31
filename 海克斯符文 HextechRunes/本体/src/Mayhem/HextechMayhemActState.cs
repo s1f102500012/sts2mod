@@ -376,9 +376,13 @@ internal sealed class HextechMayhemActState
 
 			_monsterHexesByAct = normalized;
 		}
-		catch
+		catch (Exception ex)
 		{
 			_monsterHexesByAct = NewMonsterHexLists();
+			string preview = json[..Math.Min(80, json.Length)];
+			Log.Warn(
+				$"[{ModInfo.Id}][Mayhem] Monster hexes by act restore failed; state cleared: "
+				+ $"{ex.GetType().Name}: {ex.Message} json={preview}");
 		}
 	}
 

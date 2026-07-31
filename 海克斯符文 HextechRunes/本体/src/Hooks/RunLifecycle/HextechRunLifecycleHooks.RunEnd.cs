@@ -13,6 +13,9 @@ internal static partial class HextechRunLifecycleHooks
 
 	private static void RunEndedPostfix(RunState? __state, bool isVictory, SerializableRun __result)
 	{
+		HextechCombatHooks.ResetTransientCombatState();
+		HextechEnemyHexEffects.ResetAllRunScopedState();
+		HextechGoldrendSync.ClearRun(__state);
 		HextechTelemetry.OnRunEnded(__state, __result, isVictory);
 	}
 

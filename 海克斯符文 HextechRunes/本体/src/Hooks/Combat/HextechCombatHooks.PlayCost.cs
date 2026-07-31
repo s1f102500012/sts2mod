@@ -14,6 +14,20 @@ internal static partial class HextechCombatHooks
 	private static readonly Dictionary<CardModel, Stack<HextechCardPlayResourceSpend>> ActivePlayResourceSpends = new();
 	private static readonly Dictionary<CardModel, HextechCardPlayResourceSpend> PendingManualPlayResourceSpends = new();
 
+	internal static void ResetTransientCombatState()
+	{
+		ActivePlayEnergyValues.Clear();
+		ActivePlayResourceSpends.Clear();
+		ClearPendingManualPlayState();
+		PendingInstantDeathDoomKills.Clear();
+	}
+
+	internal static void ClearPendingManualPlayState()
+	{
+		PendingManualPlayEnergyValues.Clear();
+		PendingManualPlayResourceSpends.Clear();
+	}
+
 	internal static bool TryGetActivePlayEnergyValue(CardModel? card, out decimal energyValue)
 	{
 		energyValue = 0m;

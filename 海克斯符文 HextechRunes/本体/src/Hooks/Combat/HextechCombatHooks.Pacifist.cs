@@ -1,8 +1,12 @@
+using System.Diagnostics;
+
 namespace HextechRunes;
 
 internal static partial class HextechCombatHooks
 {
 	private static readonly AsyncLocal<long[]?> ActualDamageCommandIds = new();
+	private static readonly HashSet<string> LoggedPreCombatDamageSuppressions = [];
+	private static readonly object PreCombatDamageSuppressionLogLock = new();
 	private static long _nextActualDamageCommandId;
 
 	internal static long CurrentActualDamageCommandId
@@ -41,13 +45,46 @@ internal static partial class HextechCombatHooks
 
 		foreach (Creature target in targets)
 		{
-			if (target is { Side: CombatSide.Enemy, CombatState: not null })
+			if (target is not { Side: CombatSide.Enemy, CombatState.RunState: RunState runState }
+				|| !HasActiveHextechCombatContent(runState))
 			{
-				return true;
+				continue;
 			}
+
+			WarnPreCombatDamageSuppressed(target);
+			return true;
 		}
 
 		return false;
+	}
+
+	private static bool HasActiveHextechCombatContent(RunState runState)
+	{
+		return runState.Players.Any(static player => player.Relics.Any(HextechCatalog.IsHextechRelic))
+			|| HextechMayhemModifier.FindIn(runState)?.GetActiveMonsterHexes().Count > 0;
+	}
+
+	private static void WarnPreCombatDamageSuppressed(Creature target)
+	{
+		MethodBase? caller = new StackTrace(skipFrames: 1, fNeedFileInfo: false)
+			.GetFrames()
+			.Select(static frame => frame.GetMethod())
+			.FirstOrDefault(static method => method?.DeclaringType != typeof(HextechCombatHooks));
+		string callerName = caller == null
+			? "<unknown>"
+			: $"{caller.DeclaringType?.FullName ?? "<unknown>"}.{caller.Name}";
+		string targetId = target.ModelId.Entry;
+		string key = $"{targetId}:{callerName}";
+
+		lock (PreCombatDamageSuppressionLogLock)
+		{
+			if (!LoggedPreCombatDamageSuppressions.Add(key))
+			{
+				return;
+			}
+		}
+
+		Log.Warn($"[{ModInfo.Id}][Mayhem] Suppressed pre-combat enemy damage: target={targetId} combatId={target.CombatId?.ToString() ?? "none"} caller={callerName}");
 	}
 
 	private static void ActualDamageCommandPostfix(long __state, ref Task<IEnumerable<DamageResult>> __result)

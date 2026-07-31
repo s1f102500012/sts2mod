@@ -36,6 +36,8 @@ internal sealed class CombatTrackingSnapshot
 	public List<uint> GoldenSpatulaApplied { get; set; } = [];
 	public List<uint> DoormakerRealStartApplied { get; set; } = [];
 	public Dictionary<uint, int> TestSubjectPhaseStartApplied { get; set; } = new();
+	public Dictionary<uint, int> MonsterMaxHpCoefficientBase { get; set; } = new();
+	public Dictionary<uint, int> MonsterMaxHpCoefficientProjected { get; set; } = new();
 	public Dictionary<uint, int> TankEngineStacks { get; set; } = new();
 	public Dictionary<uint, int> TankEngineLastAppliedRound { get; set; } = new();
 	public Dictionary<uint, int> ShrinkEngineStacks { get; set; } = new();
@@ -53,6 +55,8 @@ internal sealed class CombatTrackingSnapshot
 	public List<ulong> VakuuControlledPlayersThisCombat { get; set; } = [];
 	public List<ulong> EightPennyGatePlayersTriggeredThisTurn { get; set; } = [];
 	public List<ulong> EightPennyGatePlayersTriggeredSecondThisTurn { get; set; } = [];
+	public Dictionary<ulong, int> InspectExtraDrawsPreventedThisTurn { get; set; } = new();
+	public List<ulong> GripPlayersTriggeredThisTurn { get; set; } = [];
 	public int ArcanePunchPlayerAttackCardsPlayed { get; set; }
 	public int EnemyProtectiveVeilTurnCounter { get; set; }
 }

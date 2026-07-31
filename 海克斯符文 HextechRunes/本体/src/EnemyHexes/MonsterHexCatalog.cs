@@ -16,6 +16,64 @@ internal static class MonsterHexCatalog
 	private static readonly IReadOnlySet<MonsterHexKind> EnemyHexesWithBurnHoverTip =
 		HextechContentRegistry.MonsterHexesWithBurnHoverTip;
 
+	private static readonly IReadOnlyDictionary<MonsterHexKind, Type[]> EnemyHexPowerHoverTipTypes =
+		new Dictionary<MonsterHexKind, Type[]>
+		{
+			[MonsterHexKind.Slap] = [typeof(StrengthPower)],
+			[MonsterHexKind.Corrosion] = [typeof(StrengthPower), typeof(DexterityPower)],
+			[MonsterHexKind.Brutality] = [typeof(VigorPower)],
+			[MonsterHexKind.EscapePlan] = [typeof(ShrinkPower)],
+			[MonsterHexKind.ProtectiveVeil] = [typeof(ArtifactPower)],
+			[MonsterHexKind.Repulsor] = [typeof(SlipperyPower)],
+			[MonsterHexKind.Thornmail] = [typeof(ThornsPower)],
+			[MonsterHexKind.FrostWraith] = [typeof(SlowPower)],
+			[MonsterHexKind.DawnbringersResolve] = [typeof(RegenPower)],
+			[MonsterHexKind.ShrinkRay] = [typeof(ShrinkPower)],
+			[MonsterHexKind.SuperBrain] = [typeof(PlatingPower)],
+			[MonsterHexKind.Nightstalking] = [typeof(StrengthPower), typeof(PaperCutsPower)],
+			[MonsterHexKind.ShrinkEngine] = [typeof(SlipperyPower)],
+			[MonsterHexKind.GetExcited] = [typeof(StrengthPower), typeof(PainfulStabsPower)],
+			[MonsterHexKind.ServantMaster] = [typeof(IllusionPower)],
+			[MonsterHexKind.DivineIntervention] = [typeof(IntangiblePower)],
+			[MonsterHexKind.CourageOfColossus] = [typeof(PlatingPower)],
+			[MonsterHexKind.HandOfBaron] = [typeof(ShrinkPower)],
+			[MonsterHexKind.CantTouchThis] = [typeof(BufferPower)],
+			[MonsterHexKind.MasterOfDuality] = [typeof(StrengthPower), typeof(DexterityPower)],
+			[MonsterHexKind.FeelTheBurn] = [typeof(WeakPower), typeof(VulnerablePower)],
+			[MonsterHexKind.FeyMagic] = [typeof(ShrinkPower), typeof(NoDrawPower)],
+			[MonsterHexKind.UnmovableMountain] = [typeof(BarricadePower)],
+			[MonsterHexKind.BloodPact] = [typeof(StrengthPower)],
+			[MonsterHexKind.BrutalForce] = [typeof(StrengthPower)],
+			[MonsterHexKind.Zealot] = [typeof(VigorPower)],
+			[MonsterHexKind.BloodArmor] = [typeof(PlatingPower)],
+			[MonsterHexKind.Doomsday] = [typeof(DisintegrationPower)],
+			[MonsterHexKind.WarmogsSpirit] = [typeof(PlatingPower)],
+			[MonsterHexKind.ClownCollege] = [typeof(SlipperyPower)],
+			[MonsterHexKind.HailToTheKing] = [typeof(ArtifactPower), typeof(PlatingPower), typeof(RegenPower)],
+			[MonsterHexKind.NearDeathFeast] = [typeof(StrengthPower)],
+			[MonsterHexKind.SerpentsFang] = [typeof(PoisonPower)],
+			[MonsterHexKind.Porcupine] = [typeof(ThornsPower)],
+			[MonsterHexKind.MonarchsGaze] = [typeof(StrengthPower)],
+			[MonsterHexKind.SwiftAndSafe] = [typeof(ArtifactPower)],
+			[MonsterHexKind.ArcanePunch] = [typeof(TaintedPower)],
+			[MonsterHexKind.Omega] = [typeof(DisintegrationPower)],
+			[MonsterHexKind.OminousPact] = [typeof(DoomPower)],
+			[MonsterHexKind.Cerberus] = [typeof(VigorPower)],
+			[MonsterHexKind.OmniDragonSoul] = [typeof(WeakPower), typeof(FrailPower), typeof(VulnerablePower)],
+			[MonsterHexKind.SkulkingColony] = [typeof(HardenedShellPower)],
+			[MonsterHexKind.PhantasmalGardener] = [typeof(SkittishPower)],
+			[MonsterHexKind.Queen] = [typeof(ChainsOfBindingPower)],
+			[MonsterHexKind.LagavulinMatriarch] = [typeof(StrengthPower), typeof(DexterityPower)],
+			[MonsterHexKind.Exoskeleton] = [typeof(HardToKillPower)],
+			[MonsterHexKind.TestSubject] = [typeof(EnragePower), typeof(PainfulStabsPower)],
+			[MonsterHexKind.ShrinkerBeetle] = [typeof(ShrinkPower)],
+			[MonsterHexKind.Inklet] = [typeof(SlipperyPower)],
+			[MonsterHexKind.Vantom] = [typeof(SlipperyPower)],
+			[MonsterHexKind.TheLost] = [typeof(StrengthPower)],
+			[MonsterHexKind.TheForgotten] = [typeof(DexterityPower)],
+			[MonsterHexKind.Byrdonis] = [typeof(TerritorialPower)],
+		};
+
 	private static readonly Lazy<IReadOnlyDictionary<MonsterHexKind, HextechRarityTier>> RarityByMonsterHex = new(BuildRarityByMonsterHex);
 
 	private static readonly Lazy<IReadOnlyDictionary<ModelId, MonsterHexKind>> MonsterHexByIconRelicId = new(BuildMonsterHexByIconRelicId);
@@ -123,38 +181,53 @@ internal static class MonsterHexCatalog
 	{
 		RelicModel relic = GetIconRelicForMonsterHex(hex);
 		HoverTip mainTip = new(relic.Title, GetEnemyHexDescriptionFormatted(hex), GetEnemyHexHoverIcon(relic) ?? relic.Icon);
+		List<IHoverTip> tips = [mainTip];
+
+		foreach (Type powerType in GetEnemyHexPowerHoverTipTypes(hex))
+		{
+			PowerModel power = ModelDb.GetById<PowerModel>(ModelDb.GetId(powerType));
+			tips.Add(HoverTipFactory.FromPower(power));
+		}
+
 		if (EnemyHexesWithBurnHoverTip.Contains(hex))
 		{
-			return [mainTip, HoverTipFactory.FromPower<HextechBurnPower>()];
+			tips.Add(HoverTipFactory.FromPower<HextechBurnPower>());
 		}
 
 		if (hex == MonsterHexKind.Compensation)
 		{
-			return [mainTip, HoverTipFactory.FromPower<HextechNextTurnDamagePower>()];
+			tips.Add(HoverTipFactory.FromPower<HextechNextTurnDamagePower>());
 		}
 
 		if (hex == MonsterHexKind.SolidTime)
 		{
-			return [mainTip, HoverTipFactory.FromPower<HextechGalvanicPower>()];
+			tips.Add(HoverTipFactory.FromPower<HextechGalvanicPower>());
 		}
 
 		if (hex == MonsterHexKind.FossilStalker)
 		{
-			return [mainTip, HoverTipFactory.FromPower<SuckPower>()];
+			tips.Add(HoverTipFactory.FromPower<SuckPower>());
 		}
 
 		if (hex is MonsterHexKind.AncientStatue or MonsterHexKind.HundredRefinements)
 		{
-			return [mainTip, HoverTipFactory.FromPower<HextechPlayerSlowPower>()];
+			tips.Add(HoverTipFactory.FromPower<HextechPlayerSlowPower>());
 		}
 
-		return [mainTip];
+		return tips;
+	}
+
+	internal static IReadOnlyList<Type> GetEnemyHexPowerHoverTipTypes(MonsterHexKind hex)
+	{
+		return EnemyHexPowerHoverTipTypes.TryGetValue(hex, out Type[]? powerTypes)
+			? powerTypes
+			: Array.Empty<Type>();
 	}
 
 	private static Texture2D? GetEnemyHexHoverIcon(RelicModel relic)
 	{
 		string? path = HextechAssets.TryGetCustomRelicIconPath(relic);
-		return path == null ? null : AssetHooks.LoadUiTexture(path);
+		return path == null ? null : HextechAssetHooks.LoadUiTexture(path);
 	}
 
 	private static string GetEnemyHexDescriptionKey(RelicModel relic)

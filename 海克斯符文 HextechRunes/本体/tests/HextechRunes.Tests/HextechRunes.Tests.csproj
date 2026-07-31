@@ -19,6 +19,10 @@
     <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER;STS2_109_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.110.0'">
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="../../src/HextechRunes.csproj" />
 	<ProjectReference Include="../../../HextechRunesSponsorPack/src/HextechRunesSponsorPack.csproj" />
@@ -46,6 +50,15 @@
     <!-- 0.109 起游戏用 XxHash32 计算 net-id 表哈希,测试进程需要能加载它。 -->
     <Reference Include="System.IO.Hashing" Condition="Exists('$(GameDataDir)/System.IO.Hashing.dll')">
       <HintPath>$(GameDataDir)/System.IO.Hashing.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <!-- 0.110 起 sts2.dll 的模块初始化器直接引用 Sentry.Godot；测试宿主必须带齐这两项运行时依赖。 -->
+    <Reference Include="Sentry.Godot" Condition="Exists('$(GameDataDir)/Sentry.Godot.dll')">
+      <HintPath>$(GameDataDir)/Sentry.Godot.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Sentry" Condition="Exists('$(GameDataDir)/Sentry.dll')">
+      <HintPath>$(GameDataDir)/Sentry.dll</HintPath>
       <Private>true</Private>
     </Reference>
   </ItemGroup>

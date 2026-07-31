@@ -6,7 +6,7 @@ using MegaCrit.Sts2.Core.Nodes.Screens.RelicCollection;
 
 namespace HextechRunes;
 
-internal static partial class CollectionHooks
+internal static partial class HextechCollectionHooks
 {
 	private static void AddFlatFallbackRelics(NRelicCollectionCategory self, NRelicCollection collection)
 	{

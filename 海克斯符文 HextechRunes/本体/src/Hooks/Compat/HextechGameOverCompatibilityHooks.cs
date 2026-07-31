@@ -8,14 +8,13 @@ namespace HextechRunes;
 
 internal static class HextechGameOverCompatibilityHooks
 {
-	private static int _fallbackLogs;
-
 	public static void Install(Harmony harmony)
 	{
 		MethodInfo? createScoreLine = TryGetMethod(
 			typeof(NScoreLine),
 			nameof(NScoreLine.Create),
 			BindingFlags.Static | BindingFlags.Public,
+			warnIfMissing: false,
 			typeof(string),
 			typeof(string),
 			typeof(Texture2D));
@@ -48,7 +47,7 @@ internal static class HextechGameOverCompatibilityHooks
 		}
 
 		__result = CreateFallbackScoreLine(label, score, icon);
-		if (_fallbackLogs++ < 5)
+		if (HextechRunLogBudget.TryConsume("compat.game-over-score-line-fallback", 5))
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] Game over score line fallback used: {__exception.GetType().Name}: {__exception.Message}");
 		}
@@ -110,23 +109,8 @@ internal static class HextechGameOverCompatibilityHooks
 			MaxFontSize = 28,
 			MouseFilter = Control.MouseFilterEnum.Ignore
 		};
-		ApplyDefaultMegaLabelTheme(label);
+		HextechUiTheme.ApplyDefaultMegaLabelTheme(label);
 		label.SetTextAutoSize(text);
 		return label;
-	}
-
-	private static void ApplyDefaultMegaLabelTheme(MegaLabel label)
-	{
-		Font font = label.GetThemeDefaultFont();
-		if (font != null)
-		{
-			label.AddThemeFontOverride("font", font);
-		}
-
-		int fontSize = label.GetThemeDefaultFontSize();
-		if (fontSize > 0)
-		{
-			label.AddThemeFontSizeOverride("font_size", fontSize);
-		}
 	}
 }

@@ -6,7 +6,7 @@ using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
 
-// Orb 容量/布局/通道相关的玩家符文 hook:疯狂科学家(扩容)、拔剑式(通道转化)、
+// Orb 容量/布局相关的玩家符文 hook:疯狂科学家(扩容)、
 // 大容量环形布局、电动力学(闪电球溅射)。从 HextechPlayerRuneHooks 主文件拆出,
 // 自带 orb 布局常量与反射字段,便于独立维护。
 internal static partial class HextechPlayerRuneHooks
@@ -49,18 +49,6 @@ internal static partial class HextechPlayerRuneHooks
 		player.PlayerCombatState.OrbQueue.AddCapacity(amount);
 		NCombatRoom.Instance?.GetCreatureNode(player.Creature)?.OrbManager?.AddSlotAnim(amount);
 		__result = Task.CompletedTask;
-		return false;
-	}
-
-	private static bool OrbChannelPrefix(PlayerChoiceContext choiceContext, OrbModel orb, Player player, ref Task __result)
-	{
-		if (player.GetRelic<DrawYourSwordRune>() is not DrawYourSwordRune rune
-			|| !rune.ShouldConvertChanneledOrb(player))
-		{
-			return true;
-		}
-
-		__result = rune.ConvertChanneledOrbToFocus(choiceContext, orb, player);
 		return false;
 	}
 

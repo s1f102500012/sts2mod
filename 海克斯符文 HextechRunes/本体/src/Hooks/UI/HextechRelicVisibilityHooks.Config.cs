@@ -75,17 +75,17 @@ internal static partial class HextechRelicVisibilityHooks
 
 	private static ModUiConfig LoadOrCreateConfig()
 	{
-		string configPath = GetConfigPath();
-		Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
-		if (!File.Exists(configPath))
-		{
-			ModUiConfig defaultConfig = CreateCurrentUiConfig();
-			SaveConfig(defaultConfig);
-			return defaultConfig;
-		}
-
+		string? configPath = null;
 		try
 		{
+			configPath = GetConfigPath();
+			if (!File.Exists(configPath))
+			{
+				ModUiConfig defaultConfig = CreateCurrentUiConfig();
+				SaveConfig(defaultConfig);
+				return defaultConfig;
+			}
+
 			ModUiConfig? parsed = JsonSerializer.Deserialize<ModUiConfig>(File.ReadAllText(configPath), JsonOptions);
 			ModUiConfig config = parsed ?? new ModUiConfig();
 			// 0.8.4 一次性强制回默认(与 rune_config 的 v15 重置同批):旧 UI 偏好整体丢弃。
@@ -98,12 +98,31 @@ internal static partial class HextechRelicVisibilityHooks
 			SaveConfig(config);
 			return config;
 		}
+		catch (JsonException ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] Relic visibility config JSON is invalid; using defaults: {ex.Message}", 2);
+			ModUiConfig config = CreateCurrentUiConfig();
+			if (configPath != null && TryBackupCorruptConfig(configPath))
+			{
+				SaveConfig(config);
+			}
+
+			return config;
+		}
+		catch (UnauthorizedAccessException ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] Relic visibility config read was denied; using in-memory defaults without overwriting the file: {ex.Message}", 2);
+			return CreateCurrentUiConfig();
+		}
+		catch (IOException ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] Relic visibility config read failed due to I/O; using in-memory defaults without overwriting the file: {ex.Message}", 2);
+			return CreateCurrentUiConfig();
+		}
 		catch (Exception ex)
 		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Relic visibility config read failed; using defaults: {ex.Message}", 2);
-			ModUiConfig config = CreateCurrentUiConfig();
-			SaveConfig(config);
-			return config;
+			Log.Error($"[{ModInfo.Id}][Mayhem] Unexpected relic visibility config read failure; using in-memory defaults without overwriting the file: {ex}");
+			return CreateCurrentUiConfig();
 		}
 	}
 
@@ -112,40 +131,48 @@ internal static partial class HextechRelicVisibilityHooks
 		return new ModUiConfig { ConfigVersion = CurrentUiConfigVersion };
 	}
 
+	private static bool TryBackupCorruptConfig(string configPath)
+	{
+		try
+		{
+			File.Copy(configPath, configPath + ".corrupt.bak", overwrite: true);
+			return true;
+		}
+		catch (UnauthorizedAccessException ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] Could not back up corrupt relic visibility config; original file will not be overwritten: {ex.Message}", 2);
+			return false;
+		}
+		catch (IOException ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] Could not back up corrupt relic visibility config; original file will not be overwritten: {ex.Message}", 2);
+			return false;
+		}
+		catch (Exception ex)
+		{
+			Log.Error($"[{ModInfo.Id}][Mayhem] Unexpected relic visibility config backup failure; original file will not be overwritten: {ex}");
+			return false;
+		}
+	}
+
 	private static void SaveConfig(ModUiConfig config)
 	{
-		string configPath = GetConfigPath();
-		Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
-		File.WriteAllText(configPath, JsonSerializer.Serialize(config, JsonOptions));
+		try
+		{
+			string configPath = GetConfigPath();
+			Directory.CreateDirectory(Path.GetDirectoryName(configPath)!);
+			string serialized = JsonSerializer.Serialize(config, JsonOptions);
+			File.WriteAllText(configPath, serialized);
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] Relic visibility config write failed: {ex.Message}", 2);
+		}
 	}
 
 	private static string GetConfigPath()
 	{
-		return Path.Combine(GetDataDirectory(), ConfigFileName);
-	}
-
-	private static string GetDataDirectory()
-	{
-		try
-		{
-			string godotUserDir = OS.GetUserDataDir();
-			if (!string.IsNullOrWhiteSpace(godotUserDir))
-			{
-				return Path.Combine(godotUserDir, ModInfo.Id);
-			}
-		}
-		catch
-		{
-			// Fall back to a normal per-user directory when Godot paths are unavailable.
-		}
-
-		string baseDir = System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData);
-		if (string.IsNullOrWhiteSpace(baseDir))
-		{
-			baseDir = System.Environment.GetFolderPath(System.Environment.SpecialFolder.UserProfile);
-		}
-
-		return Path.Combine(baseDir, "SlayTheSpire2", ModInfo.Id);
+		return HextechDataPaths.GetFilePath(ConfigFileName);
 	}
 
 	private const int CurrentUiConfigVersion = 1;

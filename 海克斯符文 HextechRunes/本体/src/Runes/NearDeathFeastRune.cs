@@ -1,8 +1,14 @@
+using System.Runtime.CompilerServices;
+using MegaCrit.Sts2.Core.Helpers;
+
 namespace HextechRunes;
 
 public sealed class NearDeathFeastRune : HextechRelicBase
 {
 	private const int DeathNegativeMaxHpDivisor = 2;
+	private static readonly object MissingDamageResultMemberLogLock = new();
+	private static readonly HashSet<string> LoggedMissingDamageResultMembers = [];
+	private static readonly ConditionalWeakTable<NearDeathFeastRune, SemaphoreSlim> StrengthSyncGates = new();
 	private bool _nearDeathActive;
 	private int _nearDeathDebt;
 	private int _nearDeathStrengthBonus;
@@ -131,7 +137,8 @@ public sealed class NearDeathFeastRune : HextechRelicBase
 		creature.SetCurrentHpInternal(safeHp);
 		if (!hpChanged)
 		{
-			_ = rune.SyncNearDeathStrength();
+			// 同步伤害 hook 不能等待异步力量命令；交给安全任务包装保留异常证据。
+			_ = TaskHelper.RunSafely(rune.SyncNearDeathStrength());
 		}
 
 		return CreateDamageResult(creature, props, hpLoss, false, 0);
@@ -170,7 +177,7 @@ public sealed class NearDeathFeastRune : HextechRelicBase
 		rune._nearDeathActive = true;
 		rune._nearDeathDebt = debt;
 		creature.SetCurrentHpInternal(1);
-		_ = rune.SyncNearDeathStrength();
+		_ = TaskHelper.RunSafely(rune.SyncNearDeathStrength());
 	}
 
 	internal static int GetDeathNegativeHpLimit(Creature creature)
@@ -250,24 +257,48 @@ public sealed class NearDeathFeastRune : HextechRelicBase
 
 	private async Task SyncNearDeathStrength()
 	{
-		if (Owner == null)
+		SemaphoreSlim syncGate = StrengthSyncGates.GetValue(this, static _ => new SemaphoreSlim(1, 1));
+		await syncGate.WaitAsync();
+		int previousBonus = 0;
+		int reservedBonus = 0;
+		bool bonusReserved = false;
+		try
 		{
-			return;
-		}
+			if (Owner is not Player owner)
+			{
+				return;
+			}
 
-		int desiredBonus = _nearDeathActive
-			? _nearDeathDebt * (int)DynamicVars["StrengthPerNegativeHp"].BaseValue
-			: 0;
-		int delta = desiredBonus - _nearDeathStrengthBonus;
-		if (delta <= 0)
+			int desiredBonus = _nearDeathActive
+				? _nearDeathDebt * (int)DynamicVars["StrengthPerNegativeHp"].BaseValue
+				: 0;
+			previousBonus = _nearDeathStrengthBonus;
+			int delta = desiredBonus - previousBonus;
+			if (delta <= 0)
+			{
+				_nearDeathStrengthBonus = desiredBonus;
+				return;
+			}
+
+			reservedBonus = desiredBonus;
+			_nearDeathStrengthBonus = reservedBonus;
+			bonusReserved = true;
+			Flash();
+			await PowerCmd.Apply<StrengthPower>(owner.Creature, delta, owner.Creature, null);
+		}
+		catch
 		{
-			_nearDeathStrengthBonus = desiredBonus;
-			return;
-		}
+			if (bonusReserved && _nearDeathStrengthBonus == reservedBonus)
+			{
+				_nearDeathStrengthBonus = previousBonus;
+			}
 
-		_nearDeathStrengthBonus = desiredBonus;
-		Flash();
-		await PowerCmd.Apply<StrengthPower>(Owner.Creature, delta, Owner.Creature, null);
+			throw;
+		}
+		finally
+		{
+			syncGate.Release();
+		}
 	}
 
 	private void ResetNearDeathState()
@@ -307,7 +338,21 @@ public sealed class NearDeathFeastRune : HextechRelicBase
 		FieldInfo? field = type.GetField($"<{memberName}>k__BackingField", flags)
 			?? type.GetField(memberName, flags)
 			?? type.GetField($"_{char.ToLowerInvariant(memberName[0])}{memberName[1..]}", flags);
-		field?.SetValue(result, ConvertDamageResultValue(value, field.FieldType));
+		if (field != null)
+		{
+			field.SetValue(result, ConvertDamageResultValue(value, field.FieldType));
+			return;
+		}
+
+		lock (MissingDamageResultMemberLogLock)
+		{
+			if (!LoggedMissingDamageResultMembers.Add($"{type.AssemblyQualifiedName}:{memberName}"))
+			{
+				return;
+			}
+		}
+
+		Log.Warn($"[{ModInfo.Id}][Reflection] Missing writable DamageResult member {type.FullName}.{memberName}; result field left at its default.");
 	}
 
 	private static object ConvertDamageResultValue(object value, Type targetType)

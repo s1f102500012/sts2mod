@@ -51,9 +51,9 @@ internal sealed class AncientStatueEnemyHex : HextechEnemyHexEffect
 	{
 		return strengthTier switch
 		{
-			<= 1 => 5,
-			2 => 8,
-			_ => 10
+			<= 1 => 3,
+			2 => 5,
+			_ => 8
 		};
 	}
 }

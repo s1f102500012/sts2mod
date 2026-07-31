@@ -1,3 +1,7 @@
+using MegaCrit.Sts2.Core.Entities.Orbs;
+using MegaCrit.Sts2.Core.Nodes.Orbs;
+using MegaCrit.Sts2.Core.Nodes.Rooms;
+
 namespace HextechRunes;
 
 public sealed class DrawYourSwordRune : AttributeConversionRelicBase
@@ -20,33 +24,58 @@ public sealed class DrawYourSwordRune : AttributeConversionRelicBase
 		return IsDefectPlayer(player);
 	}
 
-	internal bool ShouldConvertChanneledOrb(Player player)
+	public override async Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, HextechCombatState combatState)
 	{
-		return player == Owner
-			&& Owner != null
-			&& IsDefectOwner
-			&& !Owner.Creature.IsDead
-			&& CombatManager.Instance?.IsOverOrEnding != true
-			&& player.PlayerCombatState != null;
-	}
-
-	internal async Task ConvertChanneledOrbToFocus(PlayerChoiceContext choiceContext, OrbModel orb, Player player)
-	{
-		if (!ShouldConvertChanneledOrb(player))
+		if (side != CombatSide.Enemy
+			|| Owner == null
+			|| !IsDefectOwner
+			|| Owner.Creature.IsDead
+			|| Owner.Creature.CombatState != combatState
+			|| CombatManager.Instance?.IsOverOrEnding == true
+			|| Owner.PlayerCombatState == null)
 		{
 			return;
 		}
 
-		choiceContext.PushModel(orb);
-		try
+		OrbQueue orbQueue = Owner.PlayerCombatState.OrbQueue;
+		List<OrbModel> orbs = orbQueue.Orbs.ToList();
+		if (orbs.Count == 0)
 		{
-			Flash();
-			await PowerCmd.Apply<FocusPower>(Owner!.Creature, DynamicVars["FocusPower"].BaseValue, Owner.Creature, null);
+			return;
 		}
-		finally
+
+		NOrbManager? orbManager = NCombatRoom.Instance?.GetCreatureNode(Owner.Creature)?.OrbManager;
+		int removedCount = 0;
+		foreach (OrbModel orb in orbs)
 		{
-			choiceContext.PopModel(orb);
+			if (!orbQueue.Remove(orb))
+			{
+				continue;
+			}
+
+			orb.RemoveInternal();
+			removedCount++;
+			try
+			{
+				orbManager?.EvokeOrbAnim(orb);
+			}
+			catch (Exception ex)
+			{
+				Log.Warn($"[{ModInfo.Id}][DrawYourSword] Orb removal animation failed: {ex.Message}");
+			}
 		}
+
+		if (removedCount == 0)
+		{
+			return;
+		}
+
+		Flash();
+		await PowerCmd.Apply<FocusPower>(
+			Owner.Creature,
+			removedCount * DynamicVars["FocusPower"].BaseValue,
+			Owner.Creature,
+			null);
 	}
 
 	protected override bool ShouldConvert(PowerModel canonicalPower)

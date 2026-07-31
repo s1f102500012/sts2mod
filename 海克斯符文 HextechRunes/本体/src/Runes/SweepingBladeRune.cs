@@ -109,12 +109,18 @@ public sealed class SweepingBladeRune : HextechRelicBase
 			return;
 		}
 
+		PowerModel? canonicalPower = GetCanonicalPowerForReplication(power);
+		if (canonicalPower == null)
+		{
+			return;
+		}
+
 		_isReplicatingPower = true;
 		try
 		{
 			foreach (Creature extraTarget in extraTargets)
 			{
-				PowerModel powerCopy = ModelDb.DebugPower(power.GetType()).ToMutable();
+				PowerModel powerCopy = canonicalPower.ToMutable();
 				decimal replicatedAmount = _activeContext.GetPowerAmountForTarget(power, extraTarget, amount);
 				await PowerCmd.Apply(powerCopy, extraTarget, replicatedAmount, applier, cardSource);
 			}
@@ -149,16 +155,38 @@ public sealed class SweepingBladeRune : HextechRelicBase
 			return;
 		}
 
+		PowerModel? canonicalPower = GetCanonicalPowerForReplication(power);
+		if (canonicalPower == null)
+		{
+			return;
+		}
+
 		_isReplicatingPower = true;
 		try
 		{
-			PowerModel powerCopy = ModelDb.DebugPower(power.GetType()).ToMutable();
+			PowerModel powerCopy = canonicalPower.ToMutable();
 			await PowerCmd.Apply(powerCopy, _activeContext.OriginalTarget, correction, applier, cardSource);
 		}
 		finally
 		{
 			_isReplicatingPower = false;
 		}
+	}
+
+	private static PowerModel? GetCanonicalPowerForReplication(PowerModel power)
+	{
+		ModelId powerId = power.Id;
+		PowerModel? canonicalPower = powerId == ModelId.none
+			? null
+			: ModelDb.GetByIdOrNull<PowerModel>(powerId);
+		if (canonicalPower == null)
+		{
+			Log.Warn(
+				$"[{ModInfo.Id}][SweepingBlade] Skipped power replication because its model is not registered: "
+				+ $"power={powerId.Entry} type={power.GetType().FullName}.");
+		}
+
+		return canonicalPower;
 	}
 
 	private static Creature? GetSingleTarget(AttackCommand command)

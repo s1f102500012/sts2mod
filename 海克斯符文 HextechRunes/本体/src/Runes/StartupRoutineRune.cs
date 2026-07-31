@@ -4,7 +4,7 @@ public sealed class StartupRoutineRune : HextechRelicBase
 {
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new BlockVar(15m, ValueProp.Unpowered)
+		new BlockVar(16m, ValueProp.Unpowered)
 	];
 
 	public override async Task BeforeCombatStart()

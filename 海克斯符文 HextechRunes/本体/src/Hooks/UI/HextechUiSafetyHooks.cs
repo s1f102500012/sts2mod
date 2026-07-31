@@ -37,10 +37,6 @@ internal static class HextechUiSafetyHooks
 		"BeforeResumedAfterPlayerChoice",
 		BindingFlags.Instance | BindingFlags.NonPublic);
 
-	private static int _relicAnimationSkipLogs;
-	private static int _remoteIntentSkipLogs;
-	private static int _remotePlayQueueSkipLogs;
-
 	public static void Install(Harmony harmony)
 	{
 		harmony.Patch(
@@ -276,7 +272,7 @@ internal static class HextechUiSafetyHooks
 
 	private static void LogRelicAnimationSkipped(string reason)
 	{
-		if (_relicAnimationSkipLogs++ < 5)
+		if (HextechRunLogBudget.TryConsume("ui.relic-animation-skip", 5))
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] Relic acquired animation skipped: {reason}");
 		}
@@ -284,7 +280,7 @@ internal static class HextechUiSafetyHooks
 
 	private static void LogRemoteIntentSkipped(GameAction action, string reason)
 	{
-		if (_remoteIntentSkipLogs++ < 10)
+		if (HextechRunLogBudget.TryConsume("ui.remote-intent-skip", 10))
 		{
 			Log.Warn($"[{ModInfo.Id}][UI] Remote intent card resume UI skipped: {reason}; action={action}");
 		}
@@ -292,7 +288,7 @@ internal static class HextechUiSafetyHooks
 
 	private static void LogRemotePlayQueueSkipped(GameAction action, string reason)
 	{
-		if (_remotePlayQueueSkipLogs++ < 10)
+		if (HextechRunLogBudget.TryConsume("ui.remote-play-queue-skip", 10))
 		{
 			Log.Warn($"[{ModInfo.Id}][UI] Remote play queue card resume UI skipped: {reason}; action={action}");
 		}

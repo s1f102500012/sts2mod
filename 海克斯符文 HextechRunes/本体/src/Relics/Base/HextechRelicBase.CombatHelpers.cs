@@ -1,3 +1,5 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+
 namespace HextechRunes;
 
 public abstract partial class HextechRelicBase
@@ -92,7 +94,7 @@ public abstract partial class HextechRelicBase
 		{
 			return potion?.Owner == Owner;
 		}
-		catch (InvalidOperationException)
+		catch (CanonicalModelException)
 		{
 			return false;
 		}

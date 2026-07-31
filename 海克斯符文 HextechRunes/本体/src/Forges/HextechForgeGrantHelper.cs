@@ -446,9 +446,14 @@ internal static class HextechForgeGrantHelper
 				return modifier.ForgeRarityWeights;
 			}
 		}
-		catch
+		catch (InvalidOperationException ex)
 		{
-			// Fall back to local configuration when no run state is available yet.
+			if (HextechRunLogBudget.TryConsume("forge.rarity-config-fallback", 3))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][Forge] Could not read synchronized forge rarity weights; "
+					+ $"using local configuration fallback: {ex.GetType().Name}: {ex.Message}");
+			}
 		}
 
 		return HextechRuneConfiguration.GetSnapshot().ForgeRarityWeights;
@@ -470,9 +475,14 @@ internal static class HextechForgeGrantHelper
 				return modifier.DisabledForgeIdsForPool;
 			}
 		}
-		catch
+		catch (InvalidOperationException ex)
 		{
-			// Fall back to local configuration when no run state is available yet.
+			if (HextechRunLogBudget.TryConsume("forge.disabled-config-fallback", 3))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][Forge] Could not read synchronized disabled forge IDs; "
+					+ $"using local configuration fallback: {ex.GetType().Name}: {ex.Message}");
+			}
 		}
 
 		return HextechRuneConfiguration.GetDisabledForgeIds();

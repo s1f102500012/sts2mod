@@ -7,19 +7,26 @@ internal static class HextechMayhemActRecovery
 		HextechMayhemActState actState,
 		HextechMayhemChoiceHistoryState choiceHistory,
 		int hexCountRecoveryBaseline,
-		IReadOnlyList<int> playerHexCountsByAct)
+		IReadOnlyList<int> playerHexCountsByAct,
+		int maxRecoverActIndex = int.MaxValue)
 	{
 		int currentActIndex = Math.Min(runState.CurrentActIndex, actState.ActCount - 1);
-		if (currentActIndex < 0 || runState.Players.Count == 0)
+		int recoveryCeiling = Math.Min(currentActIndex, maxRecoverActIndex);
+		if (recoveryCeiling < 0 || runState.Players.Count == 0)
 		{
 			return HextechMayhemActRecoveryResult.None;
 		}
 
-		int telemetryRecoverThroughAct = GetHighestActResolvedByTelemetryChoices(runState, actState, choiceHistory, currentActIndex, playerHexCountsByAct);
+		int telemetryRecoverThroughAct = GetHighestActResolvedByTelemetryChoices(
+			runState,
+			actState,
+			choiceHistory,
+			recoveryCeiling,
+			playerHexCountsByAct);
 		int countRecoverThroughAct = GetHighestActResolvedByPlayerRuneCounts(
 			runState,
 			actState,
-			currentActIndex == 0 ? 0 : currentActIndex - 1,
+			Math.Min(recoveryCeiling, currentActIndex == 0 ? 0 : currentActIndex - 1),
 			hexCountRecoveryBaseline,
 			playerHexCountsByAct);
 		int recoverThroughAct = Math.Max(telemetryRecoverThroughAct, countRecoverThroughAct);
@@ -95,16 +102,33 @@ internal static class HextechMayhemActRecovery
 				break;
 			}
 
-			Dictionary<int, int> choicesByPlayerSlot = records
+			ILookup<int, HextechTelemetry.RuneChoiceRecord> choicesByPlayerSlot = records
 				.Where(record => record.ActIndex == actIndex)
-				.GroupBy(static record => record.PlayerSlot)
-				.ToDictionary(static group => group.Key, static group => group.Count());
+				.ToLookup(static record => record.PlayerSlot);
 			bool allPlayersRecorded = true;
 			for (int playerSlot = 0; playerSlot < runState.Players.Count; playerSlot++)
 			{
-				if (!choicesByPlayerSlot.TryGetValue(playerSlot, out int recordedChoices) || recordedChoices < requiredChoices)
+				HashSet<string> ownedRuneEntries = runState.Players[playerSlot].Relics
+					.Where(HextechCatalog.IsHextechRelic)
+					.Select(static relic => (relic.CanonicalInstance?.Id ?? relic.Id).Entry)
+					.ToHashSet(StringComparer.Ordinal);
+				for (int choiceOrdinal = 0; choiceOrdinal < requiredChoices; choiceOrdinal++)
 				{
-					allPlayersRecorded = false;
+					HextechTelemetry.RuneChoiceRecord[] matchingChoices = choicesByPlayerSlot[playerSlot]
+						.Where(record => record.ChoiceOrdinal == choiceOrdinal)
+						.Take(2)
+						.ToArray();
+					if (matchingChoices.Length != 1
+						|| string.IsNullOrWhiteSpace(matchingChoices[0].Selected)
+						|| !ownedRuneEntries.Contains(matchingChoices[0].Selected!))
+					{
+						allPlayersRecorded = false;
+						break;
+					}
+				}
+
+				if (!allPlayersRecorded)
+				{
 					break;
 				}
 			}

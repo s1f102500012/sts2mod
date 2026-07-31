@@ -10,6 +10,9 @@ internal readonly record struct HextechPlayerCoefficients(
 
 internal static class HextechPlayerCoefficientHelper
 {
+	private static readonly object FailureLogLock = new();
+	private static readonly HashSet<(string Coefficient, Type ProviderType)> LoggedProviderFailures = [];
+
 	public static HextechPlayerCoefficients Get(Player player)
 	{
 		return new HextechPlayerCoefficients(
@@ -95,9 +98,9 @@ internal static class HextechPlayerCoefficientHelper
 			{
 				multiplier *= provider.ModifyHealingMultiplicative(player, player.Creature, 1m);
 			}
-			catch
+			catch (Exception ex)
 			{
-				// Hover text should never break the top bar because one relic needs combat-only context.
+				WarnProviderFailureOnce("healing", relic.GetType(), ex);
 			}
 		}
 
@@ -126,6 +129,7 @@ internal static class HextechPlayerCoefficientHelper
 
 		return MultiplyRelicModifiers(
 			player,
+			"damage",
 #if STS2_108_OR_NEWER
 			static (relic, owner) => relic.ModifyDamageMultiplicative(null, 1m, ValueProp.Unpowered, owner.Creature, null, null));
 #else
@@ -137,10 +141,14 @@ internal static class HextechPlayerCoefficientHelper
 	{
 		return MultiplyRelicModifiers(
 			player,
+			"block",
 			static (relic, owner) => relic.ModifyBlockMultiplicative(owner.Creature, 1m, ValueProp.Unpowered, null, null));
 	}
 
-	private static decimal MultiplyRelicModifiers(Player player, Func<RelicModel, Player, decimal> getMultiplier)
+	private static decimal MultiplyRelicModifiers(
+		Player player,
+		string coefficient,
+		Func<RelicModel, Player, decimal> getMultiplier)
 	{
 		decimal multiplier = 1m;
 		foreach (RelicModel relic in player.Relics)
@@ -149,12 +157,27 @@ internal static class HextechPlayerCoefficientHelper
 			{
 				multiplier *= getMultiplier(relic, player);
 			}
-			catch
+			catch (Exception ex)
 			{
-				// Hover text should never break the top bar because one relic needs combat-only context.
+				WarnProviderFailureOnce(coefficient, relic.GetType(), ex);
 			}
 		}
 
 		return multiplier;
+	}
+
+	private static void WarnProviderFailureOnce(string coefficient, Type providerType, Exception exception)
+	{
+		lock (FailureLogLock)
+		{
+			if (!LoggedProviderFailures.Add((coefficient, providerType)))
+			{
+				return;
+			}
+		}
+
+		Log.Warn(
+			$"[{ModInfo.Id}][Coefficient] Ignored {coefficient} multiplier failure from " +
+			$"{providerType.FullName}: {exception.GetType().Name}: {exception.Message}");
 	}
 }

@@ -1,4 +1,5 @@
 using MegaCrit.Sts2.Core.GameActions;
+using static HextechRunes.HextechSelectionHelpers;
 
 namespace HextechRunes;
 
@@ -33,7 +34,8 @@ internal static partial class HextechRuneSelectionCoordinator
 		IReadOnlyList<MonsterHexKind> initialNewMonsterHexes,
 		IReadOnlySet<ModelId> enemyRerollExcludedIds,
 		EnemyHexAdjustmentSyncContext? syncContext,
-		PendingRuneSelection selection)
+		PendingRuneSelection selection,
+		CancellationToken cancellationToken)
 	{
 		if (!selection.IsLocal || (syncContext == null && activeMonsterHexes.Count == 0))
 		{
@@ -64,7 +66,7 @@ internal static partial class HextechRuneSelectionCoordinator
 				? (monsterHexes, rerollCounts) => SendEnemyHexAdjustment(syncContext, monsterHexes, rerollCounts, isFinal: false)
 				: null,
 			ScreenCreated = !isAuthorityLocal && syncContext != null
-				? screen => syncContext.RemoteReceiveTask = ReceiveEnemyHexAdjustments(syncContext, runState, screen)
+				? screen => syncContext.RemoteReceiveTask = ReceiveEnemyHexAdjustments(syncContext, runState, screen, cancellationToken)
 				: null
 		};
 	}
@@ -99,56 +101,116 @@ internal static partial class HextechRuneSelectionCoordinator
 			return true;
 		}
 
-		List<MonsterHexKind?> nextMonsterHexes = monsterHexes.ToList();
-		List<int> nextRerollCounts = rerollCounts.Select(static count => Math.Max(0, count)).ToList();
-		EnemyHexAdjustmentPayload payload = new(
-			syncContext.ActIndex,
-			syncContext.Sequence,
-			nextMonsterHexes.ToArray(),
-			nextRerollCounts.ToArray(),
-			isFinal);
-		if (!TrySyncLocalHextechChoice(syncContext.Synchronizer, syncContext.AuthorityPlayer, syncContext.NextChoiceId, HextechChoiceCodec.CreateEnemyHexAdjustment(payload), $"enemy-hex-adjustment act={syncContext.ActIndex}", out uint sentChoiceId))
+		try
 		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] EnemyHexAdjustmentSync send failed: act={syncContext.ActIndex} choiceId={syncContext.NextChoiceId} seq={syncContext.Sequence} final={isFinal}");
-			return false;
-		}
+			List<MonsterHexKind?> nextMonsterHexes = monsterHexes.ToList();
+			List<int> nextRerollCounts = rerollCounts.Select(static count => Math.Max(0, count)).ToList();
+			EnemyHexAdjustmentPayload payload = new(
+				syncContext.ActIndex,
+				syncContext.Sequence,
+				nextMonsterHexes.ToArray(),
+				nextRerollCounts.ToArray(),
+				isFinal);
+			int operationToken = GetEnemyHexAdjustmentOperationToken(syncContext);
+			uint sentChoiceId = SyncLocalHextechChoice(
+				syncContext.Synchronizer,
+				syncContext.AuthorityPlayer,
+				syncContext.NextChoiceId,
+				HextechChoiceCodec.CreateEnemyHexAdjustment(operationToken, payload),
+				$"enemy-hex-adjustment act={syncContext.ActIndex}");
 
-		syncContext.CurrentMonsterHexSlots.Clear();
-		syncContext.CurrentMonsterHexSlots.AddRange(nextMonsterHexes);
-		syncContext.RerollCounts.Clear();
-		syncContext.RerollCounts.AddRange(nextRerollCounts);
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] EnemyHexAdjustmentSync send: act={syncContext.ActIndex} choiceId={sentChoiceId} seq={syncContext.Sequence} hexes={string.Join(",", syncContext.CurrentMonsterHexSlots.Select(static hex => hex?.ToString() ?? "None"))} rerolls={string.Join(",", syncContext.RerollCounts)} final={isFinal}");
-		if (isFinal)
-		{
-			syncContext.FinalSent = true;
+			syncContext.CurrentMonsterHexSlots.Clear();
+			syncContext.CurrentMonsterHexSlots.AddRange(nextMonsterHexes);
+			syncContext.RerollCounts.Clear();
+			syncContext.RerollCounts.AddRange(nextRerollCounts);
+			HextechLog.Info($"[{ModInfo.Id}][Mayhem] EnemyHexAdjustmentSync send: act={syncContext.ActIndex} choiceId={sentChoiceId} seq={syncContext.Sequence} hexes={string.Join(",", syncContext.CurrentMonsterHexSlots.Select(static hex => hex?.ToString() ?? "None"))} rerolls={string.Join(",", syncContext.RerollCounts)} final={isFinal}");
+			if (isFinal)
+			{
+				syncContext.FinalSent = true;
+				return true;
+			}
+
+			syncContext.Sequence++;
+			syncContext.NextChoiceId = syncContext.Synchronizer.ReserveChoiceId(syncContext.AuthorityPlayer);
 			return true;
 		}
-
-		syncContext.Sequence++;
-		syncContext.NextChoiceId = syncContext.Synchronizer.ReserveChoiceId(syncContext.AuthorityPlayer);
-		return true;
+		catch (HextechChoiceProtocolException)
+		{
+			throw;
+		}
+		catch (Exception ex)
+		{
+			string message =
+				$"Enemy hex adjustment failed after reserving choice: act={syncContext.ActIndex} " +
+				$"player={syncContext.AuthorityPlayer.NetId} choiceId={syncContext.NextChoiceId} " +
+				$"sequence={syncContext.Sequence}";
+			throw CreateProtocolFailure($"enemy-hex-adjustment act={syncContext.ActIndex}", message, ex);
+		}
 	}
 
-	private static async Task ReceiveEnemyHexAdjustments(EnemyHexAdjustmentSyncContext syncContext, RunState runState, HextechRuneSelectionScreen screen)
+	private static async Task ObserveEnemyHexAdjustmentReceiveTask(EnemyHexAdjustmentSyncContext? syncContext)
 	{
-		while (screen.IsInsideTree())
+		Task? receiveTask = syncContext?.RemoteReceiveTask;
+		if (receiveTask == null)
 		{
+			return;
+		}
+
+		try
+		{
+			await receiveTask;
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			Log.Error(
+				$"[{ModInfo.Id}][Mayhem] Enemy hex adjustment receiver failed during transaction cleanup: " +
+				$"act={syncContext!.ActIndex} error={ex}");
+		}
+	}
+
+	private static async Task ReceiveEnemyHexAdjustments(
+		EnemyHexAdjustmentSyncContext syncContext,
+		RunState runState,
+		HextechRuneSelectionScreen screen,
+		CancellationToken cancellationToken)
+	{
+		while (screen.IsInsideTree() && !cancellationToken.IsCancellationRequested)
+		{
+			int operationToken = GetEnemyHexAdjustmentOperationToken(syncContext);
 			(PlayerChoiceResult result, uint receivedChoiceId)? received = await TryWaitForRemoteHextechChoice(
 				syncContext.Synchronizer,
 				runState,
 				syncContext.AuthorityPlayer,
 				syncContext.NextChoiceId,
-				choice => HextechChoiceCodec.TryDecodeEnemyHexAdjustment(choice, syncContext.ActIndex, out _),
+				choice => HextechChoiceCodec.TryDecodeEnemyHexAdjustment(
+					choice,
+					operationToken,
+					syncContext.ActIndex,
+					syncContext.Sequence,
+					out _),
 				$"enemy-hex-adjustment act={syncContext.ActIndex}",
-				EnemyHexAdjustmentTimeoutFrames);
+				RemoteRuneChoicePollFrames,
+				() => screen.IsInsideTree() && IsCurrentRun(runState) && IsMultiplayerConnected(),
+				cancellationToken: cancellationToken);
 			if (!received.HasValue)
 			{
-				Log.Warn($"[{ModInfo.Id}][Mayhem] EnemyHexAdjustmentSync timeout: act={syncContext.ActIndex} choiceId={syncContext.NextChoiceId}");
+				Log.Warn(
+					$"[{ModInfo.Id}][Mayhem] EnemyHexAdjustmentSync interrupted: " +
+					$"act={syncContext.ActIndex} choiceId={syncContext.NextChoiceId} " +
+					$"screenActive={screen.IsInsideTree()} runActive={IsCurrentRun(runState)} connected={IsMultiplayerConnected()}");
 				return;
 			}
 
 			(PlayerChoiceResult result, uint receivedChoiceId) = received.Value;
-			if (!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(result, syncContext.ActIndex, out EnemyHexAdjustmentPayload payload))
+			if (!HextechChoiceCodec.TryDecodeEnemyHexAdjustment(
+				result,
+				operationToken,
+				syncContext.ActIndex,
+				syncContext.Sequence,
+				out EnemyHexAdjustmentPayload payload))
 			{
 				Log.Warn($"[{ModInfo.Id}][Mayhem] EnemyHexAdjustmentSync malformed: act={syncContext.ActIndex} choiceId={receivedChoiceId}");
 				return;
@@ -168,5 +230,14 @@ internal static partial class HextechRuneSelectionCoordinator
 
 			syncContext.NextChoiceId = syncContext.Synchronizer.ReserveChoiceId(syncContext.AuthorityPlayer);
 		}
+	}
+
+	private static int GetEnemyHexAdjustmentOperationToken(EnemyHexAdjustmentSyncContext syncContext)
+	{
+		return HextechChoiceCodec.ComputeOperationToken(
+			"enemy-hex-adjustment",
+			syncContext.NextChoiceId,
+			syncContext.AuthorityPlayer.NetId,
+			$"act={syncContext.ActIndex};sequence={syncContext.Sequence}");
 	}
 }

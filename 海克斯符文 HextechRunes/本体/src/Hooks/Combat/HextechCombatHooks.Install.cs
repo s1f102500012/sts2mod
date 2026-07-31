@@ -12,8 +12,10 @@ internal static partial class HextechCombatHooks
 		InstallCardPlayHooks(harmony);
 		InstallMaxHpHooks(harmony);
 		InstallPowerCompatibilityHooks(harmony);
-		InstallDamageCommandHooks(harmony);
-		InstallDualWieldIntentHooks(harmony);
+		if (InstallDamageCommandHooks(harmony))
+		{
+			InstallDualWieldIntentHooks(harmony);
+		}
 		InstallJeweledGauntletHooks(harmony);
 		TryInstallRuneHook<NearDeathFeastRune>("near-death feast", () => InstallNearDeathFeastHooks(harmony));
 		HextechPlayerRuneHooks.Install(harmony);
@@ -49,6 +51,7 @@ internal static partial class HextechCombatHooks
 
 	private static void InstallCardPlayHooks(Harmony harmony)
 	{
+		// Priority.Last 是禁玩终裁位：封禁必须压过第三方放行；本模组的放行分支只处理原结果为 false 的情形。
 		HarmonyMethod canPlayPostfix = new(typeof(HextechCombatHooks), nameof(CardCanPlayPostfix))
 		{
 			priority = Priority.Last
@@ -106,12 +109,24 @@ internal static partial class HextechCombatHooks
 		harmony.Patch(
 			RequireMethod(typeof(EntropyPower), nameof(EntropyPower.AfterPlayerTurnStart), BindingFlags.Public | BindingFlags.Instance, typeof(PlayerChoiceContext), typeof(Player)),
 			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(EntropyAfterPlayerTurnStartPrefix)));
+#if STS2_110_OR_NEWER
+		harmony.Patch(
+			RequireMethod(
+				typeof(Outbreak),
+				"OnPlay",
+				BindingFlags.Instance | BindingFlags.NonPublic,
+				typeof(PlayerChoiceContext),
+				typeof(CardPlay)),
+			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(OutbreakOnPlayPrefix)),
+			postfix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(OutbreakOnPlayPostfix)));
+#else
 		TryPatchAfterPowerAmountChanged(
 			harmony,
 			typeof(OutbreakPower),
 			nameof(OutbreakPower),
 			nameof(OutbreakPowerAfterPowerAmountChangedPrefix),
 			nameof(OutbreakPowerAfterPowerAmountChangedPostfix));
+#endif
 		TryPatchAfterPowerAmountChanged(
 			harmony,
 			typeof(SleightOfFleshPower),
@@ -192,11 +207,12 @@ internal static partial class HextechCombatHooks
 		}
 	}
 
-	private static void InstallDamageCommandHooks(Harmony harmony)
+	private static bool InstallDamageCommandHooks(Harmony harmony)
 	{
+		HarmonyMethod? dualWieldPrefix = TryCreateDualWieldAttackCommandPrefix();
 		harmony.Patch(
 			RequireMethod(typeof(AttackCommand), nameof(AttackCommand.Execute), BindingFlags.Instance | BindingFlags.Public, typeof(PlayerChoiceContext)),
-			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(DualWieldAttackCommandExecutePrefix)),
+			prefix: dualWieldPrefix,
 			postfix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(AttackCommandExecutePostfix))
 			{
 				priority = Priority.Last
@@ -253,5 +269,6 @@ internal static partial class HextechCombatHooks
 				typeof(ValueProp),
 				typeof(Creature)),
 			postfix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(DieForYouModifyUnblockedDamageTargetPostfix)));
+		return dualWieldPrefix != null;
 	}
 }

@@ -70,7 +70,7 @@ internal static partial class HextechRunLifecycleHooks
 			return;
 		}
 
-		HextechMayhemModifier? modifier = GetMayhemModifier(runState);
+		HextechMayhemModifier? modifier = HextechMayhemModifier.FindIn(runState);
 		if (modifier == null && !RunsInsideStartRunOrig.Contains(runState))
 		{
 			modifier = GetOrRecoverMayhemModifier(runState, $"OnRoomEntered recovered missing modifier room={runState.CurrentRoom?.GetType().Name ?? "null"} actIndex={runState.CurrentActIndex}");

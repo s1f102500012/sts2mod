@@ -1,8 +1,8 @@
 namespace HextechRunes;
 
 /// <summary>
-/// 升级：打击(棱彩,重做)——你的基础打击可以无限升级(6+3n);战斗胜利后,升级你本场打出过的打击(牌库本体,逐张)。
-/// 无限升级由 HextechStarterUpgradeHooks 放开 MaxUpgradeLevel 实现;
+/// 升级：打击(棱彩,重做)——你的基础打击最高可升级到 +999(6+3n);战斗胜利后,升级你本场打出过的打击(牌库本体,逐张)。
+/// 多级升级由 HextechStarterUpgradeHooks 放开 MaxUpgradeLevel 实现;
 /// 标题"打击+n"与升级公式(每级+3)都是原版 MaxUpgradeLevel>1 时的原生行为,无需额外处理。
 /// 结算挂在 AfterCombatEnd:原版在 AfterCombatVictory 前就清空打出历史,见 HextechStarterUpgradeHelper。
 /// </summary>

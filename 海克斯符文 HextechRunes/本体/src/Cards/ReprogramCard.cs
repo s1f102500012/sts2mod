@@ -1,18 +1,8 @@
-using MegaCrit.Sts2.Core.Models.CardPools;
-
 namespace HextechRunes;
 
-public sealed class ReprogramCard : CardModel
+public sealed class ReprogramCard : HextechOwnerPoolTokenCard
 {
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
 	public override string PortraitPath => HextechAssets.ReprogramCardPortraitPath;
-
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[

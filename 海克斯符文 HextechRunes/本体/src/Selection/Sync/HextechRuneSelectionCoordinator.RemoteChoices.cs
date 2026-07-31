@@ -1,18 +1,37 @@
 using System.Collections;
 using MegaCrit.Sts2.Core.Entities.Multiplayer;
 using MegaCrit.Sts2.Core.GameActions;
+using MegaCrit.Sts2.Core.Nodes;
+using static HextechRunes.HextechHookReflection;
+using static HextechRunes.HextechSelectionHelpers;
 
 namespace HextechRunes;
 
 internal static partial class HextechRuneSelectionCoordinator
 {
+	private const BindingFlags BufferedChoiceFieldFlags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+	private static readonly FieldInfo? ReceivedChoicesField = TryGetField(
+		typeof(PlayerChoiceSynchronizer),
+		"_receivedChoices",
+		BindingFlags.Instance | BindingFlags.NonPublic);
+	private static readonly Type? ReceivedChoiceType = ReceivedChoicesField?.FieldType.GetGenericArguments().FirstOrDefault();
+	private static readonly FieldInfo? ReceivedChoiceSenderIdField = TryGetReceivedChoiceField("senderId");
+	private static readonly FieldInfo? ReceivedChoiceChoiceIdField = TryGetReceivedChoiceField("choiceId");
+	private static readonly FieldInfo? ReceivedChoiceCompletionSourceField = TryGetReceivedChoiceField("completionSource");
+	private static readonly PropertyInfo? ReceivedChoiceTaskProperty = ReceivedChoiceCompletionSourceField?.FieldType.GetProperty(
+		"Task",
+		BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+	private static readonly bool BufferedChoiceReflectionAvailable = ValidateBufferedChoiceReflection();
+
 	internal static async Task<(PlayerChoiceResult Result, uint ChoiceId)> WaitForRemoteHextechChoice(
 		PlayerChoiceSynchronizer synchronizer,
 		RunState runState,
 		Player player,
 		uint initialChoiceId,
 		Func<PlayerChoiceResult, bool> isExpected,
-		string context)
+		string context,
+		Func<PlayerChoiceResult, bool>? shouldReturnMalformedExactChoice = null,
+		CancellationToken cancellationToken = default)
 	{
 		(PlayerChoiceResult Result, uint ChoiceId)? result = await TryWaitForRemoteHextechChoice(
 			synchronizer,
@@ -21,7 +40,9 @@ internal static partial class HextechRuneSelectionCoordinator
 			initialChoiceId,
 			isExpected,
 			context,
-			timeoutFrames: null);
+			timeoutFrames: null,
+			shouldReturnMalformedExactChoice: shouldReturnMalformedExactChoice,
+			cancellationToken: cancellationToken);
 		if (result.HasValue)
 		{
 			return result.Value;
@@ -38,84 +59,79 @@ internal static partial class HextechRuneSelectionCoordinator
 		Func<PlayerChoiceResult, bool> isExpected,
 		string context,
 		int? timeoutFrames,
-		Func<bool>? shouldContinueAfterTimeout = null)
+		Func<bool>? shouldContinueAfterTimeout = null,
+		Func<PlayerChoiceResult, bool>? shouldReturnMalformedExactChoice = null,
+		CancellationToken cancellationToken = default)
 	{
-		uint choiceId = initialChoiceId;
-		int skipped = 0;
 		while (true)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			(PlayerChoiceResult Result, uint ChoiceId)? remote = await WaitForRemoteChoiceByEvent(
 				synchronizer,
 				runState,
 				player,
-				choiceId,
-				isExpected,
+				initialChoiceId,
 				context,
-				timeoutFrames);
+				timeoutFrames,
+				shouldContinueAfterTimeout,
+				cancellationToken);
 			if (!remote.HasValue)
 			{
+				if (!IsCurrentRun(runState)
+					|| !IsMultiplayerConnected()
+					|| shouldContinueAfterTimeout?.Invoke() == false)
+				{
+					throw new OperationCanceledException(
+						$"Remote choice wait was canceled: context={context} player={player.NetId} choiceId={initialChoiceId}.");
+				}
+
 				if (shouldContinueAfterTimeout?.Invoke() == true)
 				{
-					Log.Warn($"[{ModInfo.Id}][Mayhem] WaitForRemoteHextechChoice: still waiting context={context} player={player.NetId} choiceId={choiceId} skipped={skipped}");
+					Log.Warn($"[{ModInfo.Id}][Mayhem] WaitForRemoteHextechChoice: still waiting context={context} player={player.NetId} choiceId={initialChoiceId}");
 					continue;
 				}
 
-				Log.Warn($"[{ModInfo.Id}][Mayhem] WaitForRemoteHextechChoice: timeout context={context} player={player.NetId} choiceId={choiceId} skipped={skipped}");
+				Log.Warn($"[{ModInfo.Id}][Mayhem] WaitForRemoteHextechChoice: interrupted context={context} player={player.NetId} choiceId={initialChoiceId}");
 				return null;
 			}
 
 			PlayerChoiceResult remoteChoice = remote.Value.Result;
 			uint receivedChoiceId = remote.Value.ChoiceId;
-			if (isExpected(remoteChoice))
+			if (isExpected(remoteChoice)
+				|| (receivedChoiceId == initialChoiceId
+					&& shouldReturnMalformedExactChoice?.Invoke(remoteChoice) == true))
 			{
-				if (skipped > 0 || receivedChoiceId != choiceId)
-				{
-					HextechLog.Info($"[{ModInfo.Id}][Mayhem] WaitForRemoteHextechChoice: accepted context={context} player={player.NetId} expectedChoiceId={choiceId} receivedChoiceId={receivedChoiceId} skipped={skipped}");
-				}
-
 				return (remoteChoice, receivedChoiceId);
 			}
 
-			skipped++;
-			Log.Warn($"[{ModInfo.Id}][Mayhem] WaitForRemoteHextechChoice: skipped non-hextech choice context={context} player={player.NetId} expectedChoiceId={choiceId} receivedChoiceId={receivedChoiceId} skipped={skipped} type={remoteChoice.ChoiceType} result={remoteChoice}");
-			choiceId = synchronizer.ReserveChoiceId(player);
+			string message =
+				$"Unexpected choice payload context={context} player={player.NetId} " +
+				$"choiceId={initialChoiceId} type={remoteChoice.ChoiceType} result={remoteChoice}";
+			AbortMultiplayerChoiceTransaction(context, message);
+			throw new HextechChoiceProtocolException(message);
 		}
 	}
 
-	internal static bool TrySyncLocalHextechChoice(
+	internal static uint SyncLocalHextechChoice(
 		PlayerChoiceSynchronizer synchronizer,
 		Player player,
 		uint choiceId,
 		PlayerChoiceResult result,
-		string context,
-		out uint sentChoiceId)
+		string context)
 	{
-		sentChoiceId = choiceId;
 		try
 		{
 			synchronizer.SyncLocalChoice(player, choiceId, result);
-			return true;
-		}
-		catch (InvalidOperationException ex)
-		{
-			uint retryChoiceId = synchronizer.ReserveChoiceId(player);
-			Log.Warn($"[{ModInfo.Id}][Mayhem] SyncLocalHextechChoice retry: context={context} player={player.NetId} staleChoiceId={choiceId} retryChoiceId={retryChoiceId} error={ex.Message}");
-			try
-			{
-				synchronizer.SyncLocalChoice(player, retryChoiceId, result);
-				sentChoiceId = retryChoiceId;
-				return true;
-			}
-			catch (Exception retryEx)
-			{
-				Log.Warn($"[{ModInfo.Id}][Mayhem] SyncLocalHextechChoice failed: context={context} player={player.NetId} choiceId={retryChoiceId} error={retryEx}");
-				return false;
-			}
+			return choiceId;
 		}
 		catch (Exception ex)
 		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] SyncLocalHextechChoice failed: context={context} player={player.NetId} choiceId={choiceId} error={ex}");
-			return false;
+			string message =
+				$"Failed to send local choice context={context} player={player.NetId} " +
+				$"choiceId={choiceId}";
+			Log.Error($"[{ModInfo.Id}][Mayhem] {message}: {ex}");
+			AbortMultiplayerChoiceTransaction(context, message);
+			throw new HextechChoiceProtocolException(message, ex);
 		}
 	}
 
@@ -124,24 +140,13 @@ internal static partial class HextechRuneSelectionCoordinator
 		RunState runState,
 		Player player,
 		uint choiceId,
-		Func<PlayerChoiceResult, bool> isExpected,
-		string context)
-		=> await WaitForRemoteChoiceByEvent(synchronizer, runState, player, choiceId, isExpected, context, timeoutFrames: null);
-
-	private static async Task<(PlayerChoiceResult Result, uint ChoiceId)?> WaitForRemoteChoiceByEvent(
-		PlayerChoiceSynchronizer synchronizer,
-		RunState runState,
-		Player player,
-		uint choiceId,
-		Func<PlayerChoiceResult, bool> isExpected,
 		string context,
-		int? timeoutFrames)
+		int? timeoutFrames,
+		Func<bool>? shouldRemainActive,
+		CancellationToken cancellationToken)
 	{
-		if (TryTakeBufferedExpectedRemoteChoice(synchronizer, runState, player, isExpected, out PlayerChoiceResult expectedBufferedResult, out uint expectedBufferedChoiceId))
-		{
-			HextechLog.Info($"[{ModInfo.Id}][Mayhem] RemoteChoice event wait: consumed expected buffered choice context={context} player={player.NetId} choiceId={expectedBufferedChoiceId}");
-			return (expectedBufferedResult, expectedBufferedChoiceId);
-		}
+		cancellationToken.ThrowIfCancellationRequested();
+		ThrowIfSelectionTransactionInactive(runState, shouldRemainActive, context);
 
 		if (TryTakeBufferedRemoteChoice(synchronizer, player, choiceId, out NetPlayerChoiceResult bufferedResult))
 		{
@@ -157,7 +162,7 @@ internal static partial class HextechRuneSelectionCoordinator
 				return;
 			}
 
-			if (receivedChoiceId == choiceId || IsExpectedNetChoice(player, runState, result, isExpected))
+			if (receivedChoiceId == choiceId)
 			{
 				completion.TrySetResult((receivedChoiceId, result));
 			}
@@ -166,12 +171,7 @@ internal static partial class HextechRuneSelectionCoordinator
 		synchronizer.PlayerChoiceReceived += OnPlayerChoiceReceived;
 		try
 		{
-			if (TryTakeBufferedExpectedRemoteChoice(synchronizer, runState, player, isExpected, out PlayerChoiceResult lateExpectedBufferedResult, out uint lateExpectedBufferedChoiceId))
-			{
-				HextechLog.Info($"[{ModInfo.Id}][Mayhem] RemoteChoice event wait: consumed late expected buffered choice context={context} player={player.NetId} choiceId={lateExpectedBufferedChoiceId}");
-				return (lateExpectedBufferedResult, lateExpectedBufferedChoiceId);
-			}
-
+			ThrowIfSelectionTransactionInactive(runState, shouldRemainActive, context);
 			if (TryTakeBufferedRemoteChoice(synchronizer, player, choiceId, out NetPlayerChoiceResult lateBufferedResult))
 			{
 				HextechLog.Info($"[{ModInfo.Id}][Mayhem] RemoteChoice event wait: consumed late buffered choice context={context} player={player.NetId} choiceId={choiceId}");
@@ -179,16 +179,42 @@ internal static partial class HextechRuneSelectionCoordinator
 			}
 
 			Task<(uint ChoiceId, NetPlayerChoiceResult Result)> waitTask = completion.Task;
-			if (timeoutFrames.HasValue)
+			using CancellationTokenSource observerCancellation =
+				CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+			Task interrupted = WaitForSelectionTransactionInterruptionAsync(
+				runState,
+				shouldRemainActive,
+				observerCancellation.Token);
+			Task? timeout = timeoutFrames.HasValue
+				? WaitForFramesOrRunChangeAsync(runState, timeoutFrames.Value, observerCancellation.Token)
+				: null;
+			Task winner = timeout == null
+				? await Task.WhenAny(waitTask, interrupted)
+				: await Task.WhenAny(waitTask, interrupted, timeout);
+			if (winner != waitTask)
 			{
-				Task timeout = WaitForFramesOrRunChangeAsync(runState, timeoutFrames.Value);
-				if (await Task.WhenAny(waitTask, timeout) != waitTask)
+				observerCancellation.Cancel();
+				ObserveCompletion(interrupted, $"{context} interruption observer");
+				if (timeout != null)
 				{
-					return null;
+					ObserveCompletion(timeout, $"{context} timeout observer");
 				}
+
+				if (cancellationToken.IsCancellationRequested)
+				{
+					cancellationToken.ThrowIfCancellationRequested();
+				}
+
+				return null;
 			}
 
 			(uint receivedChoiceId, NetPlayerChoiceResult result) = await waitTask;
+			observerCancellation.Cancel();
+			ObserveCompletion(interrupted, $"{context} interruption observer");
+			if (timeout != null)
+			{
+				ObserveCompletion(timeout, $"{context} timeout observer");
+			}
 			TryTakeBufferedRemoteChoice(synchronizer, player, receivedChoiceId, out _);
 			HextechLog.Info($"[{ModInfo.Id}][Mayhem] RemoteChoice event wait: received choice context={context} player={player.NetId} expectedChoiceId={choiceId} receivedChoiceId={receivedChoiceId}");
 			return (PlayerChoiceResult.FromNetData(player, runState, result), receivedChoiceId);
@@ -197,6 +223,82 @@ internal static partial class HextechRuneSelectionCoordinator
 		{
 			synchronizer.PlayerChoiceReceived -= OnPlayerChoiceReceived;
 		}
+	}
+
+	private static void ThrowIfSelectionTransactionInactive(
+		RunState runState,
+		Func<bool>? shouldRemainActive,
+		string context)
+	{
+		if (!IsCurrentRun(runState)
+			|| !IsMultiplayerConnected()
+			|| shouldRemainActive?.Invoke() == false)
+		{
+			throw new OperationCanceledException(
+				$"Multiplayer choice transaction is no longer active: {context}");
+		}
+	}
+
+	private static async Task WaitForSelectionTransactionInterruptionAsync(
+		RunState runState,
+		Func<bool>? shouldRemainActive,
+		CancellationToken cancellationToken)
+	{
+		while (!cancellationToken.IsCancellationRequested
+			&& IsCurrentRun(runState)
+			&& IsMultiplayerConnected()
+			&& shouldRemainActive?.Invoke() != false)
+		{
+			await WaitForProcessFrameOrDelayAsync(cancellationToken);
+		}
+	}
+
+	private static void ObserveCompletion(Task task, string context)
+	{
+		_ = ObserveCompletionAsync(task, context);
+	}
+
+	private static async Task ObserveCompletionAsync(Task task, string context)
+	{
+		try
+		{
+			await task;
+		}
+		catch (OperationCanceledException)
+		{
+		}
+		catch (Exception ex)
+		{
+			Log.Error($"[{ModInfo.Id}][Mayhem] Background choice observer failed: context={context} error={ex}");
+		}
+	}
+
+	internal static void AbortMultiplayerChoiceTransaction(string context, string reason)
+	{
+		try
+		{
+			INetGameService netService = RunManager.Instance.NetService;
+			if (netService.Type is NetGameType.Host or NetGameType.Client && netService.IsConnected)
+			{
+				Log.Error($"[{ModInfo.Id}][Mayhem] Aborting multiplayer choice transaction: context={context} reason={reason}");
+				netService.Disconnect(NetError.InternalError, now: true);
+			}
+		}
+		catch (Exception disconnectError)
+		{
+			Log.Error($"[{ModInfo.Id}][Mayhem] Failed to abort multiplayer choice transaction: context={context} error={disconnectError}");
+		}
+	}
+
+	internal static HextechChoiceProtocolException CreateProtocolFailure(
+		string context,
+		string reason,
+		Exception? innerException = null)
+	{
+		AbortMultiplayerChoiceTransaction(context, reason);
+		return innerException == null
+			? new HextechChoiceProtocolException(reason)
+			: new HextechChoiceProtocolException(reason, innerException);
 	}
 
 	private static bool TryTakeBufferedRemoteChoice(
@@ -208,37 +310,20 @@ internal static partial class HextechRuneSelectionCoordinator
 		result = default;
 		try
 		{
-			FieldInfo? receivedChoicesField = typeof(PlayerChoiceSynchronizer).GetField("_receivedChoices", BindingFlags.Instance | BindingFlags.NonPublic);
-			if (receivedChoicesField?.GetValue(synchronizer) is not IList receivedChoices)
+			if (!TryGetBufferedChoices(synchronizer, out IList receivedChoices))
 			{
 				return false;
 			}
 
-			for (int i = 0; i < receivedChoices.Count; i++)
+			foreach ((int index, ulong senderId, uint bufferedChoiceId, Task<NetPlayerChoiceResult> task) in EnumerateBufferedChoices(receivedChoices))
 			{
-				object? entry = receivedChoices[i];
-				if (entry == null)
-				{
-					continue;
-				}
-
-				Type entryType = entry.GetType();
-				ulong senderId = (ulong)(entryType.GetField("senderId", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entry) ?? 0UL);
-				uint bufferedChoiceId = (uint)(entryType.GetField("choiceId", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entry) ?? uint.MaxValue);
 				if (senderId != player.NetId || bufferedChoiceId != choiceId)
 				{
 					continue;
 				}
 
-				object? completionSource = entryType.GetField("completionSource", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entry);
-				if (completionSource?.GetType().GetProperty("Task")?.GetValue(completionSource) is not Task<NetPlayerChoiceResult> task
-					|| !task.IsCompletedSuccessfully)
-				{
-					continue;
-				}
-
 				result = task.Result;
-				receivedChoices.RemoveAt(i);
+				receivedChoices.RemoveAt(index);
 				return true;
 			}
 		}
@@ -250,79 +335,92 @@ internal static partial class HextechRuneSelectionCoordinator
 		return false;
 	}
 
-	private static bool TryTakeBufferedExpectedRemoteChoice(
-		PlayerChoiceSynchronizer synchronizer,
-		RunState runState,
-		Player player,
-		Func<PlayerChoiceResult, bool> isExpected,
-		out PlayerChoiceResult result,
-		out uint choiceId)
+	private static FieldInfo? TryGetReceivedChoiceField(string name)
 	{
-		result = null!;
-		choiceId = uint.MaxValue;
-		try
+		return ReceivedChoiceType == null
+			? null
+			: TryGetField(ReceivedChoiceType, name, BufferedChoiceFieldFlags);
+	}
+
+	private static bool TryGetBufferedChoices(PlayerChoiceSynchronizer synchronizer, out IList receivedChoices)
+	{
+		if (ReceivedChoicesField?.GetValue(synchronizer) is IList choices)
 		{
-			FieldInfo? receivedChoicesField = typeof(PlayerChoiceSynchronizer).GetField("_receivedChoices", BindingFlags.Instance | BindingFlags.NonPublic);
-			if (receivedChoicesField?.GetValue(synchronizer) is not IList receivedChoices)
-			{
-				return false;
-			}
-
-			for (int i = 0; i < receivedChoices.Count; i++)
-			{
-				object? entry = receivedChoices[i];
-				if (entry == null)
-				{
-					continue;
-				}
-
-				Type entryType = entry.GetType();
-				ulong senderId = (ulong)(entryType.GetField("senderId", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entry) ?? 0UL);
-				if (senderId != player.NetId)
-				{
-					continue;
-				}
-
-				object? completionSource = entryType.GetField("completionSource", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entry);
-				if (completionSource?.GetType().GetProperty("Task")?.GetValue(completionSource) is not Task<NetPlayerChoiceResult> task
-					|| !task.IsCompletedSuccessfully)
-				{
-					continue;
-				}
-
-				PlayerChoiceResult candidate = PlayerChoiceResult.FromNetData(player, runState, task.Result);
-				if (!isExpected(candidate))
-				{
-					continue;
-				}
-
-				choiceId = (uint)(entryType.GetField("choiceId", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)?.GetValue(entry) ?? uint.MaxValue);
-				result = candidate;
-				receivedChoices.RemoveAt(i);
-				return true;
-			}
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] RemoteChoice expected buffered read failed: player={player.NetId} error={ex}");
+			receivedChoices = choices;
+			return true;
 		}
 
+		receivedChoices = null!;
 		return false;
 	}
 
-	private static bool IsExpectedNetChoice(
-		Player player,
-		RunState runState,
-		NetPlayerChoiceResult netResult,
-		Func<PlayerChoiceResult, bool> isExpected)
+	private static IEnumerable<(int Index, ulong SenderId, uint ChoiceId, Task<NetPlayerChoiceResult> Task)> EnumerateBufferedChoices(IList receivedChoices)
 	{
-		try
+		FieldInfo? senderIdField = ReceivedChoiceSenderIdField;
+		FieldInfo? choiceIdField = ReceivedChoiceChoiceIdField;
+		FieldInfo? completionSourceField = ReceivedChoiceCompletionSourceField;
+		PropertyInfo? taskProperty = ReceivedChoiceTaskProperty;
+		if (!BufferedChoiceReflectionAvailable
+			|| senderIdField == null
+			|| choiceIdField == null
+			|| completionSourceField == null
+			|| taskProperty == null)
 		{
-			return isExpected(PlayerChoiceResult.FromNetData(player, runState, netResult));
+			yield break;
 		}
-		catch
+
+		for (int i = 0; i < receivedChoices.Count; i++)
 		{
+			object? entry = receivedChoices[i];
+			if (entry == null
+				|| senderIdField.GetValue(entry) is not ulong senderId
+				|| choiceIdField.GetValue(entry) is not uint choiceId)
+			{
+				continue;
+			}
+
+			object? completionSource = completionSourceField.GetValue(entry);
+			if (completionSource == null
+				|| taskProperty.GetValue(completionSource) is not Task<NetPlayerChoiceResult> task
+				|| !task.IsCompletedSuccessfully)
+			{
+				continue;
+			}
+
+			yield return (i, senderId, choiceId, task);
+		}
+	}
+
+	private static bool ValidateBufferedChoiceReflection()
+	{
+		if (ReceivedChoiceType == null)
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] RemoteChoice buffered reflection unavailable: could not resolve ReceivedChoice type; using event path.");
 			return false;
 		}
+
+		if (ReceivedChoiceTaskProperty == null)
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] RemoteChoice buffered reflection unavailable: could not resolve completionSource.Task; using event path.");
+			return false;
+		}
+
+		return ReceivedChoiceSenderIdField != null
+			&& ReceivedChoiceChoiceIdField != null
+			&& ReceivedChoiceCompletionSourceField != null;
+	}
+
+}
+
+internal sealed class HextechChoiceProtocolException : InvalidOperationException
+{
+	internal HextechChoiceProtocolException(string message)
+		: base(message)
+	{
+	}
+
+	internal HextechChoiceProtocolException(string message, Exception innerException)
+		: base(message, innerException)
+	{
 	}
 }

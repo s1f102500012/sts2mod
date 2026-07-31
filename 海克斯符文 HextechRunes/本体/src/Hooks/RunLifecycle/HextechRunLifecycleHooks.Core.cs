@@ -46,7 +46,7 @@ internal static partial class HextechRunLifecycleHooks
 
 	internal static HextechMayhemModifier EnsureMayhemModifier(RunState runState)
 	{
-		if (GetMayhemModifier(runState) is HextechMayhemModifier existing)
+		if (HextechMayhemModifier.FindIn(runState) is HextechMayhemModifier existing)
 		{
 			HextechLog.Info($"[{ModInfo.Id}][Mayhem] EnsureMayhemModifier: existing state preserved {existing.DescribeActState()}");
 			return existing;
@@ -65,14 +65,9 @@ internal static partial class HextechRunLifecycleHooks
 		return HextechRuneSelectionCoordinator.HandleActStarted(modifier);
 	}
 
-	private static HextechMayhemModifier? GetMayhemModifier(RunState runState)
-	{
-		return runState.Modifiers.OfType<HextechMayhemModifier>().LastOrDefault();
-	}
-
 	private static HextechMayhemModifier GetOrRecoverMayhemModifier(RunState runState, string reason)
 	{
-		if (GetMayhemModifier(runState) is HextechMayhemModifier existing)
+		if (HextechMayhemModifier.FindIn(runState) is HextechMayhemModifier existing)
 		{
 			return existing;
 		}

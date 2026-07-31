@@ -25,7 +25,10 @@ public static class ModEntry
 			// 注意:以下安装顺序即契约,勿重排——
 			// ① HextechModelBootstrap 必须先于 HextechSavedPropertyNetIdHooks(net-id 规范化的正确性前提:
 			//    规范化时名字集合已是最终集合,这是 1014/ModMismatch 修复的一部分);
-			// ② 全仓库不用 HarmonyPriority,同一目标方法多处 patch 的执行序 = 此处 Install 调用序。
+			// ② 同一目标方法多处 patch 默认按此处 Install 调用序;显式 priority 例外集中在:
+			//    RelicCmd.Obtain(RewardSafety=High/ForgeStacking=Low,保证 DoubleVision 事务包住锻炉叠层)、
+			//    PlayerCmd.EndTurn(First)、CardModel.CanPlay(Last,禁玩判定终裁)、
+			//    AttackCommand/敌方 power 缩放(Last/First)。新增 priority 时必须同步维护此清单。
 			HextechModelBootstrap.Install();
 			HextechRuneConfiguration.Initialize();
 			HextechTelemetry.Initialize();
@@ -34,7 +37,7 @@ public static class ModEntry
 			HextechMultiplayerCompatibilityHooks.Install(harmony);
 			TryInstallOptionalHookGroup("saved-property net-id canonicalization", () => HextechSavedPropertyNetIdHooks.Install(harmony));
 			HextechMobileModelRegistrationHooks.Install(harmony);
-			ThoughtOverwriteKeywordPersistenceHooks.Install(harmony);
+			HextechThoughtOverwriteKeywordPersistenceHooks.Install(harmony);
 			HextechSelfUpgradeCardStore.Install(harmony);
 			HextechCustomRunModifierHooks.Install(harmony);
 			HextechRunLifecycleHooks.Install(harmony);
@@ -45,11 +48,12 @@ public static class ModEntry
 			TryInstallOptionalHookGroup("encounter compatibility", () => HextechEncounterCompatibilityHooks.Install(harmony));
 			HextechUpdateChecker.Install(harmony);
 			TryInstallOptionalHookGroup("inspect relic screen", () => HextechInspectHooks.Install(harmony));
-			AssetHooks.Install(harmony);
-			TryInstallOptionalHookGroup("relic collection", () => CollectionHooks.Install(harmony));
+			HextechAssetHooks.Install(harmony);
+			TryInstallOptionalHookGroup("relic collection", () => HextechCollectionHooks.Install(harmony));
 			TryInstallOptionalHookGroup("shop random forge", () => HextechShopForgeHooks.Install(harmony));
 			TryInstallOptionalHookGroup("forge stacking", () => HextechForgeStackingHooks.Install(harmony));
-			TryInstallOptionalHookGroup("form auto-play end-turn suppression", () => HextechFormAutoPlayHooks.Install(harmony));
+			TryInstallOptionalHookGroup("form VFX safety", () => HextechFormVfxSafetyHooks.Install(harmony));
+			TryInstallOptionalHookGroup("form auto-play batching", () => HextechFormAutoPlayHooks.Install(harmony));
 			TryInstallOptionalHookGroup("enemy tezcataras mercy wax relics", () => HextechEnemyTezcatarasMercyHooks.Install(harmony));
 			TryInstallOptionalHookGroup("enemy cutting-edge alchemist potion odds", () => HextechEnemyCuttingEdgeAlchemistHooks.Install(harmony));
 			TryInstallOptionalHookGroup("enemy hex top bar hover", () => HextechEnemyUi.Install(harmony));
@@ -68,9 +72,8 @@ public static class ModEntry
 			TryInstallOptionalHookGroup("neurosurge doom redirect", () => HextechNeurosurgeHooks.Install(harmony));
 			TryInstallOptionalHookGroup("inkshadow blade of ink guard", () => HextechInkshadowHooks.Install(harmony));
 			TryInstallOptionalHookGroup("creature anim trigger safety", () => HextechAnimTriggerSafetyHooks.Install(harmony));
-			TryInstallOptionalHookGroup("starter card unlimited upgrade", () => HextechStarterUpgradeHooks.Install(harmony));
+			TryInstallOptionalHookGroup("starter card multi-upgrade cap", () => HextechStarterUpgradeHooks.Install(harmony));
 			TryInstallOptionalHookGroup("card grid upgrade preview revert", () => HextechCardGridPreviewHooks.Install(harmony));
-			TryInstallOptionalHookGroup("retired well-laid plans save compatibility", () => HextechWellLaidPlansHooks.Install(harmony));
 			TryInstallOptionalHookGroup("prismatic egg treasure replacement", () => HextechTreasureRuneHooks.Install(harmony));
 			TryInstallOptionalHookGroup("nightmare dark orb passive", () => HextechNightmareHooks.Install(harmony));
 			TryInstallOptionalHookGroup("game over score line compatibility", () => HextechGameOverCompatibilityHooks.Install(harmony));

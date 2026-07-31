@@ -27,7 +27,7 @@ grep -Fq 'ModManager.OnModDetected += OnLegacyModDetected' "$ROOT/loader/LoaderB
 grep -Fq 'LegacyModAssemblyField?.SetValue(mod, _selectedVariantAssembly)' "$ROOT/loader/LoaderBootstrap.cs"
 grep -Fq 'CompatTargetMetadataKey = "HextechCompatibilityTarget"' "$ROOT/loader/LoaderBootstrap.cs"
 grep -Fq '<AssemblyMetadata Include="HextechCompatibilityTarget"' "$ROOT/src/HextechRunes.csproj"
-grep -Fq 'TARGETS=(0.107.1 0.109.0)' "$ROOT/tools/build_and_deploy.sh"
+grep -Fq 'TARGETS=(0.107.1 0.110.0)' "$ROOT/tools/build_and_deploy.sh"
 grep -Fq -- '--dll-path "$DIST/lib/$target/$FILE_STEM.dll"' "$ROOT/tools/build_and_deploy.sh"
 
 # 默认对各发布目标各跑一遍(引用目录存在才跑);显式设 HEXTECH_STS2_TARGET 则只跑该目标。
@@ -35,7 +35,7 @@ if [[ -n "${HEXTECH_STS2_TARGET:-}" ]]; then
   TARGETS=("$HEXTECH_STS2_TARGET")
 else
   TARGETS=()
-  for candidate in 0.107.1 0.109.0; do
+  for candidate in 0.107.1 0.110.0; do
     if [[ -f "$ROOT/versioned-dll-backups/$candidate/game-refs/sts2.dll" ]]; then
       TARGETS+=("$candidate")
     fi
@@ -51,6 +51,7 @@ for TARGET in "${TARGETS[@]}"; do
   dotnet build \
     "$TEST_PROJECT" \
     --configuration Release \
+    --no-incremental \
     "${BUILD_STABILITY_ARGS[@]}" \
     -p:HextechSts2Target="$TARGET" \
     -p:HextechSponsorSts2Target="$TARGET" \

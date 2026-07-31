@@ -156,12 +156,24 @@ internal static class HextechBurnHealthBarHooks
 			return false;
 		}
 
+		int currentHp = creature.CurrentHp;
+		int burn = PredictBurnDamage(creature, currentHp);
+		if (burn <= 0)
+		{
+			if (BurnForegrounds.TryGetValue(instance, out Control? existingBurnForeground)
+				&& GodotObject.IsInstanceValid(existingBurnForeground))
+			{
+				existingBurnForeground.Visible = false;
+			}
+
+			return false;
+		}
+
 		Control hpForeground = (Control)_hpForegroundField.GetValue(instance)!;
 		Control poisonForeground = (Control)_poisonForegroundField.GetValue(instance)!;
 		Control doomForeground = (Control)_doomForegroundField.GetValue(instance)!;
 		Control burnForeground = GetOrCreateBurnForeground(instance, poisonForeground);
 
-		int currentHp = creature.CurrentHp;
 		if (currentHp <= 0)
 		{
 			poisonForeground.Visible = false;
@@ -184,7 +196,6 @@ internal static class HextechBurnHealthBarHooks
 		hpForeground.OffsetRight = offsetRight;
 
 		int poison = creature.GetPower<PoisonPower>()?.CalculateTotalDamageNextTurn() ?? 0;
-		int burn = PredictBurnDamage(creature, currentHp);
 		bool hasPoison = poison > 0 && creature.HasPower<PoisonPower>();
 		bool hasBurn = burn > 0;
 

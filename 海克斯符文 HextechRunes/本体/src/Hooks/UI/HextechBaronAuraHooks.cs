@@ -59,7 +59,7 @@ internal sealed class HandOfBaronAuraVisual
 
 	private readonly NCreature _creature;
 	private Node2D? _root;
-	private Node? _renderParent;
+	private Node2D? _renderLayer;
 	private AuraLayer? _discLayer;
 	private AuraLayer? _smokeLayer;
 	private AuraLayer? _ringLayer;
@@ -113,12 +113,12 @@ internal sealed class HandOfBaronAuraVisual
 
 	private bool Start()
 	{
-		Node? parent = ResolveRenderParent();
-		if (parent == null)
+		Node2D? renderLayer = HextechBehindCreaturesLayer.GetOrCreate(ResolveRenderParent());
+		if (renderLayer == null)
 		{
 			return false;
 		}
-		_renderParent = parent;
+		_renderLayer = renderLayer;
 
 		Texture2D? runeTexture = LoadTextureOrWarn(HextechAssets.HandOfBaronAuraRunePath);
 		if (runeTexture == null)
@@ -135,7 +135,7 @@ internal sealed class HandOfBaronAuraVisual
 			ZAsRelative = true,
 			ZIndex = 0
 		};
-		parent.AddChildSafely(_root);
+		renderLayer.AddChildSafely(_root);
 		EnsureRenderOrder();
 
 		_discLayer = TryCreateLayer(_root, "GroundGlow", HextechAssets.HandOfBaronAuraDiscPath, new Color(0.52f, 0.12f, 1f, 0.18f), 0);
@@ -143,7 +143,7 @@ internal sealed class HandOfBaronAuraVisual
 		_ringLayer = TryCreateLayer(_root, "SoftRing", HextechAssets.HandOfBaronAuraRingPath, new Color(0.86f, 0.42f, 1f, 0.28f), 3);
 		_runeLayer = CreateLayer(_root, "BaronRune", runeTexture, new Color(1f, 0.35f, 1f, 0.78f), 4);
 		UpdateTransform();
-		HextechLog.Info($"[{ModInfo.Id}][BaronAura] Attached node={_root.GetPath()} parent={parent.GetPath()} player={_creature.Entity?.Player?.Character.Id.Entry ?? "<unknown>"} hasRune={ShouldShow(_creature)}.");
+		HextechLog.Info($"[{ModInfo.Id}][BaronAura] Attached node={_root.GetPath()} parent={renderLayer.GetPath()} player={_creature.Entity?.Player?.Character.Id.Entry ?? "<unknown>"} hasRune={ShouldShow(_creature)}.");
 		return true;
 	}
 
@@ -207,10 +207,7 @@ internal sealed class HandOfBaronAuraVisual
 
 	private void EnsureRenderOrder()
 	{
-		if (GodotObject.IsInstanceValid(_renderParent) && GodotObject.IsInstanceValid(_root) && _root.GetIndex() != 0)
-		{
-			_renderParent.MoveChildSafely(_root, 0);
-		}
+		HextechBehindCreaturesLayer.EnsureRenderOrder(_renderLayer);
 	}
 
 	private void UpdateTransform()
@@ -351,7 +348,7 @@ internal sealed class HandOfBaronAuraVisual
 
 	private static Texture2D? LoadTextureOrWarn(string path)
 	{
-		Texture2D? texture = AssetHooks.LoadUiTexture(path);
+		Texture2D? texture = HextechAssetHooks.LoadUiTexture(path);
 		if (texture == null && LoggedMissingTexturePaths.Add(path))
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] Hand of Baron aura texture not found: {path}");

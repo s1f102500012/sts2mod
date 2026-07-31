@@ -64,7 +64,7 @@ internal sealed class HextechNearDeathFeastVisual
 
 	private readonly NCreature _creature;
 	private Node2D? _root;
-	private Node? _renderParent;
+	private Node2D? _renderLayer;
 	private Sprite2D? _glow;
 	private Sprite2D? _ring;
 	private float _time;
@@ -121,13 +121,13 @@ internal sealed class HextechNearDeathFeastVisual
 
 	private bool Start()
 	{
-		Node? parent = _creature.GetParent();
-		if (!GodotObject.IsInstanceValid(parent))
+		Node2D? renderLayer = HextechBehindCreaturesLayer.GetOrCreate(_creature.GetParent());
+		if (renderLayer == null)
 		{
 			return false;
 		}
 
-		_renderParent = parent;
+		_renderLayer = renderLayer;
 		_root = new Node2D
 		{
 			Name = NodeName,
@@ -135,7 +135,7 @@ internal sealed class HextechNearDeathFeastVisual
 			ZAsRelative = true,
 			ZIndex = 0
 		};
-		parent.AddChildSafely(_root);
+		renderLayer.AddChildSafely(_root);
 		EnsureRenderOrder();
 
 		_glow = CreateSprite(_root, "FeastGlow", GetGlowTexture(), GlowColor with { A = 0f }, additive: false);
@@ -306,10 +306,7 @@ internal sealed class HextechNearDeathFeastVisual
 
 	private void EnsureRenderOrder()
 	{
-		if (GodotObject.IsInstanceValid(_renderParent) && GodotObject.IsInstanceValid(_root) && _root!.GetIndex() != 0)
-		{
-			_renderParent.MoveChildSafely(_root, 0);
-		}
+		HextechBehindCreaturesLayer.EnsureRenderOrder(_renderLayer);
 	}
 
 	private static Sprite2D CreateSprite(Node2D parent, string name, Texture2D texture, Color modulate, bool additive)

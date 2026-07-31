@@ -1,18 +1,8 @@
-using MegaCrit.Sts2.Core.Models.CardPools;
-
 namespace HextechRunes;
 
-public sealed class AllInCard : CardModel
+public sealed class AllInCard : HextechOwnerPoolTokenCard
 {
-	public override CardPoolModel Pool => IsMutable && Owner != null
-		? Owner.Character.CardPool
-		: ModelDb.CardPool<TokenCardPool>();
-
-	public override CardPoolModel VisualCardPool => Pool;
-
 	public override string PortraitPath => HextechAssets.AllInCardPortraitPath;
-
-	public override IEnumerable<string> AllPortraitPaths => [PortraitPath];
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[

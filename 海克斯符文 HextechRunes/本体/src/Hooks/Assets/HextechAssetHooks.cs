@@ -7,7 +7,7 @@ using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
 
-internal static class AssetHooks
+internal static class HextechAssetHooks
 {
 	private static readonly Dictionary<string, Texture2D> TextureCache = new();
 	private static readonly Dictionary<string, CompressedTexture2D> CompressedTextureCache = new();
@@ -25,21 +25,21 @@ internal static class AssetHooks
 		MethodInfo getCardPortrait = RequireGetter(typeof(CardModel), nameof(CardModel.Portrait));
 		MethodInfo getEnchantmentIcon = RequireGetter(typeof(EnchantmentModel), nameof(EnchantmentModel.Icon));
 
-		harmony.Patch(getRelicIcon, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(RelicIconPostfix)));
-		harmony.Patch(getRelicIconOutline, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(RelicIconOutlinePostfix)));
-		harmony.Patch(getRelicBigIcon, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(RelicBigIconPostfix)));
+		harmony.Patch(getRelicIcon, prefix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(RelicTexturePrefix)));
+		harmony.Patch(getRelicIconOutline, prefix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(RelicTexturePrefix)));
+		harmony.Patch(getRelicBigIcon, prefix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(RelicTexturePrefix)));
 		if (relicReload != null && NRelicModelField != null)
 		{
-			harmony.Patch(relicReload, prefix: new HarmonyMethod(typeof(AssetHooks), nameof(NRelicReloadPrefix)));
+			harmony.Patch(relicReload, prefix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(NRelicReloadPrefix)));
 		}
 		else
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] NRelic.Reload asset hook skipped: missing {(relicReload == null ? "NRelic.Reload" : "NRelic._model")}.");
 		}
-		harmony.Patch(getPowerIcon, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(PowerIconPostfix)));
-		harmony.Patch(getPowerBigIcon, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(PowerBigIconPostfix)));
-		harmony.Patch(getCardPortrait, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(CardPortraitPostfix)));
-		harmony.Patch(getEnchantmentIcon, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(EnchantmentIconPostfix)));
+		harmony.Patch(getPowerIcon, postfix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(PowerIconPostfix)));
+		harmony.Patch(getPowerBigIcon, postfix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(PowerBigIconPostfix)));
+		harmony.Patch(getCardPortrait, postfix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(CardPortraitPostfix)));
+		harmony.Patch(getEnchantmentIcon, postfix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(EnchantmentIconPostfix)));
 
 		// HoverTip 是 record struct:其构造里读的 power.Icon 拿到的是原版 NOPE 占位
 		// (AtlasResourceLoader 缺 sprite 时不返回 null 而是占位纹理,get_Icon postfix 覆盖
@@ -49,12 +49,16 @@ internal static class AssetHooks
 		MethodInfo? getHoverTips = AccessTools.PropertyGetter(typeof(PowerModel), nameof(PowerModel.HoverTips));
 		if (getDumbHoverTip != null && getHoverTips != null)
 		{
-			harmony.Patch(getDumbHoverTip, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(GetDumbHoverTipPostfix)));
-			harmony.Patch(getHoverTips, postfix: new HarmonyMethod(typeof(AssetHooks), nameof(PowerHoverTipsPostfix)));
+			harmony.Patch(getDumbHoverTip, postfix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(GetDumbHoverTipPostfix)));
+			harmony.Patch(getHoverTips, postfix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(PowerHoverTipsPostfix)));
 		}
 		else
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] Power hover tip icon hooks skipped: target methods not found.");
+		}
+		if (HoverTipIconField == null)
+		{
+			Log.Warn($"[{ModInfo.Id}][Assets] Power hover tip icon backing field not found; hover tip icons will show the vanilla placeholder.");
 		}
 
 		// 自定义休息室选项(目前为「添柴」StokeRestSiteOption)的图标修复。
@@ -65,7 +69,7 @@ internal static class AssetHooks
 		MethodInfo? getRestSiteOptionIcon = AccessTools.PropertyGetter(typeof(RestSiteOption), nameof(RestSiteOption.Icon));
 		if (getRestSiteOptionIcon != null)
 		{
-			harmony.Patch(getRestSiteOptionIcon, prefix: new HarmonyMethod(typeof(AssetHooks), nameof(RestSiteOptionIconPrefix)));
+			harmony.Patch(getRestSiteOptionIcon, prefix: new HarmonyMethod(typeof(HextechAssetHooks), nameof(RestSiteOptionIconPrefix)));
 		}
 		else
 		{
@@ -127,27 +131,29 @@ internal static class AssetHooks
 		}
 	}
 
-	private static void RelicIconPostfix(RelicModel __instance, ref Texture2D __result)
+	private static bool RelicTexturePrefix(RelicModel __instance, ref Texture2D __result)
 	{
-		if (TryGetHextechRelicTexture(__instance, out Texture2D? texture))
+		try
 		{
-			__result = texture!;
-		}
-	}
+			string? path = HextechAssets.TryGetCustomRelicIconPath(__instance);
+			if (path == null)
+			{
+				return true;
+			}
 
-	private static void RelicIconOutlinePostfix(RelicModel __instance, ref Texture2D __result)
-	{
-		if (TryGetHextechRelicTexture(__instance, out Texture2D? texture))
-		{
-			__result = texture!;
-		}
-	}
+			Texture2D? texture = LoadPortableTexture(path) ?? GetMissingTexture();
+			if (!IsTextureUsable(texture))
+			{
+				return true;
+			}
 
-	private static void RelicBigIconPostfix(RelicModel __instance, ref Texture2D __result)
-	{
-		if (TryGetHextechRelicTexture(__instance, out Texture2D? texture))
-		{
 			__result = texture!;
+			return false;
+		}
+		catch (Exception ex)
+		{
+			LogAssetHookFailure(nameof(RelicTexturePrefix), ex);
+			return true;
 		}
 	}
 
@@ -368,11 +374,57 @@ internal static class AssetHooks
 		return LoadPortableTexture(path);
 	}
 
-	private static int _assetHookFailureLogs;
+	private static Texture2D? _missingTexture;
+
+	internal static Texture2D? GetMissingTexture()
+	{
+		if (IsTextureUsable(_missingTexture))
+		{
+			return _missingTexture;
+		}
+
+		try
+		{
+			const int size = 64;
+			Image image = Image.CreateEmpty(size, size, useMipmaps: false, Image.Format.Rgba8);
+			image.Fill(new Color(0.12f, 0.14f, 0.18f, 0.96f));
+			Color accent = new(0.72f, 0.76f, 0.84f, 0.9f);
+			for (int i = 10; i < size - 10; i++)
+			{
+				image.SetPixel(i, i, accent);
+				image.SetPixel(size - 1 - i, i, accent);
+			}
+
+			_missingTexture = ImageTexture.CreateFromImage(image);
+			return IsTextureUsable(_missingTexture) ? _missingTexture : null;
+		}
+		catch (Exception ex)
+		{
+			LogAssetHookFailure(nameof(GetMissingTexture), ex);
+			return null;
+		}
+	}
+
+	internal static bool IsTextureUsable(Texture2D? texture)
+	{
+		if (texture == null)
+		{
+			return false;
+		}
+
+		try
+		{
+			return GodotObject.IsInstanceValid(texture) && texture.GetWidth() > 0 && texture.GetHeight() > 0;
+		}
+		catch (ObjectDisposedException)
+		{
+			return false;
+		}
+	}
 
 	private static void LogAssetHookFailure(string hook, Exception ex)
 	{
-		if (_assetHookFailureLogs++ < 10)
+		if (HextechRunLogBudget.TryConsume("assets.hook-failure", 10))
 		{
 			Log.Error($"[{ModInfo.Id}][Assets] {hook} failed; keeping original result: {ex}");
 		}
@@ -380,55 +432,118 @@ internal static class AssetHooks
 
 	private static Texture2D? LoadPortableTexture(string path)
 	{
-		if (ResourceLoader.Load<Texture2D>(path) is Texture2D loadedTexture)
+		// 自定义运行时可能拒绝编辑器导入的 ctex，并留下非空但已释放的纹理包装对象。
+		// 原始图像字节在支持的游戏版本间保持稳定，因此图片资源只手动解码，不进入导入资源链。
+		Func<string, Texture2D?> secondaryLoader = AssetResourceResolver.IsRawImagePath(path)
+			? static _ => null
+			: LoadTextureThroughResourceLoader;
+		Texture2D? texture = AssetResourceResolver.Resolve(
+			path,
+			TextureCache,
+			IsTextureUsable,
+			LoadRawImageTexture,
+			secondaryLoader);
+		if (texture == null)
 		{
-			TextureCache[path] = loadedTexture;
-			return loadedTexture;
+			WarnTextureMissOnce(
+				path,
+				AssetResourceResolver.IsRawImagePath(path)
+					? "raw image decode miss"
+					: "raw decode and ResourceLoader miss");
 		}
 
-		if (TextureCache.TryGetValue(path, out Texture2D? cachedTexture))
-		{
-			return cachedTexture;
-		}
-
-		byte[] bytes = Godot.FileAccess.GetFileAsBytes(path);
-		if (bytes.Length == 0)
-		{
-			WarnTextureMissOnce(path, "file empty or not found");
-			return null;
-		}
-
-		Image image = new();
-		Error err = path.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
-			? image.LoadPngFromBuffer(bytes)
-			: image.LoadJpgFromBuffer(bytes);
-		if (err != Error.Ok)
-		{
-			WarnTextureMissOnce(path, $"image decode failed: {err}");
-			return null;
-		}
-
-		PortableCompressedTexture2D texture = new();
-		texture.CreateFromImage(image, PortableCompressedTexture2D.CompressionMode.Lossless);
-		texture.ResourcePath = path;
-		TextureCache[path] = texture;
 		return texture;
+	}
+
+	private static Texture2D? LoadRawImageTexture(string path)
+	{
+		return TryLoadRawImageTexture(path, out Texture2D? texture) ? texture : null;
+	}
+
+	private static Texture2D? LoadTextureThroughResourceLoader(string path)
+	{
+		try
+		{
+			return ResourceLoader.Load<Texture2D>(path);
+		}
+		catch (Exception ex)
+		{
+			LogAssetHookFailure(nameof(LoadTextureThroughResourceLoader), ex);
+			return null;
+		}
+	}
+
+	private static bool TryLoadRawImageTexture(string path, out Texture2D? texture)
+	{
+		texture = null;
+		if (!AssetResourceResolver.IsRawImagePath(path))
+		{
+			return false;
+		}
+
+		bool isPng = path.EndsWith(".png", StringComparison.OrdinalIgnoreCase);
+
+		// 解码与建纹理整体兜底:Resolve 按契约不 catch,LoadUiTexture 链上也没有别的护栏。
+		try
+		{
+			byte[] bytes = Godot.FileAccess.GetFileAsBytes(path);
+			if (bytes.Length == 0)
+			{
+				return false;
+			}
+
+			Image image = new();
+			Error err = isPng
+				? image.LoadPngFromBuffer(bytes)
+				: image.LoadJpgFromBuffer(bytes);
+			if (err != Error.Ok)
+			{
+				return false;
+			}
+
+			ImageTexture? imageTexture = ImageTexture.CreateFromImage(image);
+			if (!IsTextureUsable(imageTexture))
+			{
+				imageTexture?.Dispose();
+				return false;
+			}
+
+			texture = imageTexture;
+			return true;
+		}
+		catch (Exception ex)
+		{
+			LogAssetHookFailure(nameof(TryLoadRawImageTexture), ex);
+			return false;
+		}
 	}
 
 	private static CompressedTexture2D? LoadCompressedTexture(string path)
 	{
-		if (ResourceLoader.Load<CompressedTexture2D>(path) is CompressedTexture2D loadedTexture)
-		{
-			CompressedTextureCache[path] = loadedTexture;
-			return loadedTexture;
-		}
-
 		if (CompressedTextureCache.TryGetValue(path, out CompressedTexture2D? cachedTexture))
 		{
-			return cachedTexture;
+			if (IsTextureUsable(cachedTexture))
+			{
+				return cachedTexture;
+			}
+
+			CompressedTextureCache.Remove(path);
 		}
 
-		WarnTextureMissOnce(path, "ResourceLoader miss");
+		try
+		{
+			if (ResourceLoader.Load<CompressedTexture2D>(path) is { } loadedTexture && IsTextureUsable(loadedTexture))
+			{
+				CompressedTextureCache[path] = loadedTexture;
+				return loadedTexture;
+			}
+		}
+		catch (Exception ex)
+		{
+			LogAssetHookFailure(nameof(LoadCompressedTexture), ex);
+		}
+
+		WarnTextureMissOnce(path, "ResourceLoader returned no usable compressed texture");
 		return null;
 	}
 
@@ -442,5 +557,4 @@ internal static class AssetHooks
 			Log.Warn($"[{ModInfo.Id}][Assets] Texture load miss ({reason}): {path}");
 		}
 	}
-
 }

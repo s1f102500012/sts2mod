@@ -1,6 +1,6 @@
 namespace HextechRunes;
 
-internal sealed class TankEngineEnemyHex : HextechEnemyHexEffect
+internal sealed class TankEngineEnemyHex : HextechEnemyHexEffect, IHextechEnemyMaxHpCoefficientProvider
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.TankEngine;
 
@@ -8,24 +8,69 @@ internal sealed class TankEngineEnemyHex : HextechEnemyHexEffect
 	{
 		foreach (Creature enemy in enemies)
 		{
-			if (enemy.CombatId is uint combatId)
+			if (enemy.CombatId is not uint combatId)
 			{
-				int currentRound = combatState.RoundNumber;
-				if (context.Tracking.TankEngineLastAppliedRound.GetValueOrDefault(combatId, 0) == currentRound)
-				{
-					continue;
-				}
-
-				context.Tracking.TankEngineLastAppliedRound[combatId] = currentRound;
+				continue;
 			}
 
-			int hpGain = Math.Max(1, (int)Math.Floor(enemy.MaxHp * 0.05m));
-			await HextechMayhemModifier.GainMonsterMaxHpWithoutHeal(enemy, hpGain);
-			if (enemy.CombatId is uint trackedCombatId)
+			int currentRound = combatState.RoundNumber;
+			if (context.Tracking.TankEngineLastAppliedRound.GetValueOrDefault(combatId, 0) == currentRound)
 			{
-				context.Tracking.TankEngineStacks[trackedCombatId] = context.Tracking.TankEngineStacks.GetValueOrDefault(trackedCombatId, 0) + 1;
+				continue;
+			}
+
+			bool hadPreviousRound = context.Tracking.TankEngineLastAppliedRound.TryGetValue(
+				combatId,
+				out int previousRound);
+			bool hadPreviousStacks = context.Tracking.TankEngineStacks.TryGetValue(
+				combatId,
+				out int previousStacks);
+			context.Modifier.CaptureMonsterMaxHpCoefficientBase(enemy);
+			context.Tracking.TankEngineLastAppliedRound[combatId] = currentRound;
+			context.Tracking.TankEngineStacks[combatId] = previousStacks + 1;
+			try
+			{
+				await context.Modifier.ReapplyMonsterMaxHpCoefficients(enemy);
 				context.UpdateEnemyScale(enemy);
 			}
+			catch
+			{
+				RestoreTrackedValue(
+					context.Tracking.TankEngineLastAppliedRound,
+					combatId,
+					hadPreviousRound,
+					previousRound);
+				RestoreTrackedValue(
+					context.Tracking.TankEngineStacks,
+					combatId,
+					hadPreviousStacks,
+					previousStacks);
+				context.Tracking.MonsterMaxHpCoefficientProjected.Remove(combatId);
+				throw;
+			}
 		}
+	}
+
+	public decimal GetMaxHpBonusFraction(HextechEnemyHexContext context, Creature creature)
+	{
+		int stacks = creature.CombatId is uint combatId
+			? context.Tracking.TankEngineStacks.GetValueOrDefault(combatId, 0)
+			: 0;
+		return Math.Max(0, stacks) * 0.05m;
+	}
+
+	private static void RestoreTrackedValue(
+		Dictionary<uint, int> values,
+		uint combatId,
+		bool hadPreviousValue,
+		int previousValue)
+	{
+		if (hadPreviousValue)
+		{
+			values[combatId] = previousValue;
+			return;
+		}
+
+		values.Remove(combatId);
 	}
 }

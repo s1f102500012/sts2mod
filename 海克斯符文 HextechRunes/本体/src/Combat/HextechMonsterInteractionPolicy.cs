@@ -115,7 +115,9 @@ internal static class HextechMonsterInteractionPolicy
 				// 薄暮法衣镜像到玩家后攻击者是怪物,dealer.Player 为空并会中断受击任务链。
 				or PersonalHivePower
 				// 机器人「库存」(Stock):囤积-释放机制与敌人行动脚本耦合,薄暮法衣镜像到玩家会卡死(玩家实报)。
-				or StockPower;
+				or StockPower
+				// 敌我共用的缓慢系数按持有者阵营解释方向,从敌方镜像到玩家会把减伤反转为易伤。
+				or HextechPlayerSlowPower;
 	}
 
 	/// <summary>

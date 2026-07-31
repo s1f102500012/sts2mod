@@ -122,14 +122,7 @@ internal static class HextechEnemyUi
 
 	private static bool GetCollapseEnemyHexesConfig()
 	{
-		try
-		{
-			return HextechRelicVisibilityHooks.GetCollapseEnemyHexes();
-		}
-		catch
-		{
-			return HextechRelicVisibilityHooks.GetDefaultCollapseEnemyHexes();
-		}
+		return HextechRelicVisibilityHooks.GetCollapseEnemyHexes();
 	}
 
 	// 折叠面板按「幕」分行:第 N 行 = 第 N 幕**单独新增**的敌方海克斯。GetMonsterHexesForAct 返回的是累积集,

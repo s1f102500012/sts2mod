@@ -13,8 +13,6 @@ namespace HextechRunes;
 /// </summary>
 internal static class HextechAnimTriggerSafetyHooks
 {
-	private static int _swallowedLogs;
-
 	public static void Install(Harmony harmony)
 	{
 		harmony.Patch(
@@ -29,7 +27,7 @@ internal static class HextechAnimTriggerSafetyHooks
 			return __exception;
 		}
 
-		if (_swallowedLogs++ < 5)
+		if (HextechRunLogBudget.TryConsume("ui.animation-trigger-nre", 5))
 		{
 			Log.Warn($"[{ModInfo.Id}][AnimSafety] Suppressed NullReferenceException in animation trigger '{trigger}' (likely a vanilla animator condition reading a removed power).");
 		}

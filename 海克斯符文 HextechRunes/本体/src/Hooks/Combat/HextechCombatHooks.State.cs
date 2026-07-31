@@ -2,5 +2,7 @@ namespace HextechRunes;
 
 internal static partial class HextechCombatHooks
 {
-	private static bool _handlingGoliathMaxHp;
+	private static readonly HextechScopedDepthGuard GoliathMaxHpGuard = new();
+
+	internal static bool IsHandlingGoliathMaxHp => GoliathMaxHpGuard.IsActive;
 }

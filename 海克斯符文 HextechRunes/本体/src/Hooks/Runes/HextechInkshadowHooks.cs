@@ -21,18 +21,20 @@ internal static class HextechInkshadowHooks
 
 	private static bool OnPlayPrefix(BladeOfInk __instance, PlayerChoiceContext choiceContext, ref Task __result)
 	{
-		if (__instance.Owner?.GetRelic<InkshadowRune>() == null)
+		if (__instance.Owner is not { } owner
+			|| __instance.CombatState is not { } combatState
+			|| owner.GetRelic<InkshadowRune>() == null)
 		{
 			return true;
 		}
 
-		__result = PlayWithGuardedEnchant(__instance);
+		__result = PlayWithGuardedEnchant(__instance, owner, combatState);
 		return false;
 	}
 
-	private static async Task PlayWithGuardedEnchant(BladeOfInk card)
+	private static async Task PlayWithGuardedEnchant(BladeOfInk card, Player owner, HextechCombatState combatState)
 	{
-		foreach (CardModel item in await Shiv.CreateInHand(card.Owner, card.DynamicVars.Cards.IntValue, card.CombatState))
+		foreach (CardModel item in await Shiv.CreateInHand(owner, card.DynamicVars.Cards.IntValue, combatState))
 		{
 			if (item.Enchantment is Inky)
 			{

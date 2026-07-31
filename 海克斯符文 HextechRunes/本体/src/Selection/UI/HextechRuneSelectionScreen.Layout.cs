@@ -63,7 +63,7 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			MaxFontSize = 48,
 			MinFontSize = 30
 		};
-		ApplyDefaultMegaLabelTheme(title);
+		HextechUiTheme.ApplyDefaultMegaLabelTheme(title);
 		title.Modulate = new Color(0.96f, 0.97f, 0.99f, 0.98f);
 		title.SetTextAutoSize(_titleOverride ?? new LocString(LocTable, "HEXTECH_SELECTION_TITLE").GetRawText());
 		root.AddChild(title);
@@ -102,7 +102,7 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			MinFontSize = 16,
 			Visible = false
 		};
-		ApplyDefaultMegaLabelTheme(_statusLabel);
+		HextechUiTheme.ApplyDefaultMegaLabelTheme(_statusLabel);
 		_statusLabel.Modulate = new Color(0.88f, 0.92f, 0.97f, 0.82f);
 		root.AddChild(_statusLabel);
 	}
@@ -138,6 +138,7 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 
 		_holders.Clear();
 		_rerollButtons.Clear();
+		_goldenRerollVisuals.Clear();
 		while (_playerRuneRerollCounts.Count < _relics.Count)
 		{
 			_playerRuneRerollCounts.Add(0);

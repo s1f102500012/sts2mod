@@ -16,12 +16,17 @@ internal sealed partial class HextechMayhemModifier
 
 	public bool TryRecoverResolvedActsFromPlayerRelics(string reason)
 	{
+		int currentActIndex = RunState.CurrentActIndex;
+		int maxRecoverActIndex = HasRuneSelectionJournalEntriesForAct(currentActIndex)
+			? currentActIndex - 1
+			: currentActIndex;
 		HextechMayhemActRecoveryResult recovery = HextechMayhemActRecovery.RecoverResolvedActs(
 			RunState,
 			_actState,
 			_choiceHistory,
 			_hexCountRecoveryBaseline,
-			PlayerHexCountsByAct);
+			PlayerHexCountsByAct,
+			maxRecoverActIndex);
 		if (recovery.Changed)
 		{
 			HextechLog.Info($"[{ModInfo.Id}][Mayhem] Recovered resolved acts from saved choices/player relics: reason={reason} currentAct={RunState.CurrentActIndex} recoverThrough={recovery.RecoverThroughAct} telemetryThrough={recovery.TelemetryRecoverThroughAct} countThrough={recovery.CountRecoverThroughAct} baseline={_hexCountRecoveryBaseline} {_actState.Describe()} counts={DescribePlayerHexCounts()} choices={DescribeTelemetryChoiceCounts()}");
@@ -92,6 +97,7 @@ internal sealed partial class HextechMayhemModifier
 
 	public void ResetForNewRun()
 	{
+		HextechEnemyHexEffects.ResetAllRunScopedState();
 		HextechRunConfigurationSnapshot snapshot = CreateNewRunConfigurationSnapshot();
 		_runContext.ResetForNewRun(snapshot.PlayerHexCountsByAct, snapshot.EnemyHexCountsByAct);
 		SetRunConfigurationSnapshot(snapshot, "new run");
@@ -100,6 +106,7 @@ internal sealed partial class HextechMayhemModifier
 
 	public void ResetForEndlessLoop(string reason)
 	{
+		HextechEnemyHexEffects.ResetAllRunScopedState();
 		_runContext.ResetForEndlessLoop(HextechMayhemActRecovery.GetMinimumPlayerHexCount(RunState));
 		HextechLog.Info($"[{ModInfo.Id}][Mayhem] Reset for endless loop: reason={reason} baseline={_hexCountRecoveryBaseline} strengthTierFloor={_monsterHexStrengthTierFloor} enemyCounts={string.Join(",", EnemyHexCountsByAct)} counts={DescribePlayerHexCounts()} {_actState.Describe()}");
 		HextechRunLifecycleHooks.HandleEndlessLoopReset(this, reason);

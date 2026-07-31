@@ -2,11 +2,16 @@ namespace HextechRunes;
 
 internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 {
-	private static readonly HashSet<CompensationEnemyHex> EffectsWithPendingCompensation = new();
+	private static CompensationEnemyHex? _effectWithPendingCompensation;
 
 	private readonly List<PendingCompensation> _pendingCompensations = [];
 
 	internal override MonsterHexKind Kind => MonsterHexKind.Compensation;
+
+	internal override void ResetRunScopedState()
+	{
+		ClearPendingCompensationsForEffect();
+	}
 
 	internal override Task ApplyCombatStartToEnemy(HextechEnemyHexContext context, Creature enemy, CombatRoom room)
 	{
@@ -74,16 +79,7 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 
 	internal static void ClearPendingCompensations(long commandId)
 	{
-		if (EffectsWithPendingCompensation.Count == 0)
-		{
-			return;
-		}
-
-		CompensationEnemyHex[] effects = EffectsWithPendingCompensation.ToArray();
-		foreach (CompensationEnemyHex effect in effects)
-		{
-			effect.ClearPendingCompensationsForCommand(commandId);
-		}
+		_effectWithPendingCompensation?.ClearPendingCompensationsForCommand(commandId);
 	}
 
 	internal static (decimal ImmediateDamage, int NextTurnDamage) SplitDamage(decimal damage)
@@ -121,13 +117,13 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 					Dealer = dealer ?? pending.Dealer,
 					CardSource = cardSource ?? pending.CardSource
 				};
-				EffectsWithPendingCompensation.Add(this);
+				_effectWithPendingCompensation = this;
 				return;
 			}
 		}
 
 		_pendingCompensations.Add(new PendingCompensation(commandId, target, amount, dealer, cardSource));
-		EffectsWithPendingCompensation.Add(this);
+		_effectWithPendingCompensation = this;
 	}
 
 	private bool TryTakePendingCompensation(long commandId, Creature target, out PendingCompensation? pending)
@@ -165,14 +161,17 @@ internal sealed class CompensationEnemyHex : HextechEnemyHexEffect
 	private void ClearPendingCompensationsForEffect()
 	{
 		_pendingCompensations.Clear();
-		EffectsWithPendingCompensation.Remove(this);
+		if (ReferenceEquals(_effectWithPendingCompensation, this))
+		{
+			_effectWithPendingCompensation = null;
+		}
 	}
 
 	private void RemoveFromPendingRegistryIfEmpty()
 	{
-		if (_pendingCompensations.Count == 0)
+		if (_pendingCompensations.Count == 0 && ReferenceEquals(_effectWithPendingCompensation, this))
 		{
-			EffectsWithPendingCompensation.Remove(this);
+			_effectWithPendingCompensation = null;
 		}
 	}
 

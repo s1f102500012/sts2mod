@@ -2,9 +2,9 @@ namespace HextechRunes;
 
 public sealed class HextechNextTurnDamagePower : HextechPowerBase
 {
-	private static readonly AsyncLocal<int> DamageResolutionDepth = new();
+	private static readonly HextechScopedDepthGuard DamageResolutionGuard = new();
 
-	internal static bool IsResolvingDamage => DamageResolutionDepth.Value > 0;
+	internal static bool IsResolvingDamage => DamageResolutionGuard.IsActive;
 
 	public override PowerType Type => PowerType.Debuff;
 
@@ -40,16 +40,8 @@ public sealed class HextechNextTurnDamagePower : HextechPowerBase
 		return Math.Max(0, Math.Min(amount, amountOnTurnStart));
 	}
 
-	internal static async Task RunWithDamageResolutionGuard(Func<Task> action)
+	internal static Task RunWithDamageResolutionGuard(Func<Task> action)
 	{
-		DamageResolutionDepth.Value++;
-		try
-		{
-			await action();
-		}
-		finally
-		{
-			DamageResolutionDepth.Value = Math.Max(0, DamageResolutionDepth.Value - 1);
-		}
+		return DamageResolutionGuard.RunAsync(action);
 	}
 }

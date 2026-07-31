@@ -1,6 +1,6 @@
 namespace HextechRunes;
 
-internal sealed class GoldenSpatulaEnemyHex : HextechEnemyHexEffect
+internal sealed class GoldenSpatulaEnemyHex : HextechEnemyHexEffect, IHextechEnemyMaxHpCoefficientProvider
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.GoldenSpatula;
 
@@ -18,16 +18,21 @@ internal sealed class GoldenSpatulaEnemyHex : HextechEnemyHexEffect
 		return 0.5m;
 	}
 
-	internal override decimal ModifyEnemyHealAmount(HextechEnemyHexContext context, Creature creature, decimal amount)
+	internal override decimal ModifyEnemyHealMultiplicative(HextechEnemyHexContext context, Creature creature, decimal amount)
 	{
-		return amount * 0.5m;
+		return 0.5m;
 	}
 
 	internal override async Task ApplyPersistentToEnemy(HextechEnemyHexContext context, Creature creature, int? maxHpBaseOverride, bool replayOneShotPowers)
 	{
 		if (HextechCombatProcTracker.TryMarkPersistentHexApplied(context.Tracking.GoldenSpatulaApplied, creature, replayOneShotPowers))
 		{
-			await HextechMayhemModifier.EnsureMonsterMaxHpBonus(creature, context.TierValue(Kind, 0.25m, 0.30m, 0.45m), maxHpBaseOverride);
+			await context.Modifier.ReapplyMonsterMaxHpCoefficients(creature, maxHpBaseOverride);
 		}
+	}
+
+	public decimal GetMaxHpBonusFraction(HextechEnemyHexContext context, Creature creature)
+	{
+		return context.TierValue(Kind, 0.25m, 0.30m, 0.45m);
 	}
 }

@@ -7,29 +7,43 @@ namespace HextechRunes;
 public sealed partial class SolidTimeRune
 {
 	private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+	private string? _lastLoggedCorruptStoredCardsJson;
 
 	private void AppendStoredCard(CardModel deckCard)
 	{
 		List<StoredCard> cards = DecodeStoredCards();
 		cards.Add(StoredCard.From(deckCard));
 		_removedCardsJson = JsonSerializer.Serialize(cards, JsonOptions);
+		_lastLoggedCorruptStoredCardsJson = null;
 	}
 
 	private List<StoredCard> DecodeStoredCards()
 	{
 		if (string.IsNullOrWhiteSpace(_removedCardsJson))
 		{
+			_lastLoggedCorruptStoredCardsJson = null;
 			return [];
 		}
 
 		try
 		{
-			return (JsonSerializer.Deserialize<List<StoredCard>>(_removedCardsJson, JsonOptions) ?? [])
+			List<StoredCard> cards = (JsonSerializer.Deserialize<List<StoredCard>>(_removedCardsJson, JsonOptions) ?? [])
 				.Where(IsStoredPowerCard)
 				.ToList();
+			_lastLoggedCorruptStoredCardsJson = null;
+			return cards;
 		}
-		catch
+		catch (Exception ex)
 		{
+			if (!string.Equals(_lastLoggedCorruptStoredCardsJson, _removedCardsJson, StringComparison.Ordinal))
+			{
+				_lastLoggedCorruptStoredCardsJson = _removedCardsJson;
+				string preview = _removedCardsJson[..Math.Min(80, _removedCardsJson.Length)];
+				Log.Warn(
+					$"[{ModInfo.Id}][SolidTime] Stored cards JSON is corrupted; dropping {_removedCardsJson.Length} chars: "
+					+ $"{ex.GetType().Name}: {ex.Message} json={preview}");
+			}
+
 			return [];
 		}
 	}

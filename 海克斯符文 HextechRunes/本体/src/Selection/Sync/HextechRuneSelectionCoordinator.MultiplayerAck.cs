@@ -2,38 +2,45 @@ using Godot;
 using MegaCrit.Sts2.Core.Context;
 using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Nodes;
+using static HextechRunes.HextechSelectionHelpers;
 
 namespace HextechRunes;
 
 internal static partial class HextechRuneSelectionCoordinator
 {
-	private static async Task SynchronizeActSelectionApplied(RunState runState, PlayerChoiceSynchronizer synchronizer, int actIndex, int choiceOrdinal)
+	private static async Task SynchronizeActSelectionApplied(
+		RunState runState,
+		PlayerChoiceSynchronizer synchronizer,
+		int actIndex,
+		int choiceOrdinal,
+		CancellationToken cancellationToken)
 	{
 		RunManager runManager = RunManager.Instance;
 		List<Task> pendingAcks = [];
 		foreach (Player player in runState.Players)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			uint choiceId = synchronizer.ReserveChoiceId(player);
 			if (IsLocalPlayer(runManager, player))
 			{
-				if (TrySyncLocalHextechChoice(
+				uint sentChoiceId = SyncLocalHextechChoice(
 					synchronizer,
 					player,
 					choiceId,
 					HextechChoiceCodec.CreateActSelectionApplied(actIndex, choiceOrdinal),
-					$"act-selection-applied act={actIndex} ordinal={choiceOrdinal}",
-					out uint sentChoiceId))
-				{
-					HextechLog.Info($"[{ModInfo.Id}][Mayhem] ActSelectionApplied sync local: act={actIndex} ordinal={choiceOrdinal} player={player.NetId} choiceId={sentChoiceId}");
-				}
-				else
-				{
-					Log.Warn($"[{ModInfo.Id}][Mayhem] ActSelectionApplied sync local failed: act={actIndex} ordinal={choiceOrdinal} player={player.NetId} choiceId={choiceId}");
-				}
+					$"act-selection-applied act={actIndex} ordinal={choiceOrdinal}");
+				HextechLog.Info($"[{ModInfo.Id}][Mayhem] ActSelectionApplied sync local: act={actIndex} ordinal={choiceOrdinal} player={player.NetId} choiceId={sentChoiceId}");
 				continue;
 			}
 
-			pendingAcks.Add(WaitForRemoteActSelectionApplied(synchronizer, runState, player, choiceId, actIndex, choiceOrdinal));
+			pendingAcks.Add(WaitForRemoteActSelectionApplied(
+				synchronizer,
+				runState,
+				player,
+				choiceId,
+				actIndex,
+				choiceOrdinal,
+				cancellationToken));
 		}
 
 		if (pendingAcks.Count == 0)
@@ -42,48 +49,40 @@ internal static partial class HextechRuneSelectionCoordinator
 		}
 
 		HextechLog.Info($"[{ModInfo.Id}][Mayhem] ActSelectionApplied waiting: act={actIndex} ordinal={choiceOrdinal} remoteCount={pendingAcks.Count}");
-		Task allAcks = Task.WhenAll(pendingAcks);
-		using CancellationTokenSource interruptedWaitCancellation = new();
-		Task interrupted = WaitForRunChangeOrMultiplayerDisconnectAsync(runState, interruptedWaitCancellation.Token);
-		if (await Task.WhenAny(allAcks, interrupted) == allAcks)
-		{
-			interruptedWaitCancellation.Cancel();
-			await interrupted;
-			await allAcks;
-			HextechLog.Info($"[{ModInfo.Id}][Mayhem] ActSelectionApplied complete: act={actIndex} ordinal={choiceOrdinal}");
-			return;
-		}
-
-		int completed = pendingAcks.Count(static task => task.IsCompletedSuccessfully);
-		Log.Warn($"[{ModInfo.Id}][Mayhem] ActSelectionApplied interrupted: act={actIndex} ordinal={choiceOrdinal} completed={completed}/{pendingAcks.Count} runActive={IsCurrentRun(runState)} connected={IsMultiplayerConnected()}; continuing because run changed or multiplayer disconnected");
+		await Task.WhenAll(pendingAcks);
+		HextechLog.Info($"[{ModInfo.Id}][Mayhem] ActSelectionApplied complete: act={actIndex} ordinal={choiceOrdinal}");
 	}
 
-	private static async Task WaitForRemoteActSelectionApplied(PlayerChoiceSynchronizer synchronizer, RunState runState, Player player, uint choiceId, int actIndex, int choiceOrdinal)
+	private static async Task WaitForRemoteActSelectionApplied(
+		PlayerChoiceSynchronizer synchronizer,
+		RunState runState,
+		Player player,
+		uint choiceId,
+		int actIndex,
+		int choiceOrdinal,
+		CancellationToken cancellationToken)
 	{
-		try
+		(PlayerChoiceResult remoteAck, uint receivedChoiceId) = await WaitForRemoteHextechChoice(
+			synchronizer,
+			runState,
+			player,
+			choiceId,
+			result => HextechChoiceCodec.TryDecodeActSelectionApplied(result, actIndex, choiceOrdinal),
+			$"act-selection-applied act={actIndex} ordinal={choiceOrdinal}",
+			cancellationToken: cancellationToken);
+		if (!HextechChoiceCodec.TryDecodeActSelectionApplied(remoteAck, actIndex, choiceOrdinal))
 		{
-			(PlayerChoiceResult remoteAck, uint receivedChoiceId) = await WaitForRemoteHextechChoice(
-				synchronizer,
-				runState,
-				player,
-				choiceId,
-				result => HextechChoiceCodec.TryDecodeActSelectionApplied(result, actIndex, choiceOrdinal),
-				$"act-selection-applied act={actIndex} ordinal={choiceOrdinal}");
-			if (!HextechChoiceCodec.TryDecodeActSelectionApplied(remoteAck, actIndex, choiceOrdinal))
-			{
-				Log.Warn($"[{ModInfo.Id}][Mayhem] ActSelectionApplied malformed ack: act={actIndex} ordinal={choiceOrdinal} player={player.NetId} choiceId={choiceId}");
-				return;
-			}
+			throw new HextechChoiceProtocolException(
+				$"Malformed act-selection-applied ack: act={actIndex} ordinal={choiceOrdinal} player={player.NetId} choiceId={choiceId}");
+		}
 
-			HextechLog.Info($"[{ModInfo.Id}][Mayhem] ActSelectionApplied remote: act={actIndex} ordinal={choiceOrdinal} player={player.NetId} choiceId={receivedChoiceId}");
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] ActSelectionApplied wait failed: act={actIndex} ordinal={choiceOrdinal} player={player.NetId} choiceId={choiceId} error={ex}");
-		}
+		HextechLog.Info($"[{ModInfo.Id}][Mayhem] ActSelectionApplied remote: act={actIndex} ordinal={choiceOrdinal} player={player.NetId} choiceId={receivedChoiceId}");
 	}
 
-	private static async Task WaitForFramesOrRunChangeAsync(RunState runState, int frameCount)
+	private static async Task WaitForFramesOrRunChangeAsync(
+		RunState runState,
+		int frameCount,
+		CancellationToken cancellationToken = default)
 	{
 		TimeSpan timeout = GetNetworkChoiceTimeoutDuration(frameCount);
 		if (timeout <= TimeSpan.Zero)
@@ -92,45 +91,30 @@ internal static partial class HextechRuneSelectionCoordinator
 		}
 
 		DateTimeOffset deadline = DateTimeOffset.UtcNow + timeout;
-		while (IsCurrentRun(runState) && DateTimeOffset.UtcNow < deadline)
+		while (!cancellationToken.IsCancellationRequested
+			&& IsCurrentRun(runState)
+			&& IsMultiplayerConnected()
+			&& DateTimeOffset.UtcNow < deadline)
 		{
 			// Multiplayer timer mods can accelerate process frames; keep network choice
 			// fallbacks on wall time so clients do not resolve different selection state.
-			if (NGame.Instance?.IsInsideTree() == true)
-			{
-				await NGame.Instance.ToSignal(NGame.Instance.GetTree(), SceneTree.SignalName.ProcessFrame);
-			}
-			else
-			{
-				TimeSpan remaining = deadline - DateTimeOffset.UtcNow;
-				if (remaining <= TimeSpan.Zero)
-				{
-					return;
-				}
-
-				await Task.Delay(remaining < TimeSpan.FromMilliseconds(16) ? remaining : TimeSpan.FromMilliseconds(16));
-			}
+			await WaitForProcessFrameOrDelayAsync(cancellationToken);
 		}
+
+		cancellationToken.ThrowIfCancellationRequested();
 	}
 
 	private static async Task WaitForRunChangeOrMultiplayerDisconnectAsync(RunState runState, CancellationToken cancellationToken)
 	{
 		while (!cancellationToken.IsCancellationRequested && IsCurrentRun(runState) && IsMultiplayerConnected())
 		{
-			if (NGame.Instance?.IsInsideTree() == true)
+			try
 			{
-				await NGame.Instance.ToSignal(NGame.Instance.GetTree(), SceneTree.SignalName.ProcessFrame);
+				await WaitForProcessFrameOrDelayAsync(cancellationToken);
 			}
-			else
+			catch (OperationCanceledException)
 			{
-				try
-				{
-					await Task.Delay(TimeSpan.FromMilliseconds(16), cancellationToken);
-				}
-				catch (OperationCanceledException)
-				{
-					return;
-				}
+				return;
 			}
 		}
 	}
@@ -148,19 +132,17 @@ internal static partial class HextechRuneSelectionCoordinator
 			: TimeSpan.FromSeconds(frameCount / 60.0d);
 	}
 
-	internal static async Task<PlayerChoiceSynchronizer?> WaitForPlayerChoiceSynchronizerAsync(RunManager runManager)
+	internal static Task<PlayerChoiceSynchronizer> WaitForPlayerChoiceSynchronizerAsync(RunManager runManager)
 	{
-		for (int i = 0; i < 60; i++)
+		PlayerChoiceSynchronizer? synchronizer = runManager.PlayerChoiceSynchronizer;
+		if (synchronizer != null)
 		{
-			if (runManager.PlayerChoiceSynchronizer != null)
-			{
-				return runManager.PlayerChoiceSynchronizer;
-			}
-
-			await Task.Yield();
+			return Task.FromResult(synchronizer);
 		}
 
-		return runManager.PlayerChoiceSynchronizer;
+		const string message = "PlayerChoiceSynchronizer is unavailable during an active multiplayer transaction.";
+		AbortMultiplayerChoiceTransaction("player-choice-synchronizer", message);
+		throw new HextechChoiceProtocolException(message);
 	}
 
 	internal static bool IsLocalPlayer(RunManager runManager, Player player)

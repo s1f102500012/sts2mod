@@ -4,20 +4,7 @@ internal static class HextechRuntimeRuneCompatibility
 {
 	private static readonly HashSet<Type> HookFailedPlayerRuneTypes = [];
 
-	public static bool IsAndroidRuntime
-	{
-		get
-		{
-			try
-			{
-				return OperatingSystem.IsAndroid();
-			}
-			catch
-			{
-				return false;
-			}
-		}
-	}
+	public static bool IsAndroidRuntime => OperatingSystem.IsAndroid();
 
 	public static void MarkPlayerRuneHookFailed<TRune>(string label, Exception exception)
 		where TRune : RelicModel

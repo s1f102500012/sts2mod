@@ -5,9 +5,9 @@ namespace HextechRunes;
 public sealed class HextechBurnPower : HextechPowerBase
 {
 	private const decimal StackDecayPercent = 0.1m;
-	private static int _resolveDepth;
+	private static readonly HextechScopedDepthGuard DamageResolutionGuard = new();
 
-	internal static bool IsResolvingDamage => _resolveDepth > 0;
+	internal static bool IsResolvingDamage => DamageResolutionGuard.IsActive;
 
 	public override PowerType Type => PowerType.Debuff;
 
@@ -66,17 +66,9 @@ public sealed class HextechBurnPower : HextechPowerBase
 		}
 	}
 
-	internal static async Task RunWithDamageResolutionGuard(Func<Task> action)
+	internal static Task RunWithDamageResolutionGuard(Func<Task> action)
 	{
-		_resolveDepth++;
-		try
-		{
-			await action();
-		}
-		finally
-		{
-			_resolveDepth = Math.Max(0, _resolveDepth - 1);
-		}
+		return DamageResolutionGuard.RunAsync(action);
 	}
 }
 
@@ -170,18 +162,9 @@ public sealed class HextechAttackReplayPower : PowerModel
 
 public sealed class HextechPlayerSlowPower : HextechPowerBase
 {
-	internal const decimal CardPlaySlowIncrease = 9m;
-	internal const decimal LegacySnailCombatStartAmount = -90m;
 	internal const decimal PlayerCombatStartAmount = 0m;
 	internal const decimal EnemyCombatStartAmount = 0m;
 	internal const int RoundStartAmount = 0;
-	private int _cardsPlayedThisTurn;
-
-	public int SavedCardsPlayedThisTurn
-	{
-		get => _cardsPlayedThisTurn;
-		set => _cardsPlayedThisTurn = Math.Max(0, value);
-	}
 
 	public override PowerType Type => PowerType.Buff;
 
@@ -238,16 +221,6 @@ public sealed class HextechPlayerSlowPower : HextechPowerBase
 				slow.SetAmount(RoundStartAmount, silent: true);
 			}
 		}
-	}
-
-	public override Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
-	{
-		if (side == Owner.Side)
-		{
-			SavedCardsPlayedThisTurn = 0;
-		}
-
-		return Task.CompletedTask;
 	}
 
 	public override decimal ModifyDamageMultiplicativeCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)

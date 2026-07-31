@@ -1,6 +1,6 @@
 namespace HextechRunes;
 
-internal sealed class GoliathEnemyHex : HextechEnemyHexEffect
+internal sealed class GoliathEnemyHex : HextechEnemyHexEffect, IHextechEnemyMaxHpCoefficientProvider
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.Goliath;
 
@@ -18,18 +18,23 @@ internal sealed class GoliathEnemyHex : HextechEnemyHexEffect
 		return SustainMultiplier(context);
 	}
 
-	internal override decimal ModifyEnemyHealAmount(HextechEnemyHexContext context, Creature creature, decimal amount)
+	internal override decimal ModifyEnemyHealMultiplicative(HextechEnemyHexContext context, Creature creature, decimal amount)
 	{
-		return amount * SustainMultiplier(context);
+		return SustainMultiplier(context);
 	}
 
 	internal override async Task ApplyPersistentToEnemy(HextechEnemyHexContext context, Creature creature, int? maxHpBaseOverride, bool replayOneShotPowers)
 	{
 		if (HextechCombatProcTracker.TryMarkPersistentHexApplied(context.Tracking.GoliathApplied, creature, replayOneShotPowers))
 		{
-			await HextechMayhemModifier.EnsureMonsterMaxHpBonus(creature, context.TierValue(Kind, 0.20m, 0.30m, 0.40m), maxHpBaseOverride);
+			await context.Modifier.ReapplyMonsterMaxHpCoefficients(creature, maxHpBaseOverride);
 			context.UpdateEnemyScale(creature);
 		}
+	}
+
+	public decimal GetMaxHpBonusFraction(HextechEnemyHexContext context, Creature creature)
+	{
+		return context.TierValue(Kind, 0.20m, 0.30m, 0.40m);
 	}
 
 	private decimal SustainMultiplier(HextechEnemyHexContext context)

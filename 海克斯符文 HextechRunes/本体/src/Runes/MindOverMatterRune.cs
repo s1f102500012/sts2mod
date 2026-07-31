@@ -19,24 +19,25 @@ public sealed class MindOverMatterRune : HextechRelicBase
 			return;
 		}
 
-		List<CardModel> pool = Owner.Character.CardPool
-			.GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint)
-			.Where(static card => card.Rarity is not CardRarity.Basic and not CardRarity.Ancient && card.CanBeGeneratedInCombat)
-			.ToList();
+		List<CardModel> pool = BuildStableCombatGenerationPool(
+			Owner.Character.CardPool
+				.GetUnlockedCards(Owner.UnlockState, Owner.RunState.CardMultiplayerConstraint));
 		if (pool.Count == 0)
 		{
 			return;
 		}
 
-		CardModel canonicalCard = HextechStableRandom.Pick(
+		CardModel? card = PickStableGeneratedCard(
+			combatState,
 			pool,
-			(RunState)Owner.RunState,
-			HextechStableRandom.CardKey,
 			"mind-over-matter",
 			HextechStableRandom.PlayerKey(Owner),
 			combatState.RoundNumber.ToString(),
 			CountOwnedCardsDrawnFromHistory().ToString());
-		CardModel card = combatState.CreateCard(canonicalCard, Owner);
+		if (card == null)
+		{
+			return;
+		}
 		card.AddKeyword(CardKeyword.Ethereal);
 		card.SetToFreeThisCombat();
 

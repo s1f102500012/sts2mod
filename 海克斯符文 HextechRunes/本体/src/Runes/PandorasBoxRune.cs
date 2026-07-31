@@ -16,6 +16,7 @@ public sealed class PandorasBoxRune : HextechRelicBase
 		await HextechRuneGrantHelper.ReplaceOwnedHextechRunesWithRandomRunes(
 			player,
 			HextechCatalog.GetConfigurablePlayerRuneTypesForRarity(HextechRarityTier.Prismatic),
+			$"pandoras-box:{Id.Category}:{Id.Entry}",
 			new HashSet<ModelId> { ModelDb.GetId<PandorasBoxRune>() });
 	}
 }

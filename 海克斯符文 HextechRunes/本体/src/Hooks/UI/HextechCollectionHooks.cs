@@ -9,7 +9,7 @@ using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
 
-internal static partial class CollectionHooks
+internal static partial class HextechCollectionHooks
 {
 	private readonly record struct SubcategoryHeaderText(string ZhHeader, string ZhBody, string EnHeader, string EnBody);
 
@@ -48,18 +48,35 @@ internal static partial class CollectionHooks
 		["CHARACTER.NECROBINDER"] = new("亡灵契约师海克斯：", "仅亡灵契约师可抽取的海克斯符文。", "Necrobinder Hexes:", "Hextech runes only available to Necrobinder.")
 	};
 
-	private static readonly FieldInfo? HeaderLabelField = TryGetField(typeof(NRelicCollectionCategory), "_headerLabel");
+	private static readonly FieldInfo? HeaderLabelField = TryGetField(
+		typeof(NRelicCollectionCategory),
+		"_headerLabel",
+		BindingFlags.Instance | BindingFlags.NonPublic,
+		warnIfMissing: false);
 
-	private static readonly FieldInfo? SubCategoriesField = TryGetField(typeof(NRelicCollectionCategory), "_subCategories");
+	private static readonly FieldInfo? SubCategoriesField = TryGetField(
+		typeof(NRelicCollectionCategory),
+		"_subCategories",
+		BindingFlags.Instance | BindingFlags.NonPublic,
+		warnIfMissing: false);
 
-	private static readonly FieldInfo? RelicsContainerField = TryGetField(typeof(NRelicCollectionCategory), "_relicsContainer");
+	private static readonly FieldInfo? RelicsContainerField = TryGetField(
+		typeof(NRelicCollectionCategory),
+		"_relicsContainer",
+		BindingFlags.Instance | BindingFlags.NonPublic,
+		warnIfMissing: false);
 
-	private static readonly MethodInfo? CreateForSubcategoryMethod = TryGetMethod(typeof(NRelicCollectionCategory), "CreateForSubcategory", BindingFlags.Instance | BindingFlags.NonPublic);
+	private static readonly MethodInfo? CreateForSubcategoryMethod = TryGetMethod(
+		typeof(NRelicCollectionCategory),
+		"CreateForSubcategory",
+		BindingFlags.Instance | BindingFlags.NonPublic,
+		warnIfMissing: false);
 
 	private static readonly MethodInfo? LoadSubcategoryMethod = TryGetMethod(
 		typeof(NRelicCollectionCategory),
 		"LoadSubcategory",
 		BindingFlags.Instance | BindingFlags.NonPublic,
+		warnIfMissing: false,
 		typeof(NRelicCollection),
 		typeof(LocString),
 		typeof(IEnumerable<RelicModel>),
@@ -70,6 +87,7 @@ internal static partial class CollectionHooks
 		typeof(NRelicCollectionCategory),
 		"LoadRelics",
 		BindingFlags.Instance | BindingFlags.Public,
+		warnIfMissing: false,
 		typeof(RelicRarity),
 		typeof(NRelicCollection),
 		typeof(LocString),
@@ -77,9 +95,17 @@ internal static partial class CollectionHooks
 		typeof(UnlockState),
 		typeof(HashSet<RelicModel>));
 
-	private static readonly MethodInfo? CollectionClearRelicsMethod = TryGetMethod(typeof(NRelicCollection), "ClearRelics", BindingFlags.Instance | BindingFlags.NonPublic);
+	private static readonly MethodInfo? CollectionClearRelicsMethod = TryGetMethod(
+		typeof(NRelicCollection),
+		"ClearRelics",
+		BindingFlags.Instance | BindingFlags.NonPublic,
+		warnIfMissing: false);
 
-	private static readonly MethodInfo? CollectionLoadRelicsMethod = TryGetMethod(typeof(NRelicCollection), "LoadRelics", BindingFlags.Instance | BindingFlags.NonPublic);
+	private static readonly MethodInfo? CollectionLoadRelicsMethod = TryGetMethod(
+		typeof(NRelicCollection),
+		"LoadRelics",
+		BindingFlags.Instance | BindingFlags.NonPublic,
+		warnIfMissing: false);
 
 	private static string? _starterHeaderTemplate;
 
@@ -109,7 +135,7 @@ internal static partial class CollectionHooks
 
 		harmony.Patch(
 			LoadRelicsMethod!,
-			postfix: new HarmonyMethod(typeof(CollectionHooks), nameof(LoadRelicsPostfix)));
+			postfix: new HarmonyMethod(typeof(HextechCollectionHooks), nameof(LoadRelicsPostfix)));
 	}
 
 	private static void LoadRelicsPostfix(

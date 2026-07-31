@@ -8,7 +8,7 @@ internal sealed class WarmogsSpiritEnemyHex : HextechEnemyHexEffect
 	{
 		if (card.Owner?.Creature.Side != CombatSide.Player
 			|| card.Owner.Creature.CombatState?.RunState != context.RunState
-			|| IsNetworkMultiplayer())
+			|| HextechPlayerContextHelper.IsNetworkMultiplayerRun())
 		{
 			return;
 		}
@@ -32,14 +32,14 @@ internal sealed class WarmogsSpiritEnemyHex : HextechEnemyHexEffect
 
 	internal override Task AfterCardPlayedLate(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, CardPlay cardPlay)
 	{
-		return IsNetworkMultiplayer() && cardPlay.Card.Owner?.Creature.CombatState is HextechCombatState combatState
+		return HextechPlayerContextHelper.IsNetworkMultiplayerRun() && cardPlay.Card.Owner?.Creature.CombatState is HextechCombatState combatState
 			? ResolveDrawProgressFromHistory(context, combatState)
 			: Task.CompletedTask;
 	}
 
 	internal override Task AfterPlayerTurnStartLate(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, Player player)
 	{
-		return IsNetworkMultiplayer() && player.Creature.CombatState is HextechCombatState combatState
+		return HextechPlayerContextHelper.IsNetworkMultiplayerRun() && player.Creature.CombatState is HextechCombatState combatState
 			? ResolveDrawProgressFromHistory(context, combatState)
 			: Task.CompletedTask;
 	}
@@ -47,7 +47,7 @@ internal sealed class WarmogsSpiritEnemyHex : HextechEnemyHexEffect
 #if !STS2_104_OR_NEWER
 	internal override Task BeforePlayPhaseStart(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, Player player)
 	{
-		return IsNetworkMultiplayer() && player.Creature.CombatState is HextechCombatState combatState
+		return HextechPlayerContextHelper.IsNetworkMultiplayerRun() && player.Creature.CombatState is HextechCombatState combatState
 			? ResolveDrawProgressFromHistory(context, combatState)
 			: Task.CompletedTask;
 	}
@@ -55,7 +55,7 @@ internal sealed class WarmogsSpiritEnemyHex : HextechEnemyHexEffect
 
 	internal override Task BeforeTurnEnd(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, CombatSide side, CombatRoom? combatRoom)
 	{
-		return side == CombatSide.Player && combatRoom != null && IsNetworkMultiplayer()
+		return side == CombatSide.Player && combatRoom != null && HextechPlayerContextHelper.IsNetworkMultiplayerRun()
 			? ResolveDrawProgressFromHistory(context, combatRoom.CombatState)
 			: Task.CompletedTask;
 	}
@@ -100,8 +100,4 @@ internal sealed class WarmogsSpiritEnemyHex : HextechEnemyHexEffect
 			.Count(entry => entry.Card.Owner?.NetId == player.NetId);
 	}
 
-	private static bool IsNetworkMultiplayer()
-	{
-		return RunManager.Instance.NetService.Type is NetGameType.Host or NetGameType.Client;
-	}
 }

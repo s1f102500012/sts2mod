@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace HextechRunes;
 
 /// <summary>
@@ -13,6 +15,7 @@ namespace HextechRunes;
 internal static class HextechEnemyNearDeath
 {
 	private const decimal LimitPercentPerTier = 0.05m;
+	private static readonly ConditionalWeakTable<Creature, SemaphoreSlim> StrengthSyncGates = new();
 
 	/// <summary>敌人是否具备濒死狂宴(本场海克斯激活且可参与追踪)。</summary>
 	internal static bool HasDyingState(Creature creature)
@@ -202,27 +205,52 @@ internal static class HextechEnemyNearDeath
 	/// <summary>把力量补到"每 1 负血 1 层"的目标值(只补差额、只增不减,与玩家版一致)。</summary>
 	private static async Task SyncStrength(Creature creature, HextechMayhemModifier modifier, uint combatId)
 	{
+		SemaphoreSlim syncGate = StrengthSyncGates.GetValue(creature, static _ => new SemaphoreSlim(1, 1));
+		await syncGate.WaitAsync();
+		HextechMayhemCombatTrackingState? tracking = null;
+		int previousGranted = 0;
+		int reservedGranted = 0;
+		bool hadPreviousEntry = false;
 		try
 		{
-			HextechMayhemCombatTrackingState tracking = modifier.CombatTracking;
+			tracking = modifier.CombatTracking;
 			if (!tracking.NearDeathFeastEnemyDebt.TryGetValue(combatId, out int debt))
 			{
 				return;
 			}
 
-			tracking.NearDeathFeastEnemyStrength.TryGetValue(combatId, out int granted);
-			int delta = debt - granted;
+			hadPreviousEntry = tracking.NearDeathFeastEnemyStrength.TryGetValue(combatId, out previousGranted);
+			int delta = debt - previousGranted;
 			if (delta <= 0)
 			{
 				return;
 			}
 
-			tracking.NearDeathFeastEnemyStrength[combatId] = debt;
+			reservedGranted = debt;
+			tracking.NearDeathFeastEnemyStrength[combatId] = reservedGranted;
 			await PowerCmd.Apply<StrengthPower>(creature, delta, creature, null);
 		}
 		catch (Exception ex)
 		{
+			if (tracking != null
+				&& tracking.NearDeathFeastEnemyStrength.TryGetValue(combatId, out int currentGranted)
+				&& currentGranted == reservedGranted)
+			{
+				if (hadPreviousEntry)
+				{
+					tracking.NearDeathFeastEnemyStrength[combatId] = previousGranted;
+				}
+				else
+				{
+					tracking.NearDeathFeastEnemyStrength.Remove(combatId);
+				}
+			}
+
 			Log.Warn($"[{ModInfo.Id}][NearDeathFeast] Enemy strength sync failed: {ex.Message}");
+		}
+		finally
+		{
+			syncGate.Release();
 		}
 	}
 }

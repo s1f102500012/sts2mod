@@ -366,6 +366,9 @@ def validate_icon_assets(errors: list[str], warnings: list[str]) -> None:
     # 与 HextechAssets.TryGetCustomRelicIconPath 中显式复用其他模型图标的分支保持一致。
     shared_icon_stems = {
         "hundredRefinementsHex": "hundredRefinementsRune",
+        "hungryHex": "eightPennyGateRune",
+        "inspectHex": "eightPennyGateRune",
+        "gripHex": "eightPennyGateRune",
     }
 
     expected_stems: set[str] = set()
@@ -398,10 +401,10 @@ def validate_icon_assets(errors: list[str], warnings: list[str]) -> None:
     if orphans:
         warnings.append(f"orphan relic icon png (no registered model references them): {', '.join(orphans)}")
 
-    # HextechAssets/AssetHooks 里显式书写的 res:// 路径逐一核对存在性(卡牌立绘/能力图标/特效贴图)。
+    # HextechAssets/HextechAssetHooks 里显式书写的 res:// 路径逐一核对存在性(卡牌立绘/能力图标/特效贴图)。
     assets_root = REPO_ROOT / "assets"
     referenced = set()
-    for name in ("HextechAssets.cs", "AssetHooks.cs"):
+    for name in ("HextechAssets.cs", "HextechAssetHooks.cs", "HextechRuneSelectionScreen.Metrics.cs"):
         referenced.update(re.findall(r'res://HextechRunes/(images/[^"]+\.(?:png|jpg))', read(source_file_named(name))))
     missing_refs = sorted(ref for ref in referenced if not (assets_root / ref).exists())
     if missing_refs:

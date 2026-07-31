@@ -53,8 +53,7 @@ internal sealed class PlayerRuneMetadataCatalog
 	public bool IsVisible(Type runeType)
 	{
 		return IsRegistered(runeType)
-			&& !HasFlag(runeType, PlayerRuneFlags.Disabled)
-			&& !HasFlag(runeType, PlayerRuneFlags.Retired);
+			&& !HasFlag(runeType, PlayerRuneFlags.Disabled);
 	}
 
 	public bool IsSelectable(Type runeType)
@@ -65,8 +64,7 @@ internal sealed class PlayerRuneMetadataCatalog
 	public bool IsConfigurable(Type runeType)
 	{
 		return IsRegistered(runeType)
-			&& !HasFlag(runeType, PlayerRuneFlags.SelectionExcluded)
-			&& !HasFlag(runeType, PlayerRuneFlags.Retired);
+			&& !HasFlag(runeType, PlayerRuneFlags.SelectionExcluded);
 	}
 
 	public bool HasFlag(Type runeType, PlayerRuneFlags flag)

@@ -34,14 +34,29 @@ public abstract class UniversalScopeRuneBase : HextechRelicBase
 			return;
 		}
 
-		int rollOrdinal = ConsumeCombatProcOrdinal(GetType().Name, ref _refundRollsThisCombat);
-		if (!RollTrigger(cardPlay, rollOrdinal))
+		List<UniversalScopeRuneBase> activeScopes = Owner.Relics
+			.OfType<UniversalScopeRuneBase>()
+			.Where(static scope => !scope.IsMelted)
+			.ToList();
+		if (activeScopes.Count == 0 || !ReferenceEquals(activeScopes[0], this))
+		{
+			return;
+		}
+
+		int combinedChancePercent = CombineChancePercent(
+			activeScopes.Select(static scope => scope.DynamicVars["ChancePercent"].IntValue));
+		int rollOrdinal = ConsumeCombatProcOrdinal(nameof(UniversalScopeRuneBase), ref _refundRollsThisCombat);
+		if (!RollTrigger(cardPlay, rollOrdinal, combinedChancePercent))
 		{
 			return;
 		}
 
 		HextechCardPlayResourceSpend resourceSpend = HextechCombatHooks.GetResourceSpendForCurrentCardPlay(cardPlay.Card);
-		Flash();
+		foreach (UniversalScopeRuneBase scope in activeScopes)
+		{
+			scope.Flash();
+		}
+
 		if (cardPlay.Card.Pile?.Type == PileType.Play)
 		{
 			// 多级“升级：打击/防御”牌在移出 Play 堆时会经过完整的 AfterCardChangedPiles
@@ -63,7 +78,13 @@ public abstract class UniversalScopeRuneBase : HextechRelicBase
 		}
 	}
 
-	private bool RollTrigger(CardPlay cardPlay, int rollOrdinal)
+	internal static int CombineChancePercent(IEnumerable<int> chancePercents)
+	{
+		long total = chancePercents.Sum(static chance => (long)chance);
+		return (int)Math.Clamp(total, 0L, 100L);
+	}
+
+	private bool RollTrigger(CardPlay cardPlay, int rollOrdinal, int chancePercent)
 	{
 		if (Owner == null)
 		{
@@ -72,13 +93,12 @@ public abstract class UniversalScopeRuneBase : HextechRelicBase
 
 		return HextechStableRandom.PercentChance(
 			(RunState)Owner.RunState,
-			DynamicVars["ChancePercent"].IntValue,
-				"universal-scope-refund",
-				GetType().Name,
-				HextechStableRandom.PlayerKey(Owner),
-				Owner.Creature.CombatState?.RoundNumber.ToString() ?? "-1",
-				rollOrdinal.ToString(),
-				HextechStableRandom.CardKey(cardPlay.Card));
+			chancePercent,
+			"universal-scope-refund",
+			HextechStableRandom.PlayerKey(Owner),
+			Owner.Creature.CombatState?.RoundNumber.ToString() ?? "-1",
+			rollOrdinal.ToString(),
+			HextechStableRandom.CardKey(cardPlay.Card));
 	}
 }
 

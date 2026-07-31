@@ -8,10 +8,17 @@ internal sealed class NatureIsHealingEnemyHex : HextechEnemyHexEffect
 	private const string TimerNodeName = "HextechEnemyNatureIsHealingTimer";
 
 	private Godot.Timer? _timer;
+	private Action? _timerTimeoutHandler;
 	private HextechMayhemModifier? _modifier;
 	private bool _healing;
+	private int _timerGeneration;
 
 	internal override MonsterHexKind Kind => MonsterHexKind.NatureIsHealing;
+
+	internal override void ResetRunScopedState()
+	{
+		StopTimer();
+	}
 
 	internal override Task ApplyCombatStartToEnemy(HextechEnemyHexContext context, Creature enemy, CombatRoom room)
 	{
@@ -64,32 +71,44 @@ internal sealed class NatureIsHealingEnemyHex : HextechEnemyHexEffect
 			OneShot = false,
 			Autostart = true
 		};
-		timer.Timeout += OnTimerTimeout;
+		int generation = unchecked(++_timerGeneration);
+		Action timeoutHandler = () => OnTimerTimeout(generation);
+		timer.Timeout += timeoutHandler;
 		root.AddChild(timer);
 		_timer = timer;
+		_timerTimeoutHandler = timeoutHandler;
 	}
 
 	private void StopTimer()
 	{
-		if (_timer is not { } timer)
+		Godot.Timer? timer = _timer;
+		Action? timeoutHandler = _timerTimeoutHandler;
+		unchecked
+		{
+			_timerGeneration++;
+		}
+		_timer = null;
+		_timerTimeoutHandler = null;
+		_modifier = null;
+		_healing = false;
+		if (timer == null)
 		{
 			return;
 		}
 
 		if (GodotObject.IsInstanceValid(timer))
 		{
-			timer.Timeout -= OnTimerTimeout;
+			if (timeoutHandler != null)
+			{
+				timer.Timeout -= timeoutHandler;
+			}
 			timer.QueueFree();
 		}
-
-		_timer = null;
-		_modifier = null;
-		_healing = false;
 	}
 
-	private async void OnTimerTimeout()
+	private async void OnTimerTimeout(int generation)
 	{
-		if (_healing)
+		if (generation != _timerGeneration || _healing)
 		{
 			return;
 		}
@@ -106,6 +125,10 @@ internal sealed class NatureIsHealingEnemyHex : HextechEnemyHexEffect
 			foreach (Creature enemy in enemies)
 			{
 				await CreatureCmd.Heal(enemy, 1m);
+				if (generation != _timerGeneration)
+				{
+					return;
+				}
 			}
 		}
 		catch (Exception ex)
@@ -114,7 +137,10 @@ internal sealed class NatureIsHealingEnemyHex : HextechEnemyHexEffect
 		}
 		finally
 		{
-			_healing = false;
+			if (generation == _timerGeneration)
+			{
+				_healing = false;
+			}
 		}
 	}
 

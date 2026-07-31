@@ -58,6 +58,7 @@ SavedPurchaseCount
 SavedRarityByAct
 SavedRemovedPowerCardsJson
 SavedResolvedActs
+SavedRuneSelectionJournalJson
 SavedSecondTurnStrengthGranted
 SavedSeenPlayerRuneIdsJson
 SavedShivsPlayedThisCombat

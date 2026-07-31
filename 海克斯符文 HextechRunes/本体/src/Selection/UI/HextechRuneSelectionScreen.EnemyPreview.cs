@@ -1,6 +1,7 @@
 using Godot;
 using MegaCrit.Sts2.Core.Localization;
 using MegaCrit.Sts2.addons.mega_text;
+using static HextechRunes.HextechSelectionHelpers;
 
 namespace HextechRunes;
 
@@ -66,7 +67,7 @@ internal sealed partial class HextechRuneSelectionScreen
 
 	private Control CreateEnemyPreviewRow(int slotIndex)
 	{
-		MonsterHexKind? monsterHex = GetMonsterHexSlot(slotIndex);
+		MonsterHexKind? monsterHex = GetMonsterHexSlot(_monsterHexKinds, slotIndex);
 		RelicModel? monsterHexRelic = CreateMonsterHexRelic(monsterHex);
 		HBoxContainer row = new()
 		{
@@ -99,7 +100,7 @@ internal sealed partial class HextechRuneSelectionScreen
 				MaxFontSize = 38,
 				MinFontSize = 30
 			};
-			ApplyDefaultMegaLabelTheme(removedIcon);
+			HextechUiTheme.ApplyDefaultMegaLabelTheme(removedIcon);
 			removedIcon.Modulate = new Color(0.86f, 0.88f, 0.92f, 0.68f);
 			iconBox.AddChild(removedIcon);
 		}
@@ -126,7 +127,7 @@ internal sealed partial class HextechRuneSelectionScreen
 			MaxFontSize = 22,
 			MinFontSize = 17
 		};
-		ApplyDefaultMegaLabelTheme(title);
+		HextechUiTheme.ApplyDefaultMegaLabelTheme(title);
 		title.Modulate = new Color(0.97f, 0.96f, 0.9f, 0.96f);
 		title.SetTextAutoSize(monsterHexRelic != null
 			? monsterHexRelic.Title.GetFormattedText()
@@ -208,20 +209,13 @@ internal sealed partial class HextechRuneSelectionScreen
 			MaxFontSize = fontSize
 		};
 		label.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		ApplyDefaultMegaLabelTheme(label);
+		HextechUiTheme.ApplyDefaultMegaLabelTheme(label);
 		label.AddThemeFontSizeOverride("font_size", fontSize);
 		label.AddThemeColorOverride("font_color", fontColor);
 		label.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.62f));
 		label.AddThemeConstantOverride("outline_size", 2);
 		label.SetTextAutoSize(text);
 		button.AddChild(label);
-	}
-
-	private MonsterHexKind? GetMonsterHexSlot(int slotIndex)
-	{
-		return slotIndex >= 0 && slotIndex < _monsterHexKinds.Count
-			? _monsterHexKinds[slotIndex]
-			: null;
 	}
 
 	private MonsterHexKind? GetMonsterHexBeforeRemovalSlot(int slotIndex)

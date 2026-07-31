@@ -25,12 +25,26 @@ internal static class HextechExternalContentRegistry
 	{
 		lock (SyncRoot)
 		{
-			if (!PlayerRuneRegistrations.Any(existing => HextechModelTypeIdentity.IsSame(existing.Type, registration.Type)))
+			int existingIndex = PlayerRuneRegistrations.FindIndex(
+				existing => HextechModelTypeIdentity.IsSame(existing.Type, registration.Type));
+			if (existingIndex < 0)
 			{
 				PlayerRuneRegistrations.Add(registration);
 				StoreAssetModId(registration.Type, assetModId);
 				_version++;
 				return;
+			}
+
+			PlayerRuneRegistration existing = PlayerRuneRegistrations[existingIndex];
+			string? existingAssetModId = GetStoredAssetModId(registration.Type);
+			if (!HasSamePlayerRuneMetadata(existing, registration)
+				|| HasConflictingAssetModId(existingAssetModId, assetModId))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate player rune registration for {registration.Type.FullName}; first metadata retained: "
+					+ $"existing=({Describe(existing)}, assetModId={DescribeValue(existingAssetModId)}) "
+					+ $"incoming=({Describe(registration)}, assetModId={DescribeValue(assetModId)}) "
+					+ $"callerAssembly={registration.Type.Assembly.GetName().Name ?? "<unknown>"}");
 			}
 
 			StoreAssetModId(registration.Type, assetModId);
@@ -49,6 +63,16 @@ internal static class HextechExternalContentRegistry
 				return;
 			}
 
+			string? existingAssetModId = GetStoredAssetModId(relicType);
+			if (HasConflictingAssetModId(existingAssetModId, assetModId))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate event relic asset registration for {relicType.FullName}: "
+					+ $"existingAssetModId={DescribeValue(existingAssetModId)} "
+					+ $"incomingAssetModId={DescribeValue(assetModId)} "
+					+ $"callerAssembly={relicType.Assembly.GetName().Name ?? "<unknown>"}");
+			}
+
 			StoreAssetModId(relicType, assetModId);
 		}
 	}
@@ -57,12 +81,26 @@ internal static class HextechExternalContentRegistry
 	{
 		lock (SyncRoot)
 		{
-			if (!ForgeRegistrations.Any(existing => HextechModelTypeIdentity.IsSame(existing.Type, registration.Type)))
+			int existingIndex = ForgeRegistrations.FindIndex(
+				existing => HextechModelTypeIdentity.IsSame(existing.Type, registration.Type));
+			if (existingIndex < 0)
 			{
 				ForgeRegistrations.Add(registration);
 				StoreAssetModId(registration.Type, assetModId);
 				_version++;
 				return;
+			}
+
+			ForgeRegistration existing = ForgeRegistrations[existingIndex];
+			string? existingAssetModId = GetStoredAssetModId(registration.Type);
+			if (existing.Rarity != registration.Rarity
+				|| HasConflictingAssetModId(existingAssetModId, assetModId))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate forge registration for {registration.Type.FullName}; first metadata retained: "
+					+ $"existing=(rarity={existing.Rarity}, assetModId={DescribeValue(existingAssetModId)}) "
+					+ $"incoming=(rarity={registration.Rarity}, assetModId={DescribeValue(assetModId)}) "
+					+ $"callerAssembly={registration.Type.Assembly.GetName().Name ?? "<unknown>"}");
 			}
 
 			StoreAssetModId(registration.Type, assetModId);
@@ -130,5 +168,42 @@ internal static class HextechExternalContentRegistry
 		}
 
 		AssetModIdsByModelId[ModelDb.GetId(modelType)] = assetModId;
+	}
+
+	private static string? GetStoredAssetModId(Type modelType)
+	{
+		return AssetModIdsByModelId.TryGetValue(ModelDb.GetId(modelType), out string? assetModId)
+			? assetModId
+			: null;
+	}
+
+	private static bool HasSamePlayerRuneMetadata(
+		PlayerRuneRegistration existing,
+		PlayerRuneRegistration incoming)
+	{
+		return existing.Rarity == incoming.Rarity
+			&& existing.Flags == incoming.Flags
+			&& existing.CharacterPool == incoming.CharacterPool
+			&& existing.CharacterOrder == incoming.CharacterOrder
+			&& string.Equals(existing.TagKey, incoming.TagKey, StringComparison.Ordinal);
+	}
+
+	private static bool HasConflictingAssetModId(string? existing, string? incoming)
+	{
+		return !string.IsNullOrWhiteSpace(existing)
+			&& !string.IsNullOrWhiteSpace(incoming)
+			&& !string.Equals(existing, incoming, StringComparison.Ordinal);
+	}
+
+	private static string Describe(PlayerRuneRegistration registration)
+	{
+		return $"rarity={registration.Rarity}, flags={registration.Flags}, "
+			+ $"characterPool={registration.CharacterPool?.ToString() ?? "none"}, "
+			+ $"characterOrder={registration.CharacterOrder}, tagKey={DescribeValue(registration.TagKey)}";
+	}
+
+	private static string DescribeValue(string? value)
+	{
+		return string.IsNullOrWhiteSpace(value) ? "<none>" : value;
 	}
 }

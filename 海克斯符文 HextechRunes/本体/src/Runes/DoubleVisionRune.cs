@@ -265,43 +265,91 @@ public sealed class DoubleVisionRune : HextechRelicBase
 			+ $"player={player.NetId} relic={relicId.Entry} type={relic.GetType().FullName} "
 			+ $"error={originalException.GetType().Name}: {originalException.Message}");
 
+		return await TryKeepRelicWithoutHistory(
+			player,
+			relic,
+			relicId,
+			runAfterObtained: true,
+			context: "Custom event relic fallback",
+			failureIsDesyncRisk: false);
+	}
+
+	private static async Task<RelicModel?> TryKeepRelicWithoutHistory(
+		Player player,
+		RelicModel relic,
+		ModelId relicId,
+		bool runAfterObtained,
+		string context,
+		bool failureIsDesyncRisk)
+	{
 		try
 		{
-			if (!player.Relics.Contains(relic))
+			bool addedByFallback = !player.Relics.Contains(relic);
+			if (addedByFallback)
 			{
 				relic.AssertMutable();
 				player.AddRelicInternal(relic);
-				if (!relic.IsStackable)
-				{
-					player.RelicGrabBag.Remove(relic);
-					player.RunState.SharedRelicGrabBag.Remove(relic);
-				}
+			}
 
-				relic.FloorAddedToDeck = player.RunState.TotalFloor;
+			if (!relic.IsStackable)
+			{
+				player.RelicGrabBag.Remove(relic);
+				player.RunState.SharedRelicGrabBag.Remove(relic);
+			}
+
+			relic.FloorAddedToDeck = player.RunState.TotalFloor;
+			if (addedByFallback && runAfterObtained)
+			{
 				try
 				{
 					await relic.AfterObtained();
 				}
+				catch (OperationCanceledException)
+				{
+					throw;
+				}
 				catch (Exception afterObtainedException)
 				{
-					Log.Warn(
-						$"[{ModInfo.Id}][DoubleVision] Custom event relic fallback kept the relic but its pickup effect failed: "
+					string message =
+						$"[{ModInfo.Id}][DoubleVision]{(failureIsDesyncRisk ? "[DESYNC-RISK]" : "")} "
+						+ $"{context} kept the relic but its pickup effect failed: "
 						+ $"player={player.NetId} relic={relicId.Entry} "
-						+ $"error={afterObtainedException.GetType().Name}: {afterObtainedException.Message}");
+						+ $"error={afterObtainedException.GetType().Name}: {afterObtainedException.Message}";
+					if (failureIsDesyncRisk)
+					{
+						Log.Error(message);
+					}
+					else
+					{
+						Log.Warn(message);
+					}
 				}
 			}
 
 			Log.Warn(
-				$"[{ModInfo.Id}][DoubleVision] Custom event relic fallback completed without duplicating run-history writes: "
+				$"[{ModInfo.Id}][DoubleVision] {context} completed without duplicating run-history writes: "
 				+ $"player={player.NetId} relic={relicId.Entry}.");
 			return relic;
 		}
+		catch (OperationCanceledException)
+		{
+			throw;
+		}
 		catch (Exception recoveryException)
 		{
-			Log.Warn(
-				$"[{ModInfo.Id}][DoubleVision] Custom event relic fallback failed; leaving the original exception intact: "
+			string message =
+				$"[{ModInfo.Id}][DoubleVision]{(failureIsDesyncRisk ? "[DESYNC-RISK]" : "")} {context} failed: "
 				+ $"player={player.NetId} relic={relicId.Entry} "
-				+ $"error={recoveryException.GetType().Name}: {recoveryException.Message}");
+				+ $"error={recoveryException.GetType().Name}: {recoveryException.Message}";
+			if (failureIsDesyncRisk)
+			{
+				Log.Error(message);
+			}
+			else
+			{
+				Log.Warn(message);
+			}
+
 			return null;
 		}
 	}
@@ -381,17 +429,90 @@ public sealed class DoubleVisionRune : HextechRelicBase
 
 		foreach (DoubleVisionRune rune in intent.Runes)
 		{
+			HashSet<RelicModel> relicsBefore = new(player.Relics, ReferenceEqualityComparer.Instance);
 			try
 			{
 				await rune.DuplicateObtainedRelic(player, sourceRelic, syncReward: false);
 			}
+			catch (OperationCanceledException)
+			{
+				throw;
+			}
 			catch (Exception exception)
 			{
-				Log.Warn(
-					$"[{ModInfo.Id}][DoubleVision] Skipped an event relic copy after the source reward completed: "
-					+ $"player={player.NetId} relic={(sourceRelic.CanonicalInstance?.Id ?? sourceRelic.Id).Entry} "
-					+ $"error={exception.GetType().Name}: {exception.Message}");
+				ModelId sourceId = sourceRelic.CanonicalInstance?.Id ?? sourceRelic.Id;
+				RelicModel? recoveryCopy = player.Relics.FirstOrDefault(
+					relic => !relicsBefore.Contains(relic)
+						&& (relic.CanonicalInstance?.Id ?? relic.Id) == sourceId);
+				Exception? recoveryCopyException = null;
+				if (recoveryCopy == null)
+				{
+					recoveryCopy = TryCreateEventRelicRecoveryCopy(sourceRelic, sourceId, out recoveryCopyException);
+				}
+
+				if (recoveryCopy == null)
+				{
+					string recoveryFailure = recoveryCopyException == null
+						? "canonical recovery model unavailable"
+						: $"{recoveryCopyException.GetType().Name}: {recoveryCopyException.Message}";
+					Log.Error(
+						$"[{ModInfo.Id}][DoubleVision][DESYNC-RISK] Event relic copy failed and no deterministic recovery copy could be created: "
+						+ $"player={player.NetId} relic={sourceId.Entry} "
+						+ $"error={exception.GetType().Name}: {exception.Message} recoveryError={recoveryFailure}");
+					continue;
+				}
+
+				RelicModel? recovered = await TryKeepRelicWithoutHistory(
+					player,
+					recoveryCopy,
+					sourceId,
+					runAfterObtained: recoveryCopy is not DustyTome,
+					context: "Event relic copy recovery",
+					failureIsDesyncRisk: true);
+				if (recovered != null)
+				{
+					Log.Error(
+						$"[{ModInfo.Id}][DoubleVision][DESYNC-RISK] Recovered an event relic copy after its normal obtain path failed; "
+						+ "inventory was preserved but pickup side effects may differ between peers: "
+						+ $"player={player.NetId} relic={sourceId.Entry} "
+						+ $"error={exception.GetType().Name}: {exception.Message}");
+				}
 			}
+		}
+	}
+
+	private static RelicModel? TryCreateEventRelicRecoveryCopy(
+		RelicModel sourceRelic,
+		ModelId sourceId,
+		out Exception? failure)
+	{
+		failure = null;
+		try
+		{
+			if (sourceId == ModelId.none
+				|| ModelDb.GetByIdOrNull<RelicModel>(sourceId) is not { } canonical)
+			{
+				return null;
+			}
+
+			RelicModel copy = canonical.ToMutable();
+			CopyWaxState(sourceRelic, copy);
+			if (sourceRelic is DustyTome sourceTome && copy is DustyTome copyTome)
+			{
+				if (sourceTome.AncientCard is not { } ancientCardId)
+				{
+					return null;
+				}
+
+				copyTome.AncientCard = ancientCardId;
+			}
+
+			return copy;
+		}
+		catch (Exception exception)
+		{
+			failure = exception;
+			return null;
 		}
 	}
 
@@ -721,6 +842,7 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 
 		RelicModel copy = canonical.ToMutable();
+		CopyWaxState(sourceRelic, copy);
 		RelicModel obtained = await RunWithCommandDuplicationSuppressed(
 			() => RelicCmd.Obtain(copy, player));
 		if (LocalContext.IsMe(player))
@@ -805,6 +927,7 @@ public sealed class DoubleVisionRune : HextechRelicBase
 			?? (DustyTome)ModelDb
 				.GetById<RelicModel>(sourceTome.CanonicalInstance?.Id ?? sourceTome.Id)
 				.ToMutable();
+		CopyWaxState(sourceTome, copy);
 		assignAncientCard ??= static (dustyTome, cardId) => dustyTome.AncientCard = cardId;
 		assignAncientCard(copy, ancientCardId);
 		T obtained = await RunWithDustyTomeAfterObtainedSuppressed(
@@ -816,6 +939,11 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 
 		return obtained;
+	}
+
+	internal static void CopyWaxState(RelicModel source, RelicModel copy)
+	{
+		copy.IsWax = source.IsWax;
 	}
 
 	internal static bool ShouldSuppressDustyTomeAfterObtained(DustyTome dustyTome)
@@ -1025,7 +1153,9 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 		catch (Exception ex)
 		{
-			Log.Warn($"[{ModInfo.Id}][DoubleVision] Failed to sync duplicated card reward {card.Id.Entry}: {ex.GetType().Name}: {ex.Message}");
+			Log.Error(
+				$"[{ModInfo.Id}][DoubleVision][DESYNC-RISK] Local duplicated card reward was already granted, "
+				+ $"but its multiplayer broadcast failed: card={card.Id.Entry} error={ex.GetType().Name}: {ex.Message}");
 		}
 	}
 
@@ -1042,7 +1172,9 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 		catch (Exception ex)
 		{
-			Log.Warn($"[{ModInfo.Id}][DoubleVision] Failed to sync duplicated gold reward {amount}: {ex.GetType().Name}: {ex.Message}");
+			Log.Error(
+				$"[{ModInfo.Id}][DoubleVision][DESYNC-RISK] Local duplicated gold reward was already granted, "
+				+ $"but its multiplayer broadcast failed: amount={amount} error={ex.GetType().Name}: {ex.Message}");
 		}
 	}
 
@@ -1059,7 +1191,9 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 		catch (Exception ex)
 		{
-			Log.Warn($"[{ModInfo.Id}][DoubleVision] Failed to sync duplicated potion reward {potion.Id.Entry}: {ex.GetType().Name}: {ex.Message}");
+			Log.Error(
+				$"[{ModInfo.Id}][DoubleVision][DESYNC-RISK] Local duplicated potion reward was already granted, "
+				+ $"but its multiplayer broadcast failed: potion={potion.Id.Entry} error={ex.GetType().Name}: {ex.Message}");
 		}
 	}
 
@@ -1076,7 +1210,9 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 		catch (Exception ex)
 		{
-			Log.Warn($"[{ModInfo.Id}][DoubleVision] Failed to sync duplicated relic reward {relic.Id.Entry}: {ex.GetType().Name}: {ex.Message}");
+			Log.Error(
+				$"[{ModInfo.Id}][DoubleVision][DESYNC-RISK] Local duplicated relic reward was already granted, "
+				+ $"but its multiplayer broadcast failed: relic={relic.Id.Entry} error={ex.GetType().Name}: {ex.Message}");
 		}
 	}
 
