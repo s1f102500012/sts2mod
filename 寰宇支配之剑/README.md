@@ -24,6 +24,16 @@ Release 构建启用优化与确定性输出，不发布调试符号。构建脚
 `versioned-dll-backups` 中对应版本的引用程序集编译，并在部署前验证 Loader、
 兼容标记和每个变体 DLL 的 SHA-256。
 
+## 可重复审计
+
+`tools/run_full_audit.sh` 会运行源码与对抗性测试、分别构建两个游戏版本，并从
+最终 DLL 检查程序集引用、Harmony 拆补丁/优先级 API、外部标识和可反编译契约。
+报告生成在 `audit/generated/`。审计分类、补丁契约和已知限制分别见
+`audit/AUDIT_GUIDE.md`、`audit/PATCH_CONTRACT.md` 与
+`audit/known-limitations.md`。
+
+审计通过不等于实机或联机验证通过；各验证层级必须分别报告。
+
 ## 抹杀实现结构
 
 - `ErasureKill.cs`：入口、共享反射句柄和选中目标初始化。

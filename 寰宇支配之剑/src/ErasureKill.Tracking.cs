@@ -44,8 +44,6 @@ internal static partial class ErasureKill
 		}
 
 		ErasureEvidence evidence = CaptureEvidence(creature);
-		bool usedGenericSlotAllocator =
-			GenericSlotOrigins.TryGetValue(creature, out _);
 		lock (ledger.Gate)
 		{
 			foreach (ErasureLineage lineage in ledger.Lineages)
@@ -69,8 +67,7 @@ internal static partial class ErasureKill
 				ErasureAdmission causal = scope.Lineage.ObserveCausal(
 					evidence,
 					scope.Token,
-					mutationKind,
-					usedGenericSlotAllocator);
+					mutationKind);
 				if (causal.Member != null)
 				{
 					binding = BindMember(
@@ -79,6 +76,55 @@ internal static partial class ErasureKill
 						causal.Member,
 						creature);
 					LogAdmission(binding, causal.Kind);
+					return true;
+				}
+				if (causal.Kind == ErasureAdmissionKind.LimitReached)
+				{
+					scope.Lineage.MarkActivity();
+					binding = BindCausalOverflow(
+						ledger,
+						scope.Lineage,
+						scope.Parent,
+						creature);
+					LogAdmission(binding, causal.Kind);
+					return true;
+				}
+			}
+
+			ErasureLineage[] terminalTransactions = ledger
+				.ActiveTerminationLineages
+				.Where(lineage =>
+					lineage.WasSoleLivingPrimaryEnemyAtStart)
+				.ToArray();
+			if (terminalTransactions.Length == 1)
+			{
+				ErasureLineage terminalLineage = terminalTransactions[0];
+				ErasureAdmission terminal =
+					terminalLineage.ObserveTerminalSuccessor(
+						evidence,
+						mutationKind);
+				if (terminal.Member != null)
+				{
+					binding = BindMember(
+						ledger,
+						terminalLineage,
+						terminal.Member,
+						creature);
+					LogAdmission(binding, terminal.Kind);
+					return true;
+				}
+				if (terminal.Kind == ErasureAdmissionKind.LimitReached)
+				{
+					terminalLineage.MarkActivity();
+					binding = BindCausalOverflow(
+						ledger,
+						terminalLineage,
+						terminalLineage.Members
+							.OrderByDescending(member =>
+								member.AdmissionOrdinal)
+							.First(),
+						creature);
+					LogAdmission(binding, terminal.Kind);
 					return true;
 				}
 			}
@@ -126,6 +172,40 @@ internal static partial class ErasureKill
 			if (Bindings.TryGetValue(
 				creature,
 				out LineageBinding? raced))
+			{
+				return raced;
+			}
+			throw;
+		}
+		return binding;
+	}
+
+	private static LineageBinding BindCausalOverflow(
+		CombatLedger ledger,
+		ErasureLineage lineage,
+		ErasureLineageMember causalParent,
+		Creature creature)
+	{
+		if (Bindings.TryGetValue(creature, out LineageBinding? existing))
+		{
+			return existing;
+		}
+
+		LineageBinding binding = new(
+			ledger,
+			lineage,
+			causalParent,
+			creature,
+			IsCausalOverflow: true);
+		try
+		{
+			Bindings.Add(creature, binding);
+		}
+		catch (ArgumentException)
+		{
+			if (Bindings.TryGetValue(
+					creature,
+					out LineageBinding? raced))
 			{
 				return raced;
 			}
@@ -242,13 +322,25 @@ internal static partial class ErasureKill
 
 		public int PersistenceLeaseCount { get; set; }
 
+		public int ActiveTerminationCount { get; set; }
+
+		public HashSet<ErasureLineage> ActiveTerminationLineages { get; } =
+			new(ReferenceEqualityComparer.Instance);
+
 		public Task<bool>? CompletionFlight { get; set; }
 
 		public CompletionDisposition CompletionDisposition { get; set; }
 
+		public bool TerminalSealed { get; set; }
+
+		public HashSet<Creature> TerminalBaselineEnemies { get; } =
+			new(ReferenceEqualityComparer.Instance);
+
 		public bool LoggedPseudoSuccess { get; set; }
 
 		public bool LoggedIndeterminateCompletion { get; set; }
+
+		public bool LoggedDiscardedDeferredCallback { get; set; }
 
 		public long NextOperationSequence { get; set; }
 
@@ -263,10 +355,16 @@ internal static partial class ErasureKill
 		public HashSet<Creature> LoggedAdmissions { get; } =
 			new(ReferenceEqualityComparer.Instance);
 
+		public HashSet<Creature> LoggedTerminalIngresses { get; } =
+			new(ReferenceEqualityComparer.Instance);
+
 		public Dictionary<ErasureLineage, Task> Restabilizations { get; } =
 			new(ReferenceEqualityComparer.Instance);
 
 		public Dictionary<Creature, HashSet<NCreature>> Nodes { get; } =
+			new(ReferenceEqualityComparer.Instance);
+
+		public HashSet<NCreature> VisualExitNodes { get; } =
 			new(ReferenceEqualityComparer.Instance);
 	}
 
@@ -274,7 +372,8 @@ internal static partial class ErasureKill
 		CombatLedger Ledger,
 		ErasureLineage Lineage,
 		ErasureLineageMember Member,
-		Creature Creature);
+		Creature Creature,
+		bool IsCausalOverflow = false);
 
 	private sealed class CausalScope
 	{
@@ -298,17 +397,4 @@ internal static partial class ErasureKill
 			Lineage.CreateContinuationToken(Parent);
 	}
 
-	private sealed record SlotAllocationTicket(
-		ICombatState CombatState,
-		string SlotName);
-
-	private sealed class GenericSlotOrigin
-	{
-		public static GenericSlotOrigin Instance { get; } = new();
-	}
-
-	private readonly record struct DirectCausalInvocation(
-		bool WasEntered,
-		CausalScope? Previous,
-		CausalScope? Scope);
 }

@@ -1,4 +1,4 @@
-using Godot;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
 using MegaCrit.Sts2.Core.Logging;
@@ -25,22 +25,22 @@ internal static partial class ErasureKill
 			ledger.Restabilizations.Add(seed.Lineage, owner.Task);
 		}
 
-		_ = RunRestabilization(seed, owner);
+		_ = RunTerminationTransaction(seed, owner);
 		return owner.Task;
 	}
 
-	private static async Task RunRestabilization(
+	private static async Task RunTerminationTransaction(
 		LineageBinding seed,
 		TaskCompletionSource owner)
 	{
+		Exception? failure = null;
 		try
 		{
-			await SettleAcrossContinuationLease(seed);
-			owner.TrySetResult();
+			await TerminateAndConverge(seed);
 		}
 		catch (Exception exception)
 		{
-			owner.TrySetException(exception);
+			failure = exception;
 		}
 		finally
 		{
@@ -55,32 +55,37 @@ internal static partial class ErasureKill
 				}
 			}
 		}
+
+		if (failure != null)
+		{
+			owner.TrySetException(failure);
+			return;
+		}
+
+		await RequestImmediateCombatCompletion(seed.Ledger);
+		owner.TrySetResult();
 	}
 
 	private static void ScheduleRestabilization(LineageBinding seed)
 	{
-		_ = ObserveRestabilization(RestabilizeLineage(seed), seed);
-	}
-
-	private static async Task ObserveRestabilization(
-		Task task,
-		LineageBinding seed)
-	{
 		try
 		{
-			await task;
+			if (seed.IsCausalOverflow)
+			{
+				ConvergeMember(seed);
+			}
+			SettleAndCertify(seed);
 		}
 		catch (Exception exception)
 		{
 			Log.Warn(
-				$"[{ModInfo.Id}] Deferred erasure stabilization failed " +
+				$"[{ModInfo.Id}] Event-driven erasure convergence failed " +
 				$"for operation {seed.Lineage.OperationSequence}: " +
 				$"{exception.GetBaseException().Message}");
 		}
 	}
 
-	private static async Task SettleAcrossContinuationLease(
-		LineageBinding seed)
+	private static async Task TerminateAndConverge(LineageBinding seed)
 	{
 		CombatLedger ledger = seed.Ledger;
 		if (!IsActiveCombat(ledger))
@@ -88,128 +93,120 @@ internal static partial class ErasureKill
 			return;
 		}
 
-		CausalScope? previous = ActiveScope.Value;
-		CausalScope scope = new(
-			ledger,
-			seed.Lineage,
-			seed.Member);
+		bool beginCanonicalTermination;
 		lock (ledger.Gate)
 		{
-			seed.Lineage.AcquireContinuationLease();
-		}
-		ActiveScope.Value = scope;
-
-		Exception? bodyFailure = null;
-		LineageStabilizationResult stabilization = default;
-		try
-		{
-			SettleLineage(seed);
-			stabilization = await StabilizeLineageAcrossFrames(seed);
-		}
-		catch (Exception exception)
-		{
-			bodyFailure = exception;
-			throw;
-		}
-		finally
-		{
-			ActiveScope.Value = previous;
-			lock (ledger.Gate)
+			beginCanonicalTermination =
+				seed.Lineage.TryBeginCanonicalTermination();
+			if (beginCanonicalTermination)
 			{
-				seed.Lineage.ReleaseContinuationLease();
+				ledger.ActiveTerminationCount++;
+				ledger.ActiveTerminationLineages.Add(seed.Lineage);
 			}
-			if (IsActiveCombat(ledger))
+		}
+
+		if (beginCanonicalTermination)
+		{
+			CausalScope? previous = ActiveScope.Value;
+			ActiveScope.Value = new CausalScope(
+				ledger,
+				seed.Lineage,
+				seed.Member);
+			try
 			{
+				CaptureCurrentNodes(ledger, seed.Creature);
+				ReserveCanonicalVisualExit(ledger, seed.Creature);
+				SetRawHpZero(seed.Creature);
 				try
 				{
-					SettleLineage(seed);
-					if (stabilization.IsStable
-						&& seed.Lineage.ActivityRevision
-							== stabilization.ActivityRevision
-						&& seed.Lineage.MemberCount
-							== stabilization.MemberCount
-						&& seed.Lineage.OutstandingContinuationLeaseCount == 0
-						&& seed.Lineage.Members.All(member =>
-							member.Evidence.CreatureRef is Creature creature
-							&& ReadLayerState(
-								seed.Ledger,
-								creature).IsConverged))
-					{
-						seed.Lineage.TryIssueCompletionCertificate(
-							stabilization.ActivityRevision,
-							stabilization.MemberCount);
-					}
+					Log.Info(
+						$"[{ModInfo.Id}] Entering isolated canonical death " +
+						$"transition for operation " +
+						$"{seed.Lineage.OperationSequence}.");
+					await InvokeOriginalKillWithoutCheckingWinCondition(
+						seed.Creature,
+						force: true,
+						recursion: 0);
+					Log.Info(
+						$"[{ModInfo.Id}] Canonical death transition " +
+						$"completed for operation " +
+						$"{seed.Lineage.OperationSequence}.");
 				}
-				catch (Exception finalException) when (bodyFailure != null)
+				catch (Exception exception)
 				{
 					Log.Warn(
-						$"[{ModInfo.Id}] Final erasure convergence also " +
-						$"failed after {bodyFailure.GetType().Name}: " +
-						$"{finalException.GetBaseException().Message}");
+						$"[{ModInfo.Id}] Canonical creature termination " +
+						$"did not complete for {SafeModelId(seed.Creature)}; " +
+						$"committing exact erasure state instead: " +
+						$"{exception.GetBaseException().Message}");
 				}
+				EnsureCanonicalVisualExit(ledger, seed.Creature);
+			}
+			finally
+			{
+				ActiveScope.Value = previous;
+				lock (ledger.Gate)
+				{
+					ledger.ActiveTerminationCount = Math.Max(
+						0,
+						ledger.ActiveTerminationCount - 1);
+					ledger.ActiveTerminationLineages.Remove(seed.Lineage);
+				}
+			}
+		}
+
+		if (IsActiveCombat(ledger))
+		{
+			SettleAndCertify(seed);
+		}
+	}
+
+	private static void SettleAndCertify(LineageBinding seed)
+	{
+		if (!IsActiveCombat(seed.Ledger))
+		{
+			return;
+		}
+
+		SettleLineage(seed);
+		lock (seed.Ledger.Gate)
+		{
+			if (seed.Ledger.ActiveTerminationCount != 0)
+			{
+				return;
+			}
+
+			bool converged = seed.Lineage.Members.All(member =>
+				member.Evidence.CreatureRef is Creature creature
+				&& ReadLayerState(seed.Ledger, creature).IsConverged);
+			if (converged)
+			{
+				seed.Lineage.TryIssueCompletionCertificate(
+					seed.Lineage.ActivityRevision,
+					seed.Lineage.MemberCount);
 			}
 		}
 	}
 
-	private static async Task<LineageStabilizationResult>
-		StabilizeLineageAcrossFrames(
-		LineageBinding seed)
+	private static async Task RequestImmediateCombatCompletion(
+		CombatLedger ledger)
 	{
-		if (Engine.GetMainLoop() is not SceneTree tree)
+		if (!IsActiveCombat(ledger))
 		{
-			return default;
+			return;
 		}
 
-		int stableFrames = 0;
-		int memberCount = seed.Lineage.Members.Count;
-		long activityRevision = seed.Lineage.ActivityRevision;
-		for (int frame = 0;
-			frame < MaximumStabilizationFrames;
-			frame++)
+		try
 		{
-			try
-			{
-				await tree.ToSignal(tree, SceneTree.SignalName.ProcessFrame);
-			}
-			catch (Exception) when (!IsActiveCombat(seed.Ledger))
-			{
-				return default;
-			}
-			if (!IsActiveCombat(seed.Ledger))
-			{
-				return default;
-			}
-
-			SettleLineage(seed);
-			int currentMemberCount = seed.Lineage.Members.Count;
-			long currentActivityRevision =
-				seed.Lineage.ActivityRevision;
-			bool converged = seed.Lineage.Members.All(member =>
-				member.Evidence.CreatureRef is Creature creature
-				&& ReadLayerState(seed.Ledger, creature).IsConverged);
-			stableFrames =
-				converged
-				&& seed.Lineage.OutstandingContinuationLeaseCount == 1
-				&& currentMemberCount == memberCount
-				&& currentActivityRevision == activityRevision
-				? stableFrames + 1
-				: 0;
-			memberCount = currentMemberCount;
-			activityRevision = currentActivityRevision;
-			if (stableFrames >= StableFramesToCloseContinuationLease)
-			{
-				return new LineageStabilizationResult(
-					IsStable: true,
-					activityRevision,
-					memberCount);
-			}
+			await CombatManager.Instance.CheckWinCondition();
 		}
-
-		Log.Warn(
-			$"[{ModInfo.Id}] Erasure continuation lease reached its bounded " +
-			$"frame limit for operation {seed.Lineage.OperationSequence}; " +
-			$"continuing with {seed.Lineage.Members.Count} exact members.");
-		return default;
+		catch (Exception exception)
+		{
+			Log.Warn(
+				$"[{ModInfo.Id}] Immediate normal combat completion check " +
+				$"failed after erasure: " +
+				$"{exception.GetBaseException().Message}");
+		}
 	}
 
 	private static bool IsActiveCombat(CombatLedger ledger)
@@ -222,9 +219,4 @@ internal static partial class ErasureKill
 			&& (ledger.CombatEpoch == null
 				|| ReferenceEquals(snapshot.TurnState, ledger.CombatEpoch));
 	}
-
-	private readonly record struct LineageStabilizationResult(
-		bool IsStable,
-		long ActivityRevision,
-		int MemberCount);
 }

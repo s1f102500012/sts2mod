@@ -1,0 +1,58 @@
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  UniversalDominionSword -> <repo>/.build/variants/0.107.1/UniversalDominionSword.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.78
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  UniversalDominionSword -> <repo>/.build/variants/0.110.0/UniversalDominionSword.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.89
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  UniversalDominionSword.Loader -> <repo>/.build/loader/UniversalDominionSword.Loader.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:00.68
+generated <repo>/dist/universal-dominion-sword-variants.manifest with 2 variant(s)
+MegaDot v4.5.1.m.14.mono.custom_build - https://godotengine.org
+
+FMOD Sound System: Successfully initialized
+[0/20 - 0%] PCKPacker flush: <repo>/assets/images/cards/universal_dominion_sword_card.png -> UniversalDominionSword/images/cards/universal_dominion_sword_card.png
+[1/20 - 5%] PCKPacker flush: <repo>/assets/images/relics/cosmic_0.png -> UniversalDominionSword/images/relics/cosmic_0.png
+[2/20 - 10%] PCKPacker flush: <repo>/assets/images/relics/cosmic_1.png -> UniversalDominionSword/images/relics/cosmic_1.png
+[3/20 - 15%] PCKPacker flush: <repo>/assets/images/relics/cosmic_2.png -> UniversalDominionSword/images/relics/cosmic_2.png
+[4/20 - 20%] PCKPacker flush: <repo>/assets/images/relics/cosmic_3.png -> UniversalDominionSword/images/relics/cosmic_3.png
+[5/20 - 25%] PCKPacker flush: <repo>/assets/images/relics/cosmic_4.png -> UniversalDominionSword/images/relics/cosmic_4.png
+[6/20 - 30%] PCKPacker flush: <repo>/assets/images/relics/cosmic_5.png -> UniversalDominionSword/images/relics/cosmic_5.png
+[7/20 - 35%] PCKPacker flush: <repo>/assets/images/relics/cosmic_6.png -> UniversalDominionSword/images/relics/cosmic_6.png
+[8/20 - 40%] PCKPacker flush: <repo>/assets/images/relics/cosmic_7.png -> UniversalDominionSword/images/relics/cosmic_7.png
+[9/20 - 45%] PCKPacker flush: <repo>/assets/images/relics/cosmic_8.png -> UniversalDominionSword/images/relics/cosmic_8.png
+[10/20 - 50%] PCKPacker flush: <repo>/assets/images/relics/cosmic_9.png -> UniversalDominionSword/images/relics/cosmic_9.png
+[11/20 - 55%] PCKPacker flush: <repo>/assets/images/relics/infinity_sword_layer_0.png -> UniversalDominionSword/images/relics/infinity_sword_layer_0.png
+[12/20 - 60%] PCKPacker flush: <repo>/assets/images/relics/infinity_sword_layer_1.png -> UniversalDominionSword/images/relics/infinity_sword_layer_1.png
+[13/20 - 65%] PCKPacker flush: <repo>/assets/images/relics/infinity_sword_mask.png -> UniversalDominionSword/images/relics/infinity_sword_mask.png
+[14/20 - 70%] PCKPacker flush: <repo>/assets/images/relics/universal_dominion_sword.png -> UniversalDominionSword/images/relics/universal_dominion_sword.png
+[15/20 - 75%] PCKPacker flush: <repo>/assets/localization/eng/cards.json -> UniversalDominionSword/localization/eng/cards.json
+[16/20 - 80%] PCKPacker flush: <repo>/assets/localization/eng/relics.json -> UniversalDominionSword/localization/eng/relics.json
+[17/20 - 85%] PCKPacker flush: <repo>/assets/localization/zhs/cards.json -> UniversalDominionSword/localization/zhs/cards.json
+[18/20 - 90%] PCKPacker flush: <repo>/assets/localization/zhs/relics.json -> UniversalDominionSword/localization/zhs/relics.json
+[19/20 - 95%] PCKPacker flush: <repo>/assets/third_party/AVARITIA_MIT_LICENSE.txt -> UniversalDominionSword/third_party/AVARITIA_MIT_LICENSE.txt
+Created <repo>/dist/UniversalDominionSword.pck
+[INFO] Found release_info.json at: <home>/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/MacOS/../Resources/release_info.json
+[INFO] [Sentry.NET] Initialized: env=unknown, release=v0.110.1
+FMOD Sound System: System released
+validated UniversalDominionSword: loader + 2 variant(s), targets=0.107.1, 0.110.0
+Prepared local Workshop content in <repo>/workshop/content
+Built multi-version package in <repo>/dist without deploying.

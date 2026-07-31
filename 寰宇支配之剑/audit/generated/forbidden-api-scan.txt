@@ -1,0 +1,21 @@
+UniversalDominionSword compiled release audit
+
+This report distinguishes mechanically checked facts from design claims.
+A pass does not prove gameplay or multiplayer behavior.
+
+Source policy: PASS
+- no Harmony unpatch calls
+- no Harmony patch enumeration
+- no explicit Harmony priority overrides
+
+STS2 0.107.1: PASS
+- assembly references are limited to game, Harmony, Godot, and framework libraries
+- no Harmony unpatch, patch-enumeration, or priority-mutation member references
+- no embedded ten-digit identifiers or URLs
+- decompilation contract markers are present
+
+STS2 0.110.0: PASS
+- assembly references are limited to game, Harmony, Godot, and framework libraries
+- no Harmony unpatch, patch-enumeration, or priority-mutation member references
+- no embedded ten-digit identifiers or URLs
+- decompilation contract markers are present

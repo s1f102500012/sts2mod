@@ -33,6 +33,10 @@ internal static partial class ErasureKill
 		ActiveScope.Value = scope;
 		try
 		{
+			if (seed.IsCausalOverflow)
+			{
+				ConvergeMember(seed);
+			}
 			int stablePasses = 0;
 			for (int pass = 0;
 				pass < MaximumSettlementPasses && stablePasses < 2;
@@ -83,6 +87,10 @@ internal static partial class ErasureKill
 		{
 			ActiveScope.Value = previous;
 			ledger.Settling.Remove(seed.Lineage);
+		}
+		if (seed.IsCausalOverflow)
+		{
+			ConvergeMember(seed);
 		}
 
 		foreach (ErasureLineageMember member in seed.Lineage.Members)
@@ -242,6 +250,21 @@ internal static partial class ErasureKill
 				captured.Remove(node);
 				continue;
 			}
+			if (ShouldPreserveCanonicalDeathAnimation(
+				ledger,
+				creature,
+				node,
+				removingNodes))
+			{
+				try
+				{
+					node.ToggleIsInteractable(on: false);
+				}
+				catch
+				{
+				}
+				continue;
+			}
 
 			removedAny |= RemoveExact(activeNodes, node);
 			removedAny |= RemoveExact(removingNodes, node);
@@ -298,6 +321,113 @@ internal static partial class ErasureKill
 		}
 	}
 
+	private static void EnsureCanonicalVisualExit(
+		CombatLedger ledger,
+		Creature creature)
+	{
+		NCombatRoom? room = NCombatRoom.Instance;
+		if (room == null)
+		{
+			return;
+		}
+
+		foreach (NCreature node in EnumerateRoomCreatureNodes(room)
+			.Where(node => IsExactLiveNode(node, creature))
+			.ToArray())
+		{
+			CaptureNode(ledger, creature, node);
+			ledger.VisualExitNodes.Add(node);
+			try
+			{
+				if (node.DeathAnimationTask == null
+					|| node.DeathAnimationTask.IsCompleted)
+				{
+					node.StartDeathAnim(shouldRemove: true);
+				}
+				if (room.CreatureNodes.Any(candidate =>
+					ReferenceEquals(candidate, node)))
+				{
+					room.RemoveCreatureNode(node);
+				}
+			}
+			catch (Exception exception)
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}] Canonical death animation setup failed " +
+					$"for {SafeModelId(creature)}: " +
+					$"{exception.GetBaseException().Message}");
+			}
+		}
+	}
+
+	private static void ReserveCanonicalVisualExit(
+		CombatLedger ledger,
+		Creature creature)
+	{
+		NCombatRoom? room = NCombatRoom.Instance;
+		if (room == null)
+		{
+			return;
+		}
+
+		foreach (NCreature node in EnumerateRoomCreatureNodes(room)
+			.Where(node => IsExactLiveNode(node, creature)))
+		{
+			CaptureNode(ledger, creature, node);
+			ledger.VisualExitNodes.Add(node);
+			try
+			{
+				node.ToggleIsInteractable(on: false);
+			}
+			catch
+			{
+			}
+		}
+	}
+
+	private static bool ShouldPreserveCanonicalDeathAnimation(
+		CombatLedger ledger,
+		Creature creature,
+		NCreature node,
+		IList removingNodes)
+	{
+		bool isExactNode;
+		bool isInRemovingList;
+		bool hasIncompleteDeathAnimation;
+		try
+		{
+			isExactNode = IsExactLiveNode(node, creature);
+			isInRemovingList = ContainsExact(removingNodes, node);
+			hasIncompleteDeathAnimation =
+				node.DeathAnimationTask is { IsCompleted: false };
+		}
+		catch
+		{
+			isExactNode = false;
+			isInRemovingList = false;
+			hasIncompleteDeathAnimation = false;
+		}
+
+		bool wasReserved = ledger.VisualExitNodes.Contains(node);
+		bool shouldPreserve = ErasureVisualExitPolicy.ShouldPreserve(
+			new ErasureVisualExitSnapshot(
+				isExactNode,
+				wasReserved,
+				isInRemovingList,
+				hasIncompleteDeathAnimation,
+				ledger.ActiveTerminationCount != 0));
+		if (shouldPreserve)
+		{
+			return true;
+		}
+
+		if (wasReserved)
+		{
+			ledger.VisualExitNodes.Remove(node);
+		}
+		return false;
+	}
+
 	private static void HardUnsubscribe(Creature creature)
 	{
 		try
@@ -313,6 +443,9 @@ internal static partial class ErasureKill
 		}
 	}
 
+	[ErasureBoundary(
+		ErasurePatchContract.SelectedLineageScope,
+		ErasurePatchContract.CanonicalFirst)]
 	private static void HardRemoveFromCombatState(
 		CombatLedger ledger,
 		Creature creature)
@@ -388,15 +521,27 @@ internal static partial class ErasureKill
 		{
 			activeNode = room.CreatureNodes.Any(
 				node => ReferenceEquals(node.Entity, creature));
-			removingNode = room.RemovingCreatureNodes.Any(
-				node => ReferenceEquals(node.Entity, creature));
+			removingNode = room.RemovingCreatureNodes.Any(node =>
+				ReferenceEquals(node.Entity, creature)
+				&& !IsAuthorizedVisualExit(
+					ledger,
+					creature,
+					node,
+					isInRemovingList: true));
 		}
 		if (ledger.Nodes.TryGetValue(
 			creature,
 			out HashSet<NCreature>? captured))
 		{
 			capturedNodeAlive = captured.Any(node =>
-				IsExactLiveNode(node, creature));
+				IsExactLiveNode(node, creature)
+				&& !IsAuthorizedVisualExit(
+					ledger,
+					creature,
+					node,
+					isInRemovingList: room != null
+						&& room.RemovingCreatureNodes.Any(candidate =>
+							ReferenceEquals(candidate, node))));
 		}
 
 		return new ErasureLayerState(
@@ -410,6 +555,34 @@ internal static partial class ErasureKill
 			HasNoActiveNode: !activeNode,
 			HasNoRemovingNode: !removingNode,
 			HasNoCapturedLiveNode: !capturedNodeAlive);
+	}
+
+	private static bool IsAuthorizedVisualExit(
+		CombatLedger ledger,
+		Creature creature,
+		NCreature node,
+		bool isInRemovingList)
+	{
+		if (!ledger.VisualExitNodes.Contains(node))
+		{
+			return false;
+		}
+
+		try
+		{
+			return ErasureVisualExitPolicy.ShouldPreserve(
+				new ErasureVisualExitSnapshot(
+					IsExactNode: IsExactLiveNode(node, creature),
+					IsReserved: true,
+					IsInRemovingList: isInRemovingList,
+					HasIncompleteDeathAnimation:
+						node.DeathAnimationTask is { IsCompleted: false },
+					IsCanonicalTerminationActive: false));
+		}
+		catch
+		{
+			return false;
+		}
 	}
 
 	private static bool IsNodeStillAlive(NCreature node)

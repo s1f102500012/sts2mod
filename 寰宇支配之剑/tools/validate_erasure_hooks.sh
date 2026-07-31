@@ -70,6 +70,18 @@ reject_regex() {
 	fi
 }
 
+require_regex_count() {
+	local dump="$1"
+	local expected="$2"
+	local count="$3"
+	local context="$4"
+	local observed
+	observed="$(grep -Ec -- "$expected" "$dump" || true)"
+	if [[ "$observed" != "$count" ]]; then
+		fail "$context: expected $count matches for '$expected', found $observed"
+	fi
+}
+
 run_type_query() {
 	local assembly="$1"
 	local query="$2"
@@ -163,11 +175,11 @@ for target in "${TARGETS[@]}"; do
 	command_dump="$TEMP_ROOT/$target-creature-command.txt"
 	hook_dump="$TEMP_ROOT/$target-hook.txt"
 	monster_dump="$TEMP_ROOT/$target-monster-model.txt"
-	encounter_dump="$TEMP_ROOT/$target-encounter-model.txt"
 	creature_node_dump="$TEMP_ROOT/$target-creature-node.txt"
 	callable_dump="$TEMP_ROOT/$target-callable.txt"
 	action_executor_dump="$TEMP_ROOT/$target-action-executor.txt"
 	manager_source="$TEMP_ROOT/$target-combat-manager.cs"
+	command_source="$TEMP_ROOT/$target-creature-command.cs"
 	hook_source="$TEMP_ROOT/$target-hook.cs"
 	action_executor_source="$TEMP_ROOT/$target-action-executor.cs"
 
@@ -201,10 +213,6 @@ for target in "${TARGETS[@]}"; do
 		"$monster_dump"
 	run_type_query \
 		"$assembly" \
-		"MegaCrit.Sts2.Core.Models.EncounterModel" \
-		"$encounter_dump"
-	run_type_query \
-		"$assembly" \
 		"MegaCrit.Sts2.Core.Nodes.Combat.NCreature" \
 		"$creature_node_dump"
 	run_type_query \
@@ -219,6 +227,11 @@ for target in "${TARGETS[@]}"; do
 		"$assembly" \
 		"MegaCrit.Sts2.Core.Combat.CombatManager" \
 		"$manager_source" \
+		"$refs"
+	run_decompile_query \
+		"$assembly" \
+		"MegaCrit.Sts2.Core.Commands.CreatureCmd" \
+		"$command_source" \
 		"$refs"
 	run_decompile_query \
 		"$assembly" \
@@ -252,6 +265,10 @@ for target in "${TARGETS[@]}"; do
 		"  M Void set_CombatState(ICombatState value)" "$context"
 	require_exact_line "$creature_dump" \
 		"  M Void InvokeDiedEvent()" "$context"
+	require_exact_line "$creature_dump" \
+		"  M IEnumerable<PowerModel> RemoveAllPowersAfterDeath()" "$context"
+	require_exact_line "$creature_dump" \
+		"  M Boolean get_IsPrimaryEnemy()" "$context"
 
 	context="STS2 $target CombatState"
 	require_exact_line "$state_dump" \
@@ -261,6 +278,8 @@ for target in "${TARGETS[@]}"; do
 		"  M Void AttachCreature(Creature creature)" "$context"
 	require_exact_line "$state_dump" \
 		"  M Void AddCreature(Creature creature)" "$context"
+	require_exact_line "$state_dump" \
+		"  M Void RemoveCreature(Creature creature, Boolean unattach)" "$context"
 	require_exact_line "$state_dump" \
 		"  M Boolean ContainsCreature(Creature creature)" "$context"
 	require_exact_line "$state_dump" \
@@ -275,6 +294,8 @@ for target in "${TARGETS[@]}"; do
 	context="STS2 $target CombatManager"
 	require_exact_line "$manager_dump" \
 		"  M Void AddCreature(Creature creature)" "$context"
+	require_exact_line "$manager_dump" \
+		"  M Void RemoveCreature(Creature creature)" "$context"
 	require_exact_line "$manager_dump" \
 		"  M Task AfterCreatureAdded(Creature creature)" "$context"
 	require_exact_line "$manager_dump" \
@@ -358,6 +379,10 @@ for target in "${TARGETS[@]}"; do
 	require_exact_line "$room_dump" \
 		"  M Void AddCreature(Creature creature)" "$context"
 	require_exact_line "$room_dump" \
+		"  M Void RemoveCreatureNode(NCreature node)" "$context"
+	require_exact_line "$room_dump" \
+		"  M Task RemoveCreatureWhenGone(NCreature node)" "$context"
+	require_exact_line "$room_dump" \
 		"  M Void UpdateCreatureNavigation()" "$context"
 	require_exact_line "$room_dump" \
 		"  M IEnumerable<NCreature> get_CreatureNodes()" "$context"
@@ -373,6 +398,10 @@ for target in "${TARGETS[@]}"; do
 		"  M NCreature Create(Creature entity)" "$context"
 	require_exact_line "$creature_node_dump" \
 		"  M Creature get_Entity()" "$context"
+	require_exact_line "$creature_node_dump" \
+		"  M Single StartDeathAnim(Boolean shouldRemove)" "$context"
+	require_exact_line "$creature_node_dump" \
+		"  M Task get_DeathAnimationTask()" "$context"
 
 	context="STS2 $target Godot Callable"
 	require_exact_line "$callable_dump" \
@@ -391,6 +420,23 @@ for target in "${TARGETS[@]}"; do
 	context="STS2 $target CreatureCmd"
 	require_exact_line "$command_dump" \
 		"  M Task Add(Creature creature)" "$context"
+	require_exact_line "$command_dump" \
+		"  M Task Kill(Creature creature, Boolean force)" "$context"
+	require_exact_line "$command_dump" \
+		"  M Task KillWithoutCheckingWinCondition(Creature creature, Boolean force, Int32 recursion)" "$context"
+	require_regex "$command_source" \
+		'\[AsyncStateMachine\(typeof\(<KillWithoutCheckingWinCondition>d__[0-9]+\)\)\]' \
+		"$context"
+	require_regex_count "$command_source" 'Hook\.BeforeDeath\(' 1 "$context"
+	require_regex_count "$command_source" 'Hook\.ShouldDie\(' 1 "$context"
+	require_regex_count "$command_source" 'creature\.InvokeDiedEvent\(\)' 1 "$context"
+	require_regex_count "$command_source" \
+		'Hook\.ShouldCreatureBeRemovedFromCombatAfterDeath\(' 1 "$context"
+	require_regex_count "$command_source" 'Hook\.AfterDeath\(' 2 "$context"
+	require_regex_count "$command_source" \
+		'creature\.RemoveAllPowersAfterDeath\(\)' 1 "$context"
+	require_regex_count "$command_source" \
+		'<isPrimaryEnemy>5__[0-9]+ = creature\.IsPrimaryEnemy;' 1 "$context"
 
 	context="STS2 $target Hook"
 	require_exact_line "$hook_dump" \
@@ -401,6 +447,12 @@ for target in "${TARGETS[@]}"; do
 		"$context"
 	require_exact_line "$hook_dump" \
 		"  M Task AfterDeath(IRunState runState, ICombatState combatState, Creature creature, Boolean wasRemovalPrevented, Single deathAnimLength)" \
+		"$context"
+	require_exact_line "$hook_dump" \
+		"  M Boolean ShouldDie(IRunState runState, ICombatState combatState, Creature creature, ref AbstractModel preventer)" \
+		"$context"
+	require_exact_line "$hook_dump" \
+		"  M Boolean ShouldCreatureBeRemovedFromCombatAfterDeath(ICombatState combatState, Creature creature)" \
 		"$context"
 	require_exact_line "$hook_dump" \
 		"  M Boolean ShouldStopCombatFromEnding(ICombatState combatState)" \
@@ -416,10 +468,6 @@ for target in "${TARGETS[@]}"; do
 		"  F Boolean _isPerformingMove" "$context"
 	require_exact_line "$monster_dump" \
 		"  F MonsterMoveStateMachine _moveStateMachine" "$context"
-
-	context="STS2 $target EncounterModel"
-	require_exact_line "$encounter_dump" \
-		"  M String GetNextSlot(ICombatState combatState)" "$context"
 
 	print -r -- "Validated required erasure signatures for STS2 $target."
 done

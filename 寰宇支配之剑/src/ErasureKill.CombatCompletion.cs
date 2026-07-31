@@ -17,9 +17,6 @@ internal static partial class ErasureKill
 	private static readonly AsyncLocal<CombatLedger?>
 		ActiveCompletionEvaluation = new();
 
-	private static readonly AsyncLocal<EndCombatAttempt?>
-		ActiveEndCombatAttempt = new();
-
 	private static async Task<bool> FinishCheckWinCondition(
 		CombatManager manager,
 		CheckWinInvocation? invocation,
@@ -125,10 +122,11 @@ internal static partial class ErasureKill
 	{
 		CombatLedger? previous = ActiveCompletionEvaluation.Value;
 		ActiveCompletionEvaluation.Value = ledger;
-		EndCombatAttempt attempt = new();
 		try
 		{
 			SettleLedger(ledger);
+			Creature[] terminalBaseline = OrderObservedCreatures(
+				ledger.CombatState.Enemies);
 			ErasureCompletionDecision beforeHook =
 				EvaluateCompletion(
 					manager,
@@ -146,17 +144,12 @@ internal static partial class ErasureKill
 				return;
 			}
 
-			EndCombatAttempt? previousAttempt =
-				ActiveEndCombatAttempt.Value;
-			ActiveEndCombatAttempt.Value = attempt;
-			try
-			{
-				await manager.EndCombatInternal();
-			}
-			finally
-			{
-				ActiveEndCombatAttempt.Value = previousAttempt;
-			}
+			CommitTerminalCombat(ledger, terminalBaseline);
+			SweepTerminalIngresses(ledger);
+			await InvokeOriginalCombatSettlement(
+				manager,
+				invocation.TurnState);
+			SweepTerminalIngresses(ledger);
 
 			ManagerCombatSnapshot afterEnd = ReadManagerSnapshot(
 				manager,
@@ -169,22 +162,12 @@ internal static partial class ErasureKill
 				|| !afterEnd.IsInProgress;
 			if (completed)
 			{
+				SealTerminalCombat(ledger);
 				FinishCompletionFlight(
 					ledger,
 					owner,
 					CompletionDisposition.Completed,
 					result: true);
-				return;
-			}
-
-			if (!attempt.LeafObserved
-				|| !attempt.LeafOriginalRan)
-			{
-				FinishCompletionFlight(
-					ledger,
-					owner,
-					CompletionDisposition.Idle,
-					result: false);
 				return;
 			}
 
@@ -207,10 +190,30 @@ internal static partial class ErasureKill
 		}
 		catch (Exception exception)
 		{
+			ManagerCombatSnapshot afterFailure = ReadManagerSnapshot(
+				manager,
+				invocation.TurnState);
+			bool settlementCommitted =
+				!afterFailure.IsCurrentInvocation
+				|| !ReferenceEquals(
+					afterFailure.CombatState,
+					ledger.CombatState)
+				|| !afterFailure.IsInProgress;
+			if (settlementCommitted)
+			{
+				SealTerminalCombat(ledger);
+				FinishCompletionFlight(
+					ledger,
+					owner,
+					CompletionDisposition.Completed,
+					result: true);
+				return;
+			}
+
 			FailCompletionFlight(
 				ledger,
 				owner,
-				attempt.LeafOriginalRan
+				ledger.TerminalSealed
 					? CompletionDisposition.Indeterminate
 					: CompletionDisposition.Idle,
 				exception);
@@ -230,6 +233,10 @@ internal static partial class ErasureKill
 		lock (ledger.Gate)
 		{
 			ledger.CompletionDisposition = disposition;
+			if (disposition == CompletionDisposition.Completed)
+			{
+				ledger.TerminalSealed = true;
+			}
 			if (disposition == CompletionDisposition.Idle)
 			{
 				ledger.CompletionFlight = null;
@@ -270,7 +277,6 @@ internal static partial class ErasureKill
 		bool completionArmed;
 		bool hasOpenPersistenceLease;
 		bool allCertified;
-		bool hasOpenContinuationLease;
 		bool hasActiveConvergence;
 		lock (ledger.Gate)
 		{
@@ -280,11 +286,9 @@ internal static partial class ErasureKill
 				ledger.PersistenceLeaseCount != 0;
 			allCertified = lineages.All(lineage =>
 				lineage.TryGetCompletionCertificate(out _));
-			hasOpenContinuationLease = lineages.Any(
-				lineage =>
-					lineage.OutstandingContinuationLeaseCount != 0);
 			hasActiveConvergence =
-				ledger.Settling.Count != 0
+				ledger.ActiveTerminationCount != 0
+				|| ledger.Settling.Count != 0
 				|| ledger.Converging.Count != 0
 				|| ledger.Restabilizations.Count != 0;
 			foreach (ErasureLineageMember member in
@@ -326,7 +330,6 @@ internal static partial class ErasureKill
 			HasOpenPersistenceLease: hasOpenPersistenceLease,
 			IsCompletionArmed: completionArmed,
 			AreAllLineagesCertified: allCertified,
-			HasOpenContinuationLease: hasOpenContinuationLease,
 			HasActiveConvergence: hasActiveConvergence,
 			HasLivingUntrackedPrimaryEnemy:
 				hasLivingUntrackedPrimaryEnemy,
@@ -346,40 +349,10 @@ internal static partial class ErasureKill
 		}
 	}
 
-	private static void ScheduleUncertifiedLineages(CombatLedger ledger)
-	{
-		LineageBinding[] bindings;
-		lock (ledger.Gate)
-		{
-			if (!ledger.CompletionArmed)
-			{
-				return;
-			}
-
-			bindings = ledger.Lineages
-				.Where(lineage =>
-					!lineage.TryGetCompletionCertificate(out _))
-				.Select(lineage => GetAnyBinding(ledger, lineage))
-				.OfType<LineageBinding>()
-				.ToArray();
-		}
-
-		foreach (LineageBinding binding in bindings)
-		{
-			ScheduleRestabilization(binding);
-		}
-	}
-
 	private sealed record CheckWinInvocation(
 		object? TurnState,
 		ICombatState? CombatState,
 		CombatLedger? Ledger,
 		bool WasCurrentAtEntry);
 
-	private sealed class EndCombatAttempt
-	{
-		public bool LeafObserved { get; set; }
-
-		public bool LeafOriginalRan { get; set; }
-	}
 }

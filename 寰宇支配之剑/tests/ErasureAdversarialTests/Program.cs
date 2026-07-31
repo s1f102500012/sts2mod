@@ -15,29 +15,42 @@ internal static class Program
 		("preexisting monster collision is rejected", PreexistingMonsterCollisionIsRejected),
 		("causal token adopts a different model and slot", TokenAdoptsDifferentModelAndSlot),
 		("causal token supports a long replacement chain", TokenSupportsLongReplacementChain),
+		("terminal transaction adopts a new primary successor", TerminalTransactionAdoptsPrimarySuccessor),
+		("terminal transaction rejects a non-primary summon", TerminalTransactionRejectsSummon),
+		("non-terminal lineage rejects an unscoped primary", NonTerminalLineageRejectsUnscopedPrimary),
 		("token from another operation is rejected", ForeignOperationTokenIsRejected),
 		("token with an unknown parent is rejected", UnknownParentTokenIsRejected),
 		("preexisting creature cannot be claimed by a token", PreexistingCreatureCannotBeClaimed),
 		("friendly creation cannot be claimed by a token", FriendlyCreationCannotBeClaimed),
-		("generic slot allocation is never positive evidence", GenericSlotAllocationIsRejected),
+		("causal token is independent of slot allocation", CausalTokenIgnoresSlotAllocation),
 		("same slot without a token remains unrelated", SameSlotWithoutTokenIsUnrelated),
 		("same type without a token remains unrelated", SameTypeWithoutTokenIsUnrelated),
 		("identical preexisting sibling remains unrelated", IdenticalSiblingRemainsUnrelated),
 		("mutation journal records an admitted edge", JournalRecordsAdmittedEdge),
-		("mutation journal records a rejected generic allocation", JournalRecordsRejectedAllocation),
+		("mutation journal records a rejected friendly creation", JournalRecordsRejectedFriendlyCreation),
 		("mutation journal is bounded", MutationJournalIsBounded),
 		("continuation claim budget is bounded", ContinuationClaimBudgetIsBounded),
 		("generation budget is bounded", GenerationBudgetIsBounded),
 		("host and client mutation traces are deterministic", MutationTracesAreDeterministic),
-		("open continuation lease blocks certification", LeaseBlocksCertification),
-		("released continuation lease permits certification", ReleasedLeasePermitsCertification),
+		("canonical termination can begin only once", CanonicalTerminationBeginsOnce),
+		("matching revision permits certification", MatchingRevisionPermitsCertification),
 		("new lineage member invalidates certification", NewMemberInvalidatesCertification),
-		("committed converged lineage suppresses deferred continuation", CommittedLineageSuppressesDeferredContinuation),
-		("unsafe deferred continuation remains observable", UnsafeDeferredContinuationRemainsObservable),
+		("causal token remains valid after certification", TokenRemainsValidAfterCertification),
+		("unrelated activity cannot claim a late successor", UnrelatedActivityCannotClaimLateSuccessor),
 		("combat completion accepts a certified terminal state", CompletionAcceptsCertifiedState),
 		("combat completion rejects every unsafe gate", CompletionRejectsUnsafeGates),
 		("non-primary summons do not block completion", NonPrimarySummonsDoNotBlockCompletion),
 		("living primary enemy blocks completion", LivingPrimaryEnemyBlocksCompletion),
+		("canonical death animation is preserved", CanonicalDeathAnimationIsPreserved),
+		("visual exit requires every safety gate", VisualExitRequiresEverySafetyGate),
+		("sealed combat rejects late enemy ingress", SealedCombatRejectsLateEnemyIngress),
+		("sealed combat preserves its baseline enemies", SealedCombatPreservesBaselineEnemies),
+		("completion commit rejects delayed enemy ingress", CompletionCommitRejectsDelayedEnemyIngress),
+		("terminal ingress guard preserves valid additions", TerminalIngressGuardPreservesValidAdditions),
+		("committed lineage discards its deferred callbacks", CommittedLineageDiscardsDeferredCallbacks),
+		("unresolved lineage preserves its deferred callbacks", UnresolvedLineagePreservesDeferredCallbacks),
+		("audit contract declares scoped interoperability boundaries", AuditContractDeclaresBoundaries),
+		("audit contract acknowledges version-sensitive internals", AuditContractAcknowledgesRisk),
 		("loader selection is fail-closed", LoaderSelectionIsFailClosed),
 	];
 
@@ -73,6 +86,34 @@ internal static class Program
 		Assert.Same(fixture.Lineage.Root, first.Member);
 		Assert.Same(first.Member!, second.Member);
 		Assert.Equal(1, fixture.Lineage.MemberCount);
+	}
+
+	private static void AuditContractDeclaresBoundaries()
+	{
+		Assert.True(
+			ErasurePatchContract.SelectedLineageScope.Contains(
+				"same combat",
+				StringComparison.Ordinal));
+		Assert.True(
+			ErasurePatchContract.ThirdPartyInteroperability.Contains(
+				"Never enumerate, unpatch",
+				StringComparison.Ordinal));
+		Assert.True(
+			ErasurePatchContract.IdentityAdmission.Contains(
+				"model type and slot alone are insufficient",
+				StringComparison.Ordinal));
+	}
+
+	private static void AuditContractAcknowledgesRisk()
+	{
+		Assert.True(
+			ErasurePatchContract.KnownCompatibilityRisk.Contains(
+				"Version-specific private members",
+				StringComparison.Ordinal));
+		Assert.True(
+			ErasurePatchContract.ValidationBoundary.Contains(
+				"not gameplay or multiplayer proof",
+				StringComparison.Ordinal));
 	}
 
 	private static void CombatIdAdoptsReplacement()
@@ -203,6 +244,91 @@ internal static class Program
 			fixture.Lineage.MemberCount);
 	}
 
+	private static void TerminalTransactionAdoptsPrimarySuccessor()
+	{
+		ErasureEvidence root = Evidence(
+			"root",
+			1,
+			"root-monster",
+			"RootType",
+			"A",
+			primary: true);
+		ErasureLineage lineage = new(
+			1,
+			root,
+			[root],
+			wasSoleLivingPrimaryEnemyAtStart: true);
+
+		ErasureAdmission admission = lineage.ObserveTerminalSuccessor(
+			Evidence(
+				"successor",
+				2,
+				"successor-monster",
+				"DifferentType",
+				"Z",
+				primary: true),
+			ErasureMutationKind.Added);
+
+		Assert.Equal(
+			ErasureAdmissionKind.TerminalTransaction,
+			admission.Kind);
+		Assert.True(admission.RequiresExactConvergence);
+		Assert.Same(lineage.Root, admission.Member?.Parent);
+	}
+
+	private static void TerminalTransactionRejectsSummon()
+	{
+		ErasureEvidence root = Evidence(
+			"root",
+			1,
+			"root-monster",
+			"RootType",
+			"A",
+			primary: true);
+		ErasureLineage lineage = new(
+			1,
+			root,
+			[root],
+			wasSoleLivingPrimaryEnemyAtStart: true);
+
+		ErasureAdmission admission = lineage.ObserveTerminalSuccessor(
+			Evidence(
+				"summon",
+				2,
+				"summon-monster",
+				"SummonType",
+				"B",
+				primary: false),
+			ErasureMutationKind.Added);
+
+		Assert.Equal(ErasureAdmissionKind.None, admission.Kind);
+		Assert.False(admission.RequiresExactConvergence);
+	}
+
+	private static void NonTerminalLineageRejectsUnscopedPrimary()
+	{
+		ErasureEvidence root = Evidence(
+			"root",
+			1,
+			"root-monster",
+			"RootType",
+			"A",
+			primary: true);
+		ErasureLineage lineage = new(1, root, [root]);
+
+		ErasureAdmission admission = lineage.ObserveTerminalSuccessor(
+			Evidence(
+				"unscoped-primary",
+				2,
+				"other-monster",
+				"OtherType",
+				"B",
+				primary: true),
+			ErasureMutationKind.Added);
+
+		Assert.Equal(ErasureAdmissionKind.None, admission.Kind);
+	}
+
 	private static void ForeignOperationTokenIsRejected()
 	{
 		Fixture fixture = Fixture.Create(operationSequence: 7);
@@ -271,7 +397,7 @@ internal static class Program
 		Assert.Equal(1, fixture.Lineage.MemberCount);
 	}
 
-	private static void GenericSlotAllocationIsRejected()
+	private static void CausalTokenIgnoresSlotAllocation()
 	{
 		Fixture fixture = Fixture.Create();
 		ErasureContinuationToken token =
@@ -286,11 +412,10 @@ internal static class Program
 		ErasureAdmission admission = fixture.Lineage.ObserveCausal(
 			summon,
 			token,
-			ErasureMutationKind.Created,
-			usedGenericSlotAllocator: true);
+			ErasureMutationKind.Created);
 
-		Assert.Equal(ErasureAdmissionKind.None, admission.Kind);
-		Assert.Equal(1, fixture.Lineage.MemberCount);
+		Assert.Equal(ErasureAdmissionKind.CausalToken, admission.Kind);
+		Assert.Equal(2, fixture.Lineage.MemberCount);
 	}
 
 	private static void SameSlotWithoutTokenIsUnrelated()
@@ -353,20 +478,24 @@ internal static class Program
 		Assert.Same(replacement.CreatureRef, record.CandidateRef);
 	}
 
-	private static void JournalRecordsRejectedAllocation()
+	private static void JournalRecordsRejectedFriendlyCreation()
 	{
 		Fixture fixture = Fixture.Create();
 		ErasureContinuationToken token =
 			fixture.Lineage.CreateContinuationToken(fixture.Lineage.Root);
 
 		fixture.Lineage.ObserveCausal(
-			Evidence("summon", 2, "summon-monster", "Summon", "A"),
+			Evidence(
+				"friendly",
+				2,
+				"friendly-monster",
+				"Friendly",
+				"A",
+				enemy: false),
 			token,
-			ErasureMutationKind.Created,
-			usedGenericSlotAllocator: true);
+			ErasureMutationKind.Created);
 
 		ErasureMutationRecord record = fixture.Lineage.MutationJournal.Single();
-		Assert.True(record.UsedGenericSlotAllocator);
 		Assert.Equal(ErasureAdmissionKind.None, record.Admission);
 	}
 
@@ -385,10 +514,10 @@ internal static class Program
 					(uint)(index + 2),
 					$"summon-monster-{index}",
 					"Summon",
-					"A"),
+					"A",
+					enemy: false),
 				token,
-				ErasureMutationKind.Created,
-				usedGenericSlotAllocator: true);
+				ErasureMutationKind.Created);
 		}
 
 		Assert.Equal(
@@ -424,6 +553,7 @@ internal static class Program
 			ErasureMutationKind.Created);
 
 		Assert.Equal(ErasureAdmissionKind.LimitReached, overflow.Kind);
+		Assert.True(overflow.RequiresExactConvergence);
 		Assert.Equal(
 			ErasureLineage.MaximumContinuationClaims + 1,
 			fixture.Lineage.MemberCount);
@@ -456,6 +586,7 @@ internal static class Program
 			ErasureMutationKind.Created);
 
 		Assert.Equal(ErasureAdmissionKind.LimitReached, overflow.Kind);
+		Assert.True(overflow.RequiresExactConvergence);
 		Assert.Equal(ErasureLineage.MaximumGeneration, parent.Generation);
 	}
 
@@ -502,30 +633,22 @@ internal static class Program
 				$"{record.Kind}:{record.Admission}"));
 	}
 
-	private static void LeaseBlocksCertification()
+	private static void CanonicalTerminationBeginsOnce()
 	{
 		Fixture fixture = Fixture.Create();
-		long revision = fixture.Lineage.ActivityRevision;
-		fixture.Lineage.AcquireContinuationLease();
 
-		Assert.False(fixture.Lineage.TryIssueCompletionCertificate(
-			revision,
-			fixture.Lineage.MemberCount));
-		Assert.False(fixture.Lineage.TryGetCompletionCertificate(out _));
-		Assert.Equal(1, fixture.Lineage.OutstandingContinuationLeaseCount);
+		Assert.True(fixture.Lineage.TryBeginCanonicalTermination());
+		Assert.False(fixture.Lineage.TryBeginCanonicalTermination());
 	}
 
-	private static void ReleasedLeasePermitsCertification()
+	private static void MatchingRevisionPermitsCertification()
 	{
 		Fixture fixture = Fixture.Create();
-		fixture.Lineage.AcquireContinuationLease();
-		fixture.Lineage.ReleaseContinuationLease();
 
 		Assert.True(fixture.Lineage.TryIssueCompletionCertificate(
 			fixture.Lineage.ActivityRevision,
 			fixture.Lineage.MemberCount));
 		Assert.True(fixture.Lineage.TryGetCompletionCertificate(out _));
-		Assert.Equal(0, fixture.Lineage.OutstandingContinuationLeaseCount);
 	}
 
 	private static void NewMemberInvalidatesCertification()
@@ -544,35 +667,42 @@ internal static class Program
 		Assert.False(fixture.Lineage.TryGetCompletionCertificate(out _));
 	}
 
-	private static void CommittedLineageSuppressesDeferredContinuation()
+	private static void TokenRemainsValidAfterCertification()
 	{
-		DeferredContinuationSnapshot snapshot = DeferredSnapshot();
+		Fixture fixture = Fixture.Create();
+		ErasureContinuationToken token =
+			fixture.Lineage.CreateContinuationToken(fixture.Lineage.Root);
+		Assert.True(fixture.Lineage.TryIssueCompletionCertificate(
+			fixture.Lineage.ActivityRevision,
+			fixture.Lineage.MemberCount));
 
-		Assert.True(
-			ErasureCompletionPolicy.ShouldSuppressDeferredContinuation(
-				snapshot));
+		ErasureAdmission admission = fixture.Lineage.ObserveCausal(
+			Evidence("late", 2, "late-monster", "LatePhase", "Z"),
+			token,
+			ErasureMutationKind.Created);
+
+		Assert.Equal(ErasureAdmissionKind.CausalToken, admission.Kind);
+		Assert.False(fixture.Lineage.TryGetCompletionCertificate(out _));
 	}
 
-	private static void UnsafeDeferredContinuationRemainsObservable()
+	private static void UnrelatedActivityCannotClaimLateSuccessor()
 	{
-		DeferredContinuationSnapshot safe = DeferredSnapshot();
-		DeferredContinuationSnapshot[] unsafeStates =
-		[
-			safe with { IsExpectedCombat = false },
-			safe with { IsInProgress = false },
-			safe with { IsStarting = true },
-			safe with { HasPendingLoss = true },
-			safe with { HasLivingPlayer = false },
-			safe with { IsCompletionArmed = false },
-			safe with { IsLineageConverged = false }
-		];
-
-		foreach (DeferredContinuationSnapshot snapshot in unsafeStates)
+		Fixture fixture = Fixture.Create();
+		for (int index = 0; index < 1000; index++)
 		{
-			Assert.False(
-				ErasureCompletionPolicy.ShouldSuppressDeferredContinuation(
-					snapshot));
+			fixture.Lineage.MarkActivity();
 		}
+
+		ErasureAdmission admission = fixture.Lineage.TryAdmitStrong(
+			Evidence(
+				"late-unrelated",
+				2,
+				"late-unrelated-monster",
+				fixture.Root.MonsterType,
+				fixture.Root.SlotName));
+
+		Assert.Equal(ErasureAdmissionKind.None, admission.Kind);
+		Assert.Equal(1, fixture.Lineage.MemberCount);
 	}
 
 	private static void CompletionAcceptsCertifiedState()
@@ -609,8 +739,6 @@ internal static class Program
 					ErasureCompletionDecision.CompletionNotArmed),
 				(safe with { AreAllLineagesCertified = false },
 					ErasureCompletionDecision.UncertifiedLineage),
-				(safe with { HasOpenContinuationLease = true },
-					ErasureCompletionDecision.ContinuationLeaseOpen),
 				(safe with { HasActiveConvergence = true },
 					ErasureCompletionDecision.ActiveConvergence),
 				(safe with { HasLivingUntrackedPrimaryEnemy = true },
@@ -647,6 +775,180 @@ internal static class Program
 			ErasureCompletionPolicy.Evaluate(snapshot));
 	}
 
+	private static void CanonicalDeathAnimationIsPreserved()
+	{
+		ErasureVisualExitSnapshot setup = new(
+			IsExactNode: true,
+			IsReserved: true,
+			IsInRemovingList: false,
+			HasIncompleteDeathAnimation: false,
+			IsCanonicalTerminationActive: true);
+		ErasureVisualExitSnapshot continuing = setup with
+		{
+			IsInRemovingList = true,
+			HasIncompleteDeathAnimation = true,
+			IsCanonicalTerminationActive = false,
+		};
+
+		Assert.True(ErasureVisualExitPolicy.ShouldPreserve(setup));
+		Assert.True(ErasureVisualExitPolicy.ShouldPreserve(continuing));
+	}
+
+	private static void VisualExitRequiresEverySafetyGate()
+	{
+		ErasureVisualExitSnapshot safe = new(
+			IsExactNode: true,
+			IsReserved: true,
+			IsInRemovingList: true,
+			HasIncompleteDeathAnimation: true,
+			IsCanonicalTerminationActive: false);
+		ErasureVisualExitSnapshot[] unsafeStates =
+		[
+			safe with { IsExactNode = false },
+			safe with { IsReserved = false },
+			safe with { IsInRemovingList = false },
+			safe with { HasIncompleteDeathAnimation = false },
+			safe with
+			{
+				IsInRemovingList = false,
+				HasIncompleteDeathAnimation = false
+			}
+		];
+
+		foreach (ErasureVisualExitSnapshot snapshot in unsafeStates)
+		{
+			Assert.False(ErasureVisualExitPolicy.ShouldPreserve(snapshot));
+		}
+	}
+
+	private static void SealedCombatRejectsLateEnemyIngress()
+	{
+		ErasureTerminalIngressSnapshot snapshot = new(
+			HasTrackedCombat: true,
+			IsEnemy: true,
+			IsBaselineEnemy: false,
+			IsTerminalSealed: true,
+			IsCompletionFlightRunning: false,
+			IsExpectedCombat: false,
+			IsInProgress: false);
+
+		Assert.Equal(
+			ErasureTerminalIngressDecision.RejectTerminalIngress,
+			ErasureTerminalIngressPolicy.Evaluate(snapshot));
+	}
+
+	private static void SealedCombatPreservesBaselineEnemies()
+	{
+		ErasureTerminalIngressSnapshot snapshot = new(
+			HasTrackedCombat: true,
+			IsEnemy: true,
+			IsBaselineEnemy: true,
+			IsTerminalSealed: true,
+			IsCompletionFlightRunning: true,
+			IsExpectedCombat: true,
+			IsInProgress: true);
+
+		Assert.Equal(
+			ErasureTerminalIngressDecision.Allow,
+			ErasureTerminalIngressPolicy.Evaluate(snapshot));
+	}
+
+	private static void CompletionCommitRejectsDelayedEnemyIngress()
+	{
+		ErasureTerminalIngressSnapshot snapshot = new(
+			HasTrackedCombat: true,
+			IsEnemy: true,
+			IsBaselineEnemy: false,
+			IsTerminalSealed: false,
+			IsCompletionFlightRunning: true,
+			IsExpectedCombat: true,
+			IsInProgress: false);
+
+		Assert.Equal(
+			ErasureTerminalIngressDecision.RejectTerminalIngress,
+			ErasureTerminalIngressPolicy.Evaluate(snapshot));
+		Assert.Equal(
+			ErasureTerminalIngressDecision.RejectTerminalIngress,
+			ErasureTerminalIngressPolicy.Evaluate(
+				snapshot with { IsExpectedCombat = false }));
+	}
+
+	private static void TerminalIngressGuardPreservesValidAdditions()
+	{
+		ErasureTerminalIngressSnapshot active = new(
+			HasTrackedCombat: true,
+			IsEnemy: true,
+			IsBaselineEnemy: false,
+			IsTerminalSealed: false,
+			IsCompletionFlightRunning: true,
+			IsExpectedCombat: true,
+			IsInProgress: true);
+
+		Assert.Equal(
+			ErasureTerminalIngressDecision.CompletionNotCommitted,
+			ErasureTerminalIngressPolicy.Evaluate(active));
+		Assert.Equal(
+			ErasureTerminalIngressDecision.FriendlyCreature,
+			ErasureTerminalIngressPolicy.Evaluate(
+				active with { IsEnemy = false }));
+		Assert.Equal(
+			ErasureTerminalIngressDecision.NoTrackedCombat,
+			ErasureTerminalIngressPolicy.Evaluate(
+				active with { HasTrackedCombat = false }));
+	}
+
+	private static void CommittedLineageDiscardsDeferredCallbacks()
+	{
+		ErasureDeferredCallbackSnapshot committed = new(
+			HasTrackedScope: true,
+			IsExpectedCombat: true,
+			IsInProgress: true,
+			IsTerminalSealed: false,
+			IsCompletionFlightRunning: true,
+			IsLineageCertified: true);
+
+		Assert.False(
+			ErasureDeferredCallbackPolicy.ShouldExecute(committed));
+		Assert.Equal(
+			ErasureDeferredCallbackDecision.DiscardCommittedLineage,
+			ErasureDeferredCallbackPolicy.Evaluate(committed));
+		Assert.Equal(
+			ErasureDeferredCallbackDecision.DiscardStaleCombat,
+			ErasureDeferredCallbackPolicy.Evaluate(
+				committed with { IsCompletionFlightRunning = false, IsTerminalSealed = true }));
+		Assert.Equal(
+			ErasureDeferredCallbackDecision.DiscardStaleCombat,
+			ErasureDeferredCallbackPolicy.Evaluate(
+				committed with { IsCompletionFlightRunning = false, IsExpectedCombat = false }));
+	}
+
+	private static void UnresolvedLineagePreservesDeferredCallbacks()
+	{
+		ErasureDeferredCallbackSnapshot active = new(
+			HasTrackedScope: true,
+			IsExpectedCombat: true,
+			IsInProgress: true,
+			IsTerminalSealed: false,
+			IsCompletionFlightRunning: false,
+			IsLineageCertified: false);
+
+		Assert.True(
+			ErasureDeferredCallbackPolicy.ShouldExecute(active));
+		Assert.Equal(
+			ErasureDeferredCallbackDecision.ExecuteUncertified,
+			ErasureDeferredCallbackPolicy.Evaluate(active));
+		Assert.True(
+			ErasureDeferredCallbackPolicy.ShouldExecute(
+				active with
+				{
+					IsCompletionFlightRunning = true,
+					IsLineageCertified = false
+				}));
+		Assert.True(
+			ErasureDeferredCallbackPolicy.ShouldExecute(
+				active with { HasTrackedScope = false }));
+	}
+
 	private static ErasureCompletionSnapshot CertifiedSnapshot()
 	{
 		return new ErasureCompletionSnapshot(
@@ -659,22 +961,9 @@ internal static class Program
 			HasOpenPersistenceLease: false,
 			IsCompletionArmed: true,
 			AreAllLineagesCertified: true,
-			HasOpenContinuationLease: false,
 			HasActiveConvergence: false,
 			HasLivingUntrackedPrimaryEnemy: false,
 			IsBlockedByCombatEndHook: false);
-	}
-
-	private static DeferredContinuationSnapshot DeferredSnapshot()
-	{
-		return new DeferredContinuationSnapshot(
-			IsExpectedCombat: true,
-			IsInProgress: true,
-			IsStarting: false,
-			HasPendingLoss: false,
-			HasLivingPlayer: true,
-			IsCompletionArmed: true,
-			IsLineageConverged: true);
 	}
 
 	private static void LoaderSelectionIsFailClosed()

@@ -7,6 +7,7 @@ internal enum ErasureAdmissionKind
 	CombatId,
 	MonsterInstance,
 	CausalToken,
+	TerminalTransaction,
 	PreexistingCollision,
 	LimitReached
 }
@@ -39,6 +40,9 @@ internal readonly record struct ErasureAdmission(
 	ErasureLineageMember? Member)
 {
 	public bool IsMember => Member != null;
+
+	public bool RequiresExactConvergence =>
+		IsMember || Kind == ErasureAdmissionKind.LimitReached;
 }
 
 internal sealed class ErasureLineageMember
@@ -97,9 +101,12 @@ internal sealed partial class ErasureLineage
 	public ErasureLineage(
 		long operationSequence,
 		ErasureEvidence root,
-		IEnumerable<ErasureEvidence> preexisting)
+		IEnumerable<ErasureEvidence> preexisting,
+		bool wasSoleLivingPrimaryEnemyAtStart = false)
 	{
 		OperationSequence = operationSequence;
+		WasSoleLivingPrimaryEnemyAtStart =
+			wasSoleLivingPrimaryEnemyAtStart;
 		_mutationJournal = new ErasureMutationJournal(operationSequence);
 
 		foreach (ErasureEvidence evidence in preexisting)
@@ -115,6 +122,8 @@ internal sealed partial class ErasureLineage
 	}
 
 	public long OperationSequence { get; }
+
+	public bool WasSoleLivingPrimaryEnemyAtStart { get; }
 
 	public ErasureLineageMember Root { get; }
 
@@ -221,8 +230,7 @@ internal sealed partial class ErasureLineage
 	public ErasureAdmission ObserveCausal(
 		ErasureEvidence candidate,
 		ErasureContinuationToken token,
-		ErasureMutationKind mutationKind = ErasureMutationKind.Observed,
-		bool usedGenericSlotAllocator = false)
+		ErasureMutationKind mutationKind = ErasureMutationKind.Observed)
 	{
 		if (token.OperationSequence != OperationSequence
 			|| !_membersByOrdinal.TryGetValue(
@@ -240,22 +248,75 @@ internal sealed partial class ErasureLineage
 				token,
 				candidate.CreatureRef,
 				mutationKind,
-				usedGenericSlotAllocator,
 				strong.Kind);
 			return strong;
 		}
 
-		if (!candidate.IsEnemy || usedGenericSlotAllocator)
+		if (!candidate.IsEnemy)
 		{
 			_mutationJournal.Record(
 				token,
 				candidate.CreatureRef,
 				mutationKind,
-				usedGenericSlotAllocator,
 				ErasureAdmissionKind.None);
 			return new ErasureAdmission(ErasureAdmissionKind.None, null);
 		}
 
+		return AdmitProvenContinuation(
+			candidate,
+			parent,
+			token,
+			mutationKind,
+			ErasureAdmissionKind.CausalToken);
+	}
+
+	public ErasureAdmission ObserveTerminalSuccessor(
+		ErasureEvidence candidate,
+		ErasureMutationKind mutationKind)
+	{
+		ErasureLineageMember parent = _members.Values
+			.OrderByDescending(member => member.AdmissionOrdinal)
+			.First();
+		ErasureContinuationToken token = CreateContinuationToken(parent);
+		ErasureAdmission strong = TryAdmitStrong(candidate);
+		if (strong.IsMember
+			|| strong.Kind == ErasureAdmissionKind.PreexistingCollision)
+		{
+			_mutationJournal.Record(
+				token,
+				candidate.CreatureRef,
+				mutationKind,
+				strong.Kind);
+			return strong;
+		}
+
+		if (!WasSoleLivingPrimaryEnemyAtStart
+			|| !candidate.IsEnemy
+			|| !candidate.IsPrimary)
+		{
+			_mutationJournal.Record(
+				token,
+				candidate.CreatureRef,
+				mutationKind,
+				ErasureAdmissionKind.None);
+			return new ErasureAdmission(ErasureAdmissionKind.None, null);
+		}
+
+		return AdmitProvenContinuation(
+			candidate,
+			parent,
+			token,
+			mutationKind,
+			ErasureAdmissionKind.TerminalTransaction);
+	}
+
+	private ErasureAdmission AdmitProvenContinuation(
+		ErasureEvidence candidate,
+		ErasureLineageMember parent,
+		ErasureContinuationToken token,
+		ErasureMutationKind mutationKind,
+		ErasureAdmissionKind admissionKind)
+	{
 		if (parent.Generation >= MaximumGeneration
 			|| (!_continuationClaims.Contains(candidate.CreatureRef)
 				&& _continuationClaims.Count >= MaximumContinuationClaims))
@@ -264,7 +325,6 @@ internal sealed partial class ErasureLineage
 				token,
 				candidate.CreatureRef,
 				mutationKind,
-				usedGenericSlotAllocator,
 				ErasureAdmissionKind.LimitReached);
 			return new ErasureAdmission(
 				ErasureAdmissionKind.LimitReached,
@@ -275,12 +335,11 @@ internal sealed partial class ErasureLineage
 		ErasureAdmission admission = AdmitFromParent(
 			candidate,
 			parent,
-			ErasureAdmissionKind.CausalToken);
+			admissionKind);
 		_mutationJournal.Record(
 			token,
 			candidate.CreatureRef,
 			mutationKind,
-			usedGenericSlotAllocator,
 			admission.Kind);
 		return admission;
 	}

@@ -5,7 +5,6 @@ internal readonly record struct ErasureMutationRecord(
 	ErasureContinuationToken Token,
 	object CandidateRef,
 	ErasureMutationKind Kind,
-	bool UsedGenericSlotAllocator,
 	ErasureAdmissionKind Admission);
 
 internal sealed class ErasureMutationJournal
@@ -29,7 +28,6 @@ internal sealed class ErasureMutationJournal
 		ErasureContinuationToken token,
 		object candidateRef,
 		ErasureMutationKind kind,
-		bool usedGenericSlotAllocator,
 		ErasureAdmissionKind admission)
 	{
 		if (token.OperationSequence != _operationSequence)
@@ -50,7 +48,6 @@ internal sealed class ErasureMutationJournal
 			token,
 			candidateRef,
 			kind,
-			usedGenericSlotAllocator,
 			admission));
 	}
 }

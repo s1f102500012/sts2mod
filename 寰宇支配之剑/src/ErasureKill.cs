@@ -11,13 +11,12 @@ using MegaCrit.Sts2.Core.Nodes.Rooms;
 
 namespace UniversalDominionSword;
 
+[ErasureBoundary(
+	ErasurePatchContract.SelectedLineageScope,
+	ErasurePatchContract.IdentityAdmission)]
 internal static partial class ErasureKill
 {
 	private const int MaximumSettlementPasses = 8;
-	private const int MaximumStabilizationFrames = 128;
-	private const int StableFramesToCloseContinuationLease = 8;
-	private const int ErasurePatchPriority = 10_000;
-
 	private static readonly FieldInfo PowersField = RequireField(
 		typeof(Creature),
 		"_powers");
@@ -78,20 +77,15 @@ internal static partial class ErasureKill
 	private static readonly ConditionalWeakTable<Creature, LineageBinding>
 		Bindings = new();
 
-	private static readonly ConditionalWeakTable<Creature, GenericSlotOrigin>
-		GenericSlotOrigins = new();
-
 	private static readonly IEqualityComparer<Creature>
 		CreatureReferenceComparer = ReferenceEqualityComparer.Instance;
 
 	private static readonly AsyncLocal<CausalScope?> ActiveScope = new();
+	private static readonly AsyncLocal<bool> IsSchedulingCausalCallback = new();
 
-	private static readonly AsyncLocal<SlotAllocationTicket?>
-		ActiveSlotAllocation = new();
-
-	private static readonly AsyncLocal<bool>
-		IsSchedulingDeferredContinuation = new();
-
+	[ErasureBoundary(
+		ErasurePatchContract.SelectedLineageScope,
+		ErasurePatchContract.CanonicalFirst)]
 	public static async Task Execute(
 		Creature target,
 		ICombatState combatState)
@@ -124,7 +118,13 @@ internal static partial class ErasureKill
 			ErasureLineage lineage = new(
 				++ledger.NextOperationSequence,
 				evidence,
-				preexisting);
+				preexisting,
+				wasSoleLivingPrimaryEnemyAtStart:
+					target.IsPrimaryEnemy
+					&& !combatState.Enemies.Any(enemy =>
+						!ReferenceEquals(enemy, target)
+						&& enemy.IsPrimaryEnemy
+						&& (ReadRawHp(enemy) > 0 || enemy.IsAlive)));
 			ledger.Lineages.Add(lineage);
 			root = BindMember(
 				ledger,

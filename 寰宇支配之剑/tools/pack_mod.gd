@@ -82,8 +82,8 @@ func _add_asset_tree(
 		var relative_path := source_path.trim_prefix(asset_root + "/")
 		var packed_path := "res://%s/%s" % [mod_id, relative_path]
 		var err := packer.add_file(packed_path, source_path)
-			if err != OK:
-				push_error("add_file failed for %s -> %s: %s" % [source_path, packed_path, err])
-				return err
+		if err != OK:
+			push_error("add_file failed for %s -> %s: %s" % [source_path, packed_path, err])
+			return err
 
-		return OK
+	return OK

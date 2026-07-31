@@ -12,7 +12,6 @@ internal enum ErasureCompletionDecision
 	PersistenceLeaseOpen,
 	CompletionNotArmed,
 	UncertifiedLineage,
-	ContinuationLeaseOpen,
 	ActiveConvergence,
 	LivingPrimaryEnemy,
 	CombatEndHookBlocked
@@ -28,34 +27,12 @@ internal readonly record struct ErasureCompletionSnapshot(
 	bool HasOpenPersistenceLease,
 	bool IsCompletionArmed,
 	bool AreAllLineagesCertified,
-	bool HasOpenContinuationLease,
 	bool HasActiveConvergence,
 	bool HasLivingUntrackedPrimaryEnemy,
 	bool IsBlockedByCombatEndHook);
 
-internal readonly record struct DeferredContinuationSnapshot(
-	bool IsExpectedCombat,
-	bool IsInProgress,
-	bool IsStarting,
-	bool HasPendingLoss,
-	bool HasLivingPlayer,
-	bool IsCompletionArmed,
-	bool IsLineageConverged);
-
 internal static class ErasureCompletionPolicy
 {
-	public static bool ShouldSuppressDeferredContinuation(
-		in DeferredContinuationSnapshot snapshot)
-	{
-		return snapshot.IsExpectedCombat
-			&& snapshot.IsInProgress
-			&& !snapshot.IsStarting
-			&& !snapshot.HasPendingLoss
-			&& snapshot.HasLivingPlayer
-			&& snapshot.IsCompletionArmed
-			&& snapshot.IsLineageConverged;
-	}
-
 	public static bool CanEndNormally(in ErasureCompletionSnapshot snapshot)
 	{
 		return Evaluate(snapshot) == ErasureCompletionDecision.AllowNormalEnd;
@@ -107,11 +84,6 @@ internal static class ErasureCompletionPolicy
 		if (!snapshot.AreAllLineagesCertified)
 		{
 			return ErasureCompletionDecision.UncertifiedLineage;
-		}
-
-		if (snapshot.HasOpenContinuationLease)
-		{
-			return ErasureCompletionDecision.ContinuationLeaseOpen;
 		}
 
 		if (snapshot.HasActiveConvergence)

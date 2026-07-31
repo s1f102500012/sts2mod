@@ -14,8 +14,18 @@ namespace UniversalDominionSword;
 
 internal static partial class ErasureKill
 {
+	[ErasureBoundary(
+		ErasurePatchContract.ThirdPartyInteroperability,
+		ErasurePatchContract.FailClosedCompatibility)]
 	public static void Install(Harmony harmony)
 	{
+		PatchRequired(
+			harmony,
+			GetKillStateMachineMoveNext(),
+			transpilerName: nameof(ErasureDeathPipelineTranspiler));
+		PatchCanonicalDeathEntry(harmony);
+		PatchCanonicalSettlementEntry(harmony);
+
 		PatchRequired(
 			harmony,
 			AccessTools.Method(
@@ -27,14 +37,6 @@ internal static partial class ErasureKill
 		PatchRequired(
 			harmony,
 			AccessTools.Method(
-				typeof(EncounterModel),
-				nameof(EncounterModel.GetNextSlot),
-				[typeof(ICombatState)]),
-			postfixName: nameof(GetNextSlotPostfix));
-
-		PatchRequired(
-			harmony,
-			AccessTools.Method(
 				typeof(CombatState),
 				nameof(CombatState.CreateCreature),
 				[
@@ -42,7 +44,6 @@ internal static partial class ErasureKill
 					typeof(CombatSide),
 					typeof(string)
 				]),
-			prefixName: nameof(CreateCreaturePrefix),
 			postfixName: nameof(CreateCreaturePostfix));
 
 		PatchRequired(
@@ -60,8 +61,7 @@ internal static partial class ErasureKill
 				"AttachCreature",
 				[typeof(Creature)]),
 			postfixName: nameof(CombatStateAttachPostfix),
-			finalizerName: nameof(CombatStateAttachFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(CombatStateAttachFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -69,8 +69,7 @@ internal static partial class ErasureKill
 				typeof(Creature),
 				nameof(Creature.CombatState)),
 			postfixName: nameof(CombatStateSetterPostfix),
-			finalizerName: nameof(CombatStateSetterFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(CombatStateSetterFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -90,8 +89,7 @@ internal static partial class ErasureKill
 				[typeof(Creature)]),
 			prefixName: nameof(CombatStateAddPrefix),
 			postfixName: nameof(AddLayerPostfix),
-			finalizerName: nameof(AddLayerFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(AddLayerFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -101,8 +99,7 @@ internal static partial class ErasureKill
 				[typeof(Creature)]),
 			prefixName: nameof(CombatStateEscapePrefix),
 			postfixName: nameof(CombatStateEscapePostfix),
-			finalizerName: nameof(CombatStateEscapeFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(CombatStateEscapeFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -112,8 +109,7 @@ internal static partial class ErasureKill
 				[typeof(Creature)]),
 			prefixName: nameof(AddLayerPrefix),
 			postfixName: nameof(AddLayerPostfix),
-			finalizerName: nameof(AddLayerFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(AddLayerFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -123,8 +119,7 @@ internal static partial class ErasureKill
 				[typeof(Creature)]),
 			prefixName: nameof(AddLayerPrefix),
 			postfixName: nameof(AddLayerPostfix),
-			finalizerName: nameof(AddLayerFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(AddLayerFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -134,36 +129,7 @@ internal static partial class ErasureKill
 				[typeof(Creature)]),
 			prefixName: nameof(AfterAddedPrefix),
 			postfixName: nameof(AfterAddedPostfix),
-			finalizerName: nameof(AfterAddedFinalizer),
-			finalizerPriority: Priority.Last);
-
-		PatchRequired(
-			harmony,
-			AccessTools.Method(
-				typeof(Hook),
-				nameof(Hook.BeforeDeath)),
-			prefixName: nameof(DirectContinuationTaskPrefix),
-			finalizerName: nameof(DirectContinuationTaskFinalizer),
-			finalizerPriority: Priority.Last);
-
-		PatchRequired(
-			harmony,
-			AccessTools.Method(
-				typeof(Hook),
-				nameof(Hook.AfterDeath)),
-			prefixName: nameof(DirectContinuationTaskPrefix),
-			finalizerName: nameof(DirectContinuationTaskFinalizer),
-			finalizerPriority: Priority.Last);
-
-		PatchRequired(
-			harmony,
-			AccessTools.Method(
-				typeof(Creature),
-				nameof(Creature.InvokeDiedEvent),
-				Type.EmptyTypes),
-			prefixName: nameof(DirectContinuationEventPrefix),
-			finalizerName: nameof(DirectContinuationEventFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(AfterAddedFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -173,8 +139,7 @@ internal static partial class ErasureKill
 				[typeof(ICombatState), typeof(Creature)]),
 			prefixName: nameof(HookAfterAddedPrefix),
 			postfixName: nameof(AfterAddedPostfix),
-			finalizerName: nameof(AfterAddedFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(AfterAddedFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -184,8 +149,7 @@ internal static partial class ErasureKill
 				[typeof(decimal)]),
 			prefixName: nameof(BlockHpMutationPrefix),
 			postfixName: nameof(BlockHpMutationPostfix),
-			finalizerName: nameof(BlockHpMutationFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(BlockHpMutationFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -195,8 +159,7 @@ internal static partial class ErasureKill
 				[typeof(decimal)]),
 			prefixName: nameof(BlockHpMutationPrefix),
 			postfixName: nameof(BlockHpMutationPostfix),
-			finalizerName: nameof(BlockHpMutationFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(BlockHpMutationFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -205,8 +168,7 @@ internal static partial class ErasureKill
 				nameof(Creature.CurrentHp)),
 			prefixName: nameof(BlockHpMutationPrefix),
 			postfixName: nameof(BlockHpMutationPostfix),
-			finalizerName: nameof(BlockHpMutationFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(BlockHpMutationFinalizer));
 
 		PatchRequired(
 			harmony,
@@ -229,8 +191,7 @@ internal static partial class ErasureKill
 				nameof(MonsterModel.PerformMove)),
 			prefixName: nameof(PerformMovePrefix),
 			postfixName: nameof(PerformMovePostfix),
-			finalizerName: nameof(PerformMoveFinalizer),
-			finalizerPriority: Priority.Last);
+			finalizerName: nameof(PerformMoveFinalizer));
 
 		foreach (MethodInfo checkWinMethod in GetCheckWinMethods())
 		{
@@ -238,23 +199,13 @@ internal static partial class ErasureKill
 				harmony,
 				checkWinMethod,
 				prefixName: nameof(CheckWinCapturePrefix),
-				finalizerName: nameof(CheckWinConditionFinalizer),
-				prefixPriority: Priority.Last,
-				finalizerPriority: Priority.Last);
+				finalizerName: nameof(CheckWinConditionFinalizer));
 			PatchRequired(
 				harmony,
 				checkWinMethod,
 				prefixName: nameof(CheckWinGuardPrefix));
 		}
 
-		foreach (MethodInfo endCombatMethod in GetEndCombatMethods())
-		{
-			PatchRequired(
-				harmony,
-				endCombatMethod,
-				finalizerName: nameof(EndCombatFinalizer),
-				finalizerPriority: Priority.Last);
-		}
 	}
 
 	private static bool DeferredCallablePrefix(
@@ -262,157 +213,138 @@ internal static partial class ErasureKill
 		Variant[] args)
 	{
 		CausalScope? scope = ActiveScope.Value;
-		if (scope == null || IsSchedulingDeferredContinuation.Value)
+		if (scope == null || IsSchedulingCausalCallback.Value)
 		{
 			return true;
 		}
 
+		Callable original = __instance;
 		Variant[] capturedArgs = args.Length == 0
 			? []
 			: args.ToArray();
-		Callable captured = __instance;
 		Callable continuation = Callable.From(() =>
-			InvokeDeferredContinuation(captured, capturedArgs, scope));
-
-		lock (scope.Ledger.Gate)
-		{
-			scope.Lineage.AcquireContinuationLease();
-		}
-
-		IsSchedulingDeferredContinuation.Value = true;
+			InvokeCausalCallback(original, capturedArgs, scope));
+		IsSchedulingCausalCallback.Value = true;
 		try
 		{
 			continuation.CallDeferred();
 		}
-		catch
-		{
-			ReleaseContinuationLease(scope);
-			throw;
-		}
 		finally
 		{
-			IsSchedulingDeferredContinuation.Value = false;
+			IsSchedulingCausalCallback.Value = false;
 		}
 		return false;
 	}
 
-	private static void InvokeDeferredContinuation(
+	private static void InvokeCausalCallback(
 		Callable callable,
 		Variant[] args,
 		CausalScope scope)
 	{
-		if (ShouldSuppressDeferredContinuation(scope))
+		if (!ShouldExecuteCausalCallback(scope))
 		{
-			ReleaseContinuationLease(scope);
-			if (scope.Parent.Evidence.CreatureRef is Creature parent)
-			{
-				LineageBinding binding = BindMember(
-					scope.Ledger,
-					scope.Lineage,
-					scope.Parent,
-					parent);
-				ScheduleRestabilization(binding);
-			}
 			return;
 		}
 
 		CausalScope? previous = ActiveScope.Value;
+		bool wasScheduling = IsSchedulingCausalCallback.Value;
 		ActiveScope.Value = scope;
+		IsSchedulingCausalCallback.Value = false;
 		try
 		{
-			callable.Call(args);
+			try
+			{
+				callable.Call(args);
+			}
+			catch (InvalidOperationException exception)
+				when (IsUnsupportedTaskReturnConversion(exception))
+			{
+			}
 		}
 		finally
 		{
+			IsSchedulingCausalCallback.Value = wasScheduling;
 			ActiveScope.Value = previous;
-			ReleaseContinuationLease(scope);
 		}
 	}
 
-	private static bool ShouldSuppressDeferredContinuation(
-		CausalScope scope)
+	private static bool ShouldExecuteCausalCallback(CausalScope scope)
 	{
+		CombatLedger ledger = scope.Ledger;
 		ManagerCombatSnapshot managerState = ReadManagerSnapshot(
 			CombatManager.Instance,
 			invocationTurnState: null);
-		bool completionArmed;
-		ErasureLineageMember[] members;
-		lock (scope.Ledger.Gate)
+		bool terminalSealed;
+		bool completionRunning;
+		bool lineageCertified;
+		lock (ledger.Gate)
 		{
-			completionArmed = scope.Ledger.CompletionArmed;
-			members = scope.Lineage.Members.ToArray();
+			terminalSealed = ledger.TerminalSealed;
+			completionRunning = ledger.CompletionDisposition
+				== CompletionDisposition.Running;
+			lineageCertified = scope.Lineage.TryGetCompletionCertificate(
+				out _);
 		}
 
-		bool lineageConverged = members.All(member =>
-			member.Evidence.CreatureRef is Creature creature
-			&& ReadLayerState(scope.Ledger, creature).IsConverged);
-		bool hasLivingPlayer = scope.Ledger.CombatState.Players.Any(
-			player => ReadRawHp(player.Creature) > 0
-				|| player.Creature.IsAlive);
-		DeferredContinuationSnapshot snapshot = new(
+		ErasureDeferredCallbackSnapshot snapshot = new(
+			HasTrackedScope: true,
 			IsExpectedCombat:
 				managerState.IsCurrentInvocation
-				&& ReferenceEquals(
-					managerState.CombatState,
-					scope.Ledger.CombatState)
-				&& (scope.Ledger.CombatEpoch == null
-					|| ReferenceEquals(
-						managerState.TurnState,
-						scope.Ledger.CombatEpoch)),
+					&& ReferenceEquals(
+						managerState.CombatState,
+						ledger.CombatState)
+					&& (ledger.CombatEpoch == null
+						|| ReferenceEquals(
+							managerState.TurnState,
+							ledger.CombatEpoch)),
 			IsInProgress: managerState.IsInProgress,
-			IsStarting: managerState.IsStarting,
-			HasPendingLoss: managerState.HasPendingLoss,
-			HasLivingPlayer: hasLivingPlayer,
-			IsCompletionArmed: completionArmed,
-			IsLineageConverged: lineageConverged);
-		return ErasureCompletionPolicy
-			.ShouldSuppressDeferredContinuation(snapshot);
+			IsTerminalSealed: terminalSealed,
+			IsCompletionFlightRunning: completionRunning,
+			IsLineageCertified: lineageCertified);
+		ErasureDeferredCallbackDecision decision =
+			ErasureDeferredCallbackPolicy.Evaluate(snapshot);
+		if (ErasureDeferredCallbackPolicy.ShouldExecute(snapshot))
+		{
+			return true;
+		}
+
+		lock (ledger.Gate)
+		{
+			if (ledger.LoggedDiscardedDeferredCallback)
+			{
+				return false;
+			}
+			ledger.LoggedDiscardedDeferredCallback = true;
+		}
+		Log.Info(
+			$"[{ModInfo.Id}] Discarded a deferred callback from completed " +
+			$"erasure operation {scope.Lineage.OperationSequence}; " +
+			$"reason={decision}.");
+		return false;
 	}
 
-	private static void GetNextSlotPostfix(
-		ICombatState combatState,
-		string? __result)
+	private static bool IsUnsupportedTaskReturnConversion(
+		InvalidOperationException exception)
 	{
-		ActiveSlotAllocation.Value = string.IsNullOrEmpty(__result)
-			? null
-			: new SlotAllocationTicket(combatState, __result);
-	}
-
-	private static void CreateCreaturePrefix(
-		CombatState __instance,
-		object[] __args,
-		out SlotAllocationTicket? __state)
-	{
-		SlotAllocationTicket? ticket = ActiveSlotAllocation.Value;
-		ActiveSlotAllocation.Value = null;
-		string? requestedSlot = __args.Length >= 3
-			? __args[2] as string
-			: null;
-		__state = ticket != null
-			&& ReferenceEquals(ticket.CombatState, __instance)
-			&& string.Equals(
-				ticket.SlotName,
-				requestedSlot,
-				StringComparison.Ordinal)
-			? ticket
-			: null;
+		return exception.Message.Contains(
+			"not supported for conversion to/from Variant",
+			StringComparison.Ordinal)
+			&& exception.Message.Contains(
+				"System.Threading.Tasks.Task",
+				StringComparison.Ordinal);
 	}
 
 	private static void CreateCreaturePostfix(
 		CombatState __instance,
-		SlotAllocationTicket? __state,
 		Creature? __result)
 	{
 		if (__result == null)
 		{
 			return;
 		}
-
-		if (__state != null)
+		if (TryQuarantineTerminalIngress(__instance, __result))
 		{
-			GenericSlotOrigins.GetValue(
-				__result,
-				_ => GenericSlotOrigin.Instance);
+			return;
 		}
 
 		if (TryTrackCandidate(
@@ -425,125 +357,15 @@ internal static partial class ErasureKill
 		}
 	}
 
-	private static void DirectContinuationTaskPrefix(
-		ICombatState combatState,
-		Creature creature,
-		out DirectCausalInvocation __state)
-	{
-		__state = BeginDirectCausalInvocation(combatState, creature);
-	}
-
-	private static Exception? DirectContinuationTaskFinalizer(
-		ref Task? __result,
-		DirectCausalInvocation __state,
-		Exception? __exception)
-	{
-		if (!__state.WasEntered)
-		{
-			return __exception;
-		}
-
-		ActiveScope.Value = __state.Previous;
-		if (__state.Scope == null)
-		{
-			return __exception;
-		}
-
-		if (__result == null)
-		{
-			ReleaseContinuationLease(__state.Scope);
-		}
-		else
-		{
-			__result = CloseDirectCausalScopeAfter(
-				__result,
-				__state.Scope);
-		}
-		return __exception;
-	}
-
-	private static void DirectContinuationEventPrefix(
-		Creature __instance,
-		out DirectCausalInvocation __state)
-	{
-		__state = BeginDirectCausalInvocation(
-			ReadAttachedCombat(__instance),
-			__instance);
-	}
-
-	private static Exception? DirectContinuationEventFinalizer(
-		DirectCausalInvocation __state,
-		Exception? __exception)
-	{
-		if (!__state.WasEntered)
-		{
-			return __exception;
-		}
-
-		if (__state.Scope != null)
-		{
-			ReleaseContinuationLease(__state.Scope);
-		}
-		ActiveScope.Value = __state.Previous;
-		return __exception;
-	}
-
-	private static DirectCausalInvocation BeginDirectCausalInvocation(
-		ICombatState? combatState,
-		Creature source)
-	{
-		CausalScope? previous = ActiveScope.Value;
-		CausalScope? scope = null;
-		if (TryGetBinding(source, out LineageBinding? binding)
-			&& (combatState == null
-				|| ReferenceEquals(
-					combatState,
-					binding.Ledger.CombatState)))
-		{
-			lock (binding.Ledger.Gate)
-			{
-				binding.Lineage.AcquireContinuationLease();
-			}
-			scope = new CausalScope(
-				binding.Ledger,
-				binding.Lineage,
-				binding.Member);
-		}
-
-		ActiveScope.Value = scope;
-		return new DirectCausalInvocation(
-			WasEntered: true,
-			previous,
-			scope);
-	}
-
-	private static async Task CloseDirectCausalScopeAfter(
-		Task original,
-		CausalScope scope)
-	{
-		try
-		{
-			await original;
-		}
-		finally
-		{
-			ReleaseContinuationLease(scope);
-		}
-	}
-
-	private static void ReleaseContinuationLease(CausalScope scope)
-	{
-		lock (scope.Ledger.Gate)
-		{
-			scope.Lineage.ReleaseContinuationLease();
-		}
-	}
-
 	private static void NCreatureCreatePostfix(
 		Creature entity,
 		NCreature? __result)
 	{
 		if (__result == null)
+		{
+			return;
+		}
+		if (TryQuarantineTerminalNode(entity, __result))
 		{
 			return;
 		}
@@ -566,6 +388,10 @@ internal static partial class ErasureKill
 		CombatState __instance,
 		Creature creature)
 	{
+		if (TryQuarantineTerminalIngress(__instance, creature))
+		{
+			return;
+		}
 		if (TryTrackCandidate(
 			__instance,
 			creature,
@@ -588,6 +414,12 @@ internal static partial class ErasureKill
 
 	private static void CombatStateSetterPostfix(Creature __instance)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(__instance),
+			__instance))
+		{
+			return;
+		}
 		if (TryGetBinding(__instance, out LineageBinding? binding))
 		{
 			ConvergeMember(binding);
@@ -607,6 +439,13 @@ internal static partial class ErasureKill
 		Creature creature,
 		ref Task __result)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(creature),
+			creature))
+		{
+			__result = CreateTerminalIngressCancellation();
+			return false;
+		}
 		if (!TryTrackCandidate(
 			ReadAttachedCombat(creature),
 			creature,
@@ -626,6 +465,13 @@ internal static partial class ErasureKill
 		Creature creature,
 		ref Task __result)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(creature),
+			creature))
+		{
+			__result = CreateTerminalIngressCancellation();
+			return;
+		}
 		if (!TryTrackCandidate(
 			ReadAttachedCombat(creature),
 			creature,
@@ -645,6 +491,13 @@ internal static partial class ErasureKill
 		ref Task __result,
 		Exception? __exception)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(creature),
+			creature))
+		{
+			__result = CreateTerminalIngressCancellation();
+			return null;
+		}
 		if (!TryGetBinding(creature, out LineageBinding? binding))
 		{
 			return __exception;
@@ -667,6 +520,10 @@ internal static partial class ErasureKill
 		CombatState __instance,
 		Creature creature)
 	{
+		if (TryQuarantineTerminalIngress(__instance, creature))
+		{
+			return false;
+		}
 		if (!TryTrackCandidate(
 			__instance,
 			creature,
@@ -685,6 +542,10 @@ internal static partial class ErasureKill
 		CombatState __instance,
 		Creature creature)
 	{
+		if (TryQuarantineTerminalIngress(__instance, creature))
+		{
+			return false;
+		}
 		if (!TryTrackCandidate(
 			__instance,
 			creature,
@@ -725,6 +586,12 @@ internal static partial class ErasureKill
 
 	private static bool AddLayerPrefix(Creature creature)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(creature),
+			creature))
+		{
+			return false;
+		}
 		if (!TryTrackCandidate(
 			ReadAttachedCombat(creature),
 			creature,
@@ -741,6 +608,12 @@ internal static partial class ErasureKill
 
 	private static void AddLayerPostfix(Creature creature)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(creature),
+			creature))
+		{
+			return;
+		}
 		if (TryTrackCandidate(
 			ReadAttachedCombat(creature),
 			creature,
@@ -764,6 +637,13 @@ internal static partial class ErasureKill
 		Creature creature,
 		ref Task __result)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(creature),
+			creature))
+		{
+			__result = CreateTerminalIngressCancellation();
+			return false;
+		}
 		if (!TryTrackCandidate(
 			ReadAttachedCombat(creature),
 			creature,
@@ -784,6 +664,11 @@ internal static partial class ErasureKill
 		Creature creature,
 		ref Task __result)
 	{
+		if (TryQuarantineTerminalIngress(combatState, creature))
+		{
+			__result = CreateTerminalIngressCancellation();
+			return false;
+		}
 		if (!TryTrackCandidate(
 			combatState,
 			creature,
@@ -803,6 +688,13 @@ internal static partial class ErasureKill
 		Creature creature,
 		ref Task __result)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(creature),
+			creature))
+		{
+			__result = CreateTerminalIngressCancellation();
+			return;
+		}
 		if (!TryTrackCandidate(
 			ReadAttachedCombat(creature),
 			creature,
@@ -822,6 +714,13 @@ internal static partial class ErasureKill
 		ref Task __result,
 		Exception? __exception)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(creature),
+			creature))
+		{
+			__result = CreateTerminalIngressCancellation();
+			return null;
+		}
 		if (!TryGetBinding(creature, out LineageBinding? binding))
 		{
 			return __exception;
@@ -842,7 +741,7 @@ internal static partial class ErasureKill
 
 	private static bool BlockHpMutationPrefix(Creature __instance)
 	{
-		if (!TryGetBinding(__instance, out _))
+		if (!IsErasedOrTerminalIngress(__instance))
 		{
 			return true;
 		}
@@ -853,7 +752,7 @@ internal static partial class ErasureKill
 
 	private static void BlockHpMutationPostfix(Creature __instance)
 	{
-		if (TryGetBinding(__instance, out _))
+		if (IsErasedOrTerminalIngress(__instance))
 		{
 			SetRawHpZero(__instance);
 		}
@@ -871,7 +770,7 @@ internal static partial class ErasureKill
 		Creature __instance,
 		ref bool __result)
 	{
-		if (TryGetBinding(__instance, out _))
+		if (IsErasedOrTerminalIngress(__instance))
 		{
 			__result = false;
 		}
@@ -881,7 +780,7 @@ internal static partial class ErasureKill
 		Creature __instance,
 		ref bool __result)
 	{
-		if (TryGetBinding(__instance, out _))
+		if (IsErasedOrTerminalIngress(__instance))
 		{
 			__result = true;
 		}
@@ -988,14 +887,12 @@ internal static partial class ErasureKill
 		}
 		lock (ledger.Gate)
 		{
-			if (ledger.Lineages.Count == 0)
+			if (ledger.Lineages.Count == 0
+				|| ledger.ActiveTerminationCount == 0)
 			{
 				return true;
 			}
 		}
-
-		SettleLedger(ledger);
-		ScheduleUncertifiedLineages(ledger);
 		ManagerCombatSnapshot snapshot = ReadManagerSnapshot(
 			__instance,
 			invocationTurnState);
@@ -1093,28 +990,6 @@ internal static partial class ErasureKill
 		}
 	}
 
-	private static Exception? EndCombatFinalizer(
-		MethodBase __originalMethod,
-		bool __runOriginal,
-		ref Task __result,
-		Exception? __exception)
-	{
-		EndCombatAttempt? attempt = ActiveEndCombatAttempt.Value;
-		if (attempt != null)
-		{
-			if (IsSettlementEndMethod(__originalMethod))
-			{
-				attempt.LeafObserved = true;
-				attempt.LeafOriginalRan |= __runOriginal;
-			}
-			if (!__runOriginal && __exception == null)
-			{
-				__result ??= Task.CompletedTask;
-			}
-		}
-		return __exception;
-	}
-
 	private static IReadOnlyList<MethodInfo> GetCheckWinMethods()
 	{
 		MethodInfo noArgument = AccessTools.Method(
@@ -1196,9 +1071,7 @@ internal static partial class ErasureKill
 		string? prefixName = null,
 		string? postfixName = null,
 		string? finalizerName = null,
-		int prefixPriority = ErasurePatchPriority,
-		int postfixPriority = ErasurePatchPriority,
-		int finalizerPriority = ErasurePatchPriority)
+		string? transpilerName = null)
 	{
 		if (original == null)
 		{
@@ -1208,25 +1081,67 @@ internal static partial class ErasureKill
 
 		harmony.Patch(
 			original,
-			prefix: CreateHarmonyMethod(prefixName, prefixPriority),
-			postfix: CreateHarmonyMethod(postfixName, postfixPriority),
-			finalizer: CreateHarmonyMethod(
-				finalizerName,
-				finalizerPriority));
+			prefix: CreateHarmonyMethod(prefixName),
+			postfix: CreateHarmonyMethod(postfixName),
+			transpiler: CreateHarmonyMethod(transpilerName),
+			finalizer: CreateHarmonyMethod(finalizerName));
 	}
 
-	private static HarmonyMethod? CreateHarmonyMethod(
-		string? methodName,
-		int priority)
+	private static HarmonyMethod? CreateHarmonyMethod(string? methodName)
 	{
 		if (methodName == null)
 		{
 			return null;
 		}
 
-		return new HarmonyMethod(typeof(ErasureKill), methodName)
+		return new HarmonyMethod(typeof(ErasureKill), methodName);
+	}
+
+	private static void PatchCanonicalDeathEntry(Harmony harmony)
+	{
+		PatchOriginalPrimitive(
+			harmony,
+			GetKillWithoutCheckingWinCondition(),
+			nameof(InvokeOriginalKillWithoutCheckingWinCondition));
+		PatchOriginalPrimitive(
+			harmony,
+			RequireMethod(
+				typeof(NCombatRoom),
+				nameof(NCombatRoom.RemoveCreatureNode),
+				[typeof(NCreature)]),
+			nameof(InvokeOriginalRemoveCreatureNode));
+		PatchOriginalPrimitive(
+			harmony,
+			RequireMethod(
+				typeof(CombatManager),
+				nameof(CombatManager.RemoveCreature),
+				[typeof(Creature)]),
+			nameof(InvokeOriginalCombatManagerRemoveCreature));
+		PatchOriginalPrimitive(
+			harmony,
+			RequireMethod(
+				typeof(CombatState),
+				nameof(CombatState.RemoveCreature),
+				[typeof(Creature), typeof(bool)]),
+			nameof(InvokeOriginalCombatStateRemoveCreature));
+	}
+
+	private static void PatchOriginalPrimitive(
+		Harmony harmony,
+		MethodInfo original,
+		string standinName)
+	{
+		MethodInfo? patched = harmony.CreateReversePatcher(
+				original,
+				new HarmonyMethod(typeof(ErasureKill), standinName))
+			.Patch(HarmonyReversePatchType.Original);
+		if (patched != null)
 		{
-			priority = priority
-		};
+			return;
+		}
+
+		throw new MissingMethodException(
+			$"The canonical primitive {original.DeclaringType?.Name}." +
+			$"{original.Name} could not be initialized.");
 	}
 }

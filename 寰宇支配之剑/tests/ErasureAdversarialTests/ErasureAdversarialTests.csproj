@@ -8,10 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+	<Compile Include="../../src/ErasurePatchContract.cs" Link="ErasurePatchContract.cs" />
     <Compile Include="../../src/ErasureCompletionPolicy.cs" Link="ErasureCompletionPolicy.cs" />
+	<Compile Include="../../src/ErasureDeferredCallbackPolicy.cs" Link="ErasureDeferredCallbackPolicy.cs" />
+	<Compile Include="../../src/ErasureTerminalIngressPolicy.cs" Link="ErasureTerminalIngressPolicy.cs" />
     <Compile Include="../../src/ErasureLineage.cs" Link="ErasureLineage.cs" />
     <Compile Include="../../src/ErasureLineage.Completion.cs" Link="ErasureLineage.Completion.cs" />
     <Compile Include="../../src/ErasureMutationJournal.cs" Link="ErasureMutationJournal.cs" />
+	<Compile Include="../../src/ErasureVisualExitPolicy.cs" Link="ErasureVisualExitPolicy.cs" />
     <Compile Include="../../loader/VariantSelectionPolicy.cs" Link="VariantSelectionPolicy.cs" />
   </ItemGroup>
 </Project>

@@ -1,4 +1,6 @@
 using HarmonyLib;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 
 namespace UniversalDominionSword.HarmonyTests;
@@ -8,10 +10,9 @@ internal static class Program
 	private const string HarmonyId =
 		"Natsuki.UniversalDominionSword.AdversarialTests";
 
-	private const int SubjectPatchPriority = 10_000;
+	private const int EarlierIndependentPatchPriority = Priority.First;
 
-	private const int EarlierIndependentPatchPriority =
-		SubjectPatchPriority + Priority.First;
+	private static MethodInfo? _isolatedSettlementInvoker;
 
 	public static async Task<int> Main()
 	{
@@ -19,6 +20,7 @@ internal static class Program
 		{
 			Harmony harmony = new(HarmonyId);
 			harmony.PatchAll(typeof(Program).Assembly);
+			InitializeIsolatedSettlement(harmony);
 
 			MethodGuardsCannotObserveRawConvergence();
 			AddPrefixPostfixFinalizerCombinationConverges();
@@ -33,9 +35,10 @@ internal static class Program
 			await ReentrantEndHookDoesNotAwaitItself();
 			await SkippedEndBodyCanRetry();
 			await IncompleteEndAttemptIsNotRepeated();
+			await IsolatedSettlementBypassesPermanentPrefix();
 			await OriginalExceptionIsNotSwallowed();
 
-			Console.WriteLine("14/14 adversarial Harmony tests passed.");
+			Console.WriteLine("15/15 adversarial Harmony tests passed.");
 			return 0;
 		}
 		catch (Exception exception)
@@ -78,7 +81,7 @@ internal static class Program
 
 		creature.Add();
 
-		Assert.Equal(0, GuardCounters.AddPrefix);
+		Assert.Equal(1, GuardCounters.AddPrefix);
 		Assert.Equal(1, GuardCounters.AddPostfix);
 		Assert.False(creature.Attached);
 		Assert.False(creature.NodePresent);
@@ -301,6 +304,74 @@ internal static class Program
 		Assert.Equal(1, FakeCompletionCoordinator.IndeterminateEnds);
 	}
 
+	private static async Task IsolatedSettlementBypassesPermanentPrefix()
+	{
+		PermanentSettlementBlocker.Enabled = true;
+		try
+		{
+			FakeIsolatedSettlementManager manager = new();
+
+			await manager.EndCombatInternal();
+			Assert.True(manager.RawInProgress);
+			Assert.Equal(0, manager.OriginalCalls);
+
+			await InvokeOriginalIsolatedSettlement(manager);
+			Assert.False(manager.RawInProgress);
+			Assert.Equal(1, manager.OriginalCalls);
+		}
+		finally
+		{
+			PermanentSettlementBlocker.Enabled = false;
+		}
+	}
+
+	private static void InitializeIsolatedSettlement(Harmony harmony)
+	{
+		MethodInfo original = AccessTools
+			.GetDeclaredMethods(typeof(FakeIsolatedSettlementManager))
+			.Single(method =>
+				method.Name
+					== nameof(FakeIsolatedSettlementManager.EndCombatInternal)
+				&& method.GetParameters().Length == 1);
+		Type epochType = original.GetParameters()[0].ParameterType;
+		AssemblyBuilder assembly = AssemblyBuilder.DefineDynamicAssembly(
+			new AssemblyName("DynamicSettlementTest"),
+			AssemblyBuilderAccess.Run);
+		TypeBuilder type = assembly
+			.DefineDynamicModule("DynamicSettlementTest")
+			.DefineType(
+				"DynamicSettlementStandin",
+				TypeAttributes.Class
+					| TypeAttributes.Abstract
+					| TypeAttributes.Sealed);
+		MethodBuilder builder = type.DefineMethod(
+			"InvokeOriginal",
+			MethodAttributes.Public | MethodAttributes.Static,
+			typeof(Task),
+			[typeof(FakeIsolatedSettlementManager), epochType]);
+		ILGenerator il = builder.GetILGenerator();
+		il.Emit(OpCodes.Newobj, typeof(NotSupportedException).GetConstructor(
+			Type.EmptyTypes)!);
+		il.Emit(OpCodes.Throw);
+		MethodInfo standin = type.CreateType()!.GetMethod("InvokeOriginal")!;
+		_isolatedSettlementInvoker = harmony.CreateReversePatcher(
+				original,
+				new HarmonyMethod(standin))
+			.Patch(HarmonyReversePatchType.Original)
+			?? standin;
+	}
+
+	private static Task InvokeOriginalIsolatedSettlement(
+		FakeIsolatedSettlementManager manager)
+	{
+		MethodInfo invoker = _isolatedSettlementInvoker
+			?? throw new InvalidOperationException(
+				"The isolated settlement primitive was not initialized.");
+		return invoker.Invoke(null, [manager, manager.Epoch]) as Task
+			?? throw new InvalidOperationException(
+				"The isolated settlement primitive returned no task.");
+	}
+
 	private static async Task OriginalExceptionIsNotSwallowed()
 	{
 		ResetCompletionScenario();
@@ -418,6 +489,64 @@ internal static class Program
 		}
 	}
 
+	private sealed class FakeIsolatedSettlementManager
+	{
+		private sealed class EpochState
+		{
+		}
+
+		private int _originalCalls;
+		private readonly EpochState _epoch = new();
+
+		public bool RawInProgress = true;
+
+		public int OriginalCalls => Volatile.Read(ref _originalCalls);
+
+		public object Epoch => _epoch;
+
+		public Task EndCombatInternal()
+		{
+			return EndCombatInternal(_epoch);
+		}
+
+		private Task EndCombatInternal(EpochState epoch)
+		{
+			_ = epoch;
+			Interlocked.Increment(ref _originalCalls);
+			RawInProgress = false;
+			return Task.CompletedTask;
+		}
+	}
+
+	[HarmonyPatch]
+	private static class PermanentSettlementBlocker
+	{
+		public static bool Enabled;
+
+		private static MethodBase TargetMethod()
+		{
+			return AccessTools
+				.GetDeclaredMethods(typeof(FakeIsolatedSettlementManager))
+				.Single(method =>
+					method.Name == nameof(
+						FakeIsolatedSettlementManager.EndCombatInternal)
+					&& method.GetParameters().Length == 1);
+		}
+
+		[HarmonyPrefix]
+		[HarmonyPriority(EarlierIndependentPatchPriority)]
+		private static bool Prefix(ref Task __result)
+		{
+			if (!Enabled)
+			{
+				return true;
+			}
+
+			__result = Task.CompletedTask;
+			return false;
+		}
+	}
+
 	private sealed class FakeAddProducer
 	{
 		private int _originalAddCalls;
@@ -531,7 +660,6 @@ internal static class Program
 		}
 
 		[HarmonyPrefix]
-		[HarmonyPriority(SubjectPatchPriority)]
 		private static bool Prefix(
 			FakeCreature creature,
 			ref Task? __result)
@@ -547,7 +675,6 @@ internal static class Program
 		}
 
 		[HarmonyPostfix]
-		[HarmonyPriority(Priority.Last)]
 		private static void Postfix(
 			FakeCreature creature,
 			ref Task? __result)
@@ -661,7 +788,6 @@ internal static class Program
 	private static class CompletionResultGuard
 	{
 		[HarmonyPrefix]
-		[HarmonyPriority(SubjectPatchPriority)]
 		private static void Prefix(
 			FakeCombatManager __instance,
 			out CompletionCapture __state)
@@ -671,7 +797,6 @@ internal static class Program
 		}
 
 		[HarmonyFinalizer]
-		[HarmonyPriority(Priority.Last)]
 		private static Exception? Finalizer(
 			FakeCombatManager __instance,
 			CompletionCapture? __state,
@@ -1066,14 +1191,12 @@ internal static class Program
 	private static class ErasureAddGuard
 	{
 		[HarmonyPrefix]
-		[HarmonyPriority(SubjectPatchPriority)]
 		private static bool Prefix(FakeCreature __instance)
 		{
 			return !__instance.Erased;
 		}
 
 		[HarmonyPostfix]
-		[HarmonyPriority(SubjectPatchPriority)]
 		private static void Postfix(FakeCreature __instance)
 		{
 			if (__instance.Erased)
@@ -1083,7 +1206,6 @@ internal static class Program
 		}
 
 		[HarmonyFinalizer]
-		[HarmonyPriority(SubjectPatchPriority)]
 		private static Exception? Finalizer(
 			FakeCreature __instance,
 			Exception? __exception)

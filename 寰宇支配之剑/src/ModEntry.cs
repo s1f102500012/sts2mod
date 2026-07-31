@@ -33,5 +33,8 @@ public static class ModEntry
 
 		_initialized = true;
 		Log.Info($"[{ModInfo.Id}] Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}. Neow fourth option, dynamic cosmic relic icon, and Erasure enabled.");
+		Log.Info(
+			$"[{ModInfo.Id}] Patch contract: " +
+			ErasurePatchContract.RuntimeSummary);
 	}
 }

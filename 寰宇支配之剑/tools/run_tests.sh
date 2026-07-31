@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="${0:A:h}"
 ROOT="${SCRIPT_DIR:h}"
 ERASURE_SOURCES=("$ROOT"/src/ErasureKill*.cs)
+PRODUCTION_SOURCES=("$ROOT"/src/*.cs)
 
 reject_fixed_pattern() {
 	local pattern="$1"
@@ -82,11 +83,27 @@ grep -Fq "render_static_cosmic_frame.py" "$ROOT/tools/generate_card_portrait.sh"
 grep -Fq "radial-gradient:'#35145f-#03000b'" "$ROOT/tools/generate_card_portrait.sh"
 
 grep -q '"author": "Natsuki"' "$ROOT/assets/UniversalDominionSword.json"
-grep -q '"version": "0.2.2"' "$ROOT/assets/UniversalDominionSword.json"
+grep -q '"version": "0.2.4"' "$ROOT/assets/UniversalDominionSword.json"
 grep -q '"min_game_version": "0.107.1"' "$ROOT/assets/UniversalDominionSword.json"
 grep -Fq '<AssemblyName>UniversalDominionSword.Loader</AssemblyName>' "$ROOT/loader/UniversalDominionSword.Loader.csproj"
 grep -Fq '<DebugType>none</DebugType>' "$ROOT/loader/UniversalDominionSword.Loader.csproj"
 grep -Fq '<DebugType>none</DebugType>' "$ROOT/src/UniversalDominionSword.csproj"
+grep -Fq 'Erasure.AuditContractVersion' "$ROOT/src/ErasurePatchContract.cs"
+grep -Fq 'Erasure.KnownRisk' "$ROOT/src/ErasurePatchContract.cs"
+grep -Fq 'ErasureBoundaryAttribute' "$ROOT/src/ErasurePatchContract.cs"
+grep -Fq 'ErasurePatchContract.RuntimeSummary' "$ROOT/src/ModEntry.cs"
+if grep -Eq '\.Unpatch(All)?[[:space:]]*\(' "${PRODUCTION_SOURCES[@]}"; then
+	print -u2 -r -- "Production source must not unpatch Harmony patches."
+	exit 1
+fi
+if grep -Eq '\.GetPatchInfo[[:space:]]*\(' "${PRODUCTION_SOURCES[@]}"; then
+	print -u2 -r -- "Production source must not enumerate third-party patches."
+	exit 1
+fi
+if grep -Eq 'Priority\.(First|Last|VeryHigh|VeryLow|High|Low)|(^|[^A-Za-z])(prefix|postfix|finalizer|transpiler)Priority:|(^|[^A-Za-z])(priority|before|after)[[:space:]]*=|Harmony(Priority|Before|After)' "${PRODUCTION_SOURCES[@]}"; then
+	print -u2 -r -- "Production source must not override Harmony priority."
+	exit 1
+fi
 grep -Fq '[ModInitializer(nameof(Initialize))]' "$ROOT/loader/LoaderBootstrap.cs"
 grep -Fq 'universal-dominion-sword-variants.manifest' "$ROOT/loader/LoaderBootstrap.cs"
 grep -Fq 'AssociateAssemblyWithMod' "$ROOT/loader/LoaderBootstrap.cs"
@@ -121,13 +138,42 @@ grep -Fq '[SavedProperty]' "$ROOT/src/UniversalDominionSwordCard.cs"
 grep -Fq 'TargetType.AnyEnemy' "$ROOT/src/UniversalDominionSwordCard.cs"
 grep -Fq 'deckVersion.IncreasePermanentCost()' "$ROOT/src/UniversalDominionSwordCard.cs"
 grep -Fq 'Owner.Character.AttackAnimDelay' "$ROOT/src/UniversalDominionSwordCard.cs"
-reject_fixed_pattern 'CreatureCmd.Kill' "${ERASURE_SOURCES[@]}"
+grep -Fq 'await InvokeOriginalKillWithoutCheckingWinCondition(' \
+	"$ROOT/src/ErasureKill.Stabilization.cs"
+grep -Fq 'CreateReversePatcher(' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'HarmonyReversePatchType.Original' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'PatchCanonicalSettlementEntry(harmony);' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'AssemblyBuilder.DefineDynamicAssembly(' \
+	"$ROOT/src/ErasureKill.SettlementPipeline.cs"
+grep -Fq 'Patch(HarmonyReversePatchType.Original)' \
+	"$ROOT/src/ErasureKill.SettlementPipeline.cs"
+grep -Fq 'nameof(RemoveCreatureNodeForErasure)' \
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
+grep -Fq 'nameof(CombatManagerRemoveCreatureForErasure)' \
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
+grep -Fq 'nameof(CombatStateRemoveCreatureForErasure)' \
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
+grep -Fq 'nameof(InvokeOriginalRemoveCreatureNode)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'nameof(InvokeOriginalCombatManagerRemoveCreature)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'nameof(InvokeOriginalCombatStateRemoveCreature)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+reject_fixed_pattern \
+	'await CreatureCmd.Kill(seed.Creature' \
+	"$ROOT/src/ErasureKill.Stabilization.cs"
 reject_fixed_pattern \
 	'CombatManager.Instance.RemoveCreature' \
 	"${ERASURE_SOURCES[@]}"
-reject_fixed_pattern '.RemoveCreatureNode(' "${ERASURE_SOURCES[@]}"
 reject_fixed_pattern '.RemoveCreature(creature)' "${ERASURE_SOURCES[@]}"
-grep -Fq 'ErasurePatchPriority = 10_000' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'ErasurePatchPriority' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'HarmonyPriority' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'prefixPriority:' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'postfixPriority:' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'finalizerPriority:' "${ERASURE_SOURCES[@]}"
 grep -Fq 'CurrentHpField.SetValue(creature, 0)' "${ERASURE_SOURCES[@]}"
 grep -Fq 'PowersField.GetValue(creature) is IList powers' "${ERASURE_SOURCES[@]}"
 grep -Fq 'CombatStateBackingField.SetValue(creature, null)' "${ERASURE_SOURCES[@]}"
@@ -154,41 +200,99 @@ grep -Fq 'nameof(MonsterModel.PerformMove)' "${ERASURE_SOURCES[@]}"
 grep -Fq 'UpdateCreatureNavigationMethod.Invoke(room, null)' "${ERASURE_SOURCES[@]}"
 grep -Fq 'node.QueueFreeSafely()' "${ERASURE_SOURCES[@]}"
 grep -Fq 'node.IsQueuedForDeletion()' "${ERASURE_SOURCES[@]}"
+grep -Fq 'ErasureVisualExitPolicy.ShouldPreserve(' \
+	"$ROOT/src/ErasureKill.Convergence.cs"
+grep -Fq 'EnsureCanonicalVisualExit(ledger, seed.Creature);' \
+	"$ROOT/src/ErasureKill.Stabilization.cs"
+grep -Fq 'ReserveCanonicalVisualExit(ledger, seed.Creature);' \
+	"$ROOT/src/ErasureKill.Stabilization.cs"
+grep -Fq 'node.StartDeathAnim(shouldRemove: true);' \
+	"$ROOT/src/ErasureKill.Convergence.cs"
+grep -Fq 'room.RemoveCreatureNode(node);' \
+	"$ROOT/src/ErasureKill.Convergence.cs"
+grep -Fq 'node.DeathAnimationTask is { IsCompleted: false }' \
+	"$ROOT/src/ErasureKill.Convergence.cs"
+grep -Fq 'public HashSet<NCreature> VisualExitNodes' \
+	"$ROOT/src/ErasureKill.Tracking.cs"
 grep -Fq 'ManagerCreaturesChangedField' "${ERASURE_SOURCES[@]}"
 grep -Fq 'InvokeHandlers(' "${ERASURE_SOURCES[@]}"
 grep -Fq 'ErasureLineage' "${ERASURE_SOURCES[@]}"
-grep -Fq 'StabilizeLineageAcrossFrames' "${ERASURE_SOURCES[@]}"
-grep -Fq 'StableFramesToCloseContinuationLease = 8' "${ERASURE_SOURCES[@]}"
-grep -Fq 'MaximumStabilizationFrames = 128' "${ERASURE_SOURCES[@]}"
-grep -Fq 'AcquireContinuationLease()' "${ERASURE_SOURCES[@]}"
-grep -Fq 'ReleaseContinuationLease()' "${ERASURE_SOURCES[@]}"
+grep -Fq 'RunTerminationTransaction' "${ERASURE_SOURCES[@]}"
+grep -Fq 'TryBeginCanonicalTermination()' "${ERASURE_SOURCES[@]}"
+grep -Fq 'RequestImmediateCombatCompletion' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'MaximumStabilizationFrames' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'StableFramesToCloseContinuationLease' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'AcquireContinuationLease()' "${ERASURE_SOURCES[@]}"
+reject_fixed_pattern 'ReleaseContinuationLease()' "${ERASURE_SOURCES[@]}"
 grep -Fq 'internal static partial class ErasureKill' "${ERASURE_SOURCES[@]}"
 grep -Fq 'Bindings.Remove(creature)' "${ERASURE_SOURCES[@]}"
 grep -Fq 'binding.Ledger.CombatState' "${ERASURE_SOURCES[@]}"
 grep -Fq 'PreexistingCollision' "$ROOT/src/ErasureLineage.cs"
 grep -Fq 'MaximumGeneration = 64' "$ROOT/src/ErasureLineage.cs"
 grep -Fq 'MaximumContinuationClaims = 256' "$ROOT/src/ErasureLineage.cs"
+grep -Fq 'Kind == ErasureAdmissionKind.LimitReached' \
+	"$ROOT/src/ErasureLineage.cs"
+grep -Fq 'IsCausalOverflow: true' \
+	"$ROOT/src/ErasureKill.Tracking.cs"
 grep -Fq 'ErasureContinuationToken' "$ROOT/src/ErasureLineage.cs"
 grep -Fq 'ErasureAdmissionKind.CausalToken' "$ROOT/src/ErasureLineage.cs"
-grep -Fq 'usedGenericSlotAllocator' "$ROOT/src/ErasureLineage.cs"
+grep -Fq 'ErasureAdmissionKind.TerminalTransaction' \
+	"$ROOT/src/ErasureLineage.cs"
+grep -Fq 'WasSoleLivingPrimaryEnemyAtStart' \
+	"$ROOT/src/ErasureLineage.cs"
+grep -Fq 'ActiveTerminationLineages' \
+	"$ROOT/src/ErasureKill.Tracking.cs"
+reject_fixed_pattern 'usedGenericSlotAllocator' "$ROOT/src/ErasureLineage.cs"
 grep -Fq 'ErasureMutationJournal' "$ROOT/src/ErasureMutationJournal.cs"
 grep -Fq 'MaximumRecordedMutations = 512' \
 	"$ROOT/src/ErasureMutationJournal.cs"
-grep -Fq 'nameof(EncounterModel.GetNextSlot)' \
+reject_fixed_pattern 'nameof(EncounterModel.GetNextSlot)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'GetKillStateMachineMoveNext()' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'transpilerName: nameof(ErasureDeathPipelineTranspiler)' \
 	"$ROOT/src/ErasureKill.Patches.cs"
 grep -Fq 'nameof(Hook.BeforeDeath)' \
-	"$ROOT/src/ErasureKill.Patches.cs"
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
+grep -Fq 'nameof(Hook.ShouldDie)' \
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
 grep -Fq 'nameof(Hook.AfterDeath)' \
-	"$ROOT/src/ErasureKill.Patches.cs"
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
+grep -Fq 'nameof(Hook.ShouldCreatureBeRemovedFromCombatAfterDeath)' \
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
 grep -Fq 'nameof(Creature.InvokeDiedEvent)' \
-	"$ROOT/src/ErasureKill.Patches.cs"
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
+grep -Fq 'nameof(Creature.RemoveAllPowersAfterDeath)' \
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
+grep -Fq '$"get_{nameof(Creature.IsPrimaryEnemy)}"' \
+	"$ROOT/src/ErasureKill.DeathPipeline.cs"
 grep -Fq 'OrderObservedCreatures' \
 	"$ROOT/src/ErasureKill.Convergence.cs"
 grep -Fq 'nameof(CombatState.CreateCreature)' "${ERASURE_SOURCES[@]}"
 grep -Fq 'nameof(Callable.CallDeferred)' "${ERASURE_SOURCES[@]}"
 grep -Fq 'prefixName: nameof(DeferredCallablePrefix)' \
 	"$ROOT/src/ErasureKill.Patches.cs"
-grep -Fq 'InvokeDeferredContinuation' \
+require_method_pattern \
+	"$ROOT/src/ErasureKill.Patches.cs" \
+	'private static bool DeferredCallablePrefix(' \
+	'InvokeCausalCallback(original, capturedArgs, scope)'
+grep -Fq 'private static void InvokeCausalCallback(' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'ActiveScope.Value = scope;' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'IsUnsupportedTaskReturnConversion(exception)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'ShouldExecuteCausalCallback(scope)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'ErasureDeferredCallbackPolicy.Evaluate(snapshot)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'IsCompletionFlightRunning: completionRunning' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'IsLineageCertified: lineageCertified' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'DiscardCommittedLineage' \
+	"$ROOT/src/ErasureDeferredCallbackPolicy.cs"
+reject_fixed_pattern 'InvokeDeferredContinuation' \
 	"$ROOT/src/ErasureKill.Patches.cs"
 grep -Fq 'private static bool TryTrackCandidate(' \
 	"$ROOT/src/ErasureKill.Tracking.cs"
@@ -220,10 +324,6 @@ grep -Fq '.GetDeclaredMethods(typeof(CombatManager))' \
 grep -Fq 'prefixName: nameof(CheckWinCapturePrefix)' \
 	"$ROOT/src/ErasureKill.Patches.cs"
 grep -Fq 'finalizerName: nameof(CheckWinConditionFinalizer)' \
-	"$ROOT/src/ErasureKill.Patches.cs"
-grep -Fq 'finalizerPriority: Priority.Last' \
-	"$ROOT/src/ErasureKill.Patches.cs"
-grep -Fq 'prefixPriority: Priority.Last' \
 	"$ROOT/src/ErasureKill.Patches.cs"
 grep -Fq 'bool __runOriginal' "$ROOT/src/ErasureKill.Patches.cs"
 grep -Fq 'ref Task<bool> __result' "$ROOT/src/ErasureKill.Patches.cs"
@@ -278,15 +378,33 @@ grep -Fq 'RemoveExact(' "$ROOT/src/ErasureKill.Convergence.cs"
 grep -Fq 'CoordinateCombatCompletion(' \
 	"$ROOT/src/ErasureKill.CombatCompletion.cs"
 grep -Fq 'CompletionFlight' "$ROOT/src/ErasureKill.CombatCompletion.cs"
-grep -Fq 'ShouldSuppressDeferredContinuation(scope)' \
-	"$ROOT/src/ErasureKill.Patches.cs"
+reject_fixed_pattern 'ShouldSuppressDeferredContinuation' \
+	"${ERASURE_SOURCES[@]}"
 reject_fixed_pattern 'ScheduleCompletionCheck' "${ERASURE_SOURCES[@]}"
-grep -Fq 'DeferredContinuationSnapshot' \
+reject_fixed_pattern 'DeferredContinuationSnapshot' \
 	"$ROOT/src/ErasureCompletionPolicy.cs"
-grep -Fq 'await manager.EndCombatInternal();' \
+grep -Fq 'await InvokeOriginalCombatSettlement(' \
 	"$ROOT/src/ErasureKill.CombatCompletion.cs"
 grep -Fq 'public bool CompletionArmed { get; set; }' \
 	"$ROOT/src/ErasureKill.Tracking.cs"
+grep -Fq 'public bool TerminalSealed { get; set; }' \
+	"$ROOT/src/ErasureKill.Tracking.cs"
+grep -Fq 'public HashSet<Creature> TerminalBaselineEnemies' \
+	"$ROOT/src/ErasureKill.Tracking.cs"
+grep -Fq 'CommitTerminalCombat(ledger, terminalBaseline);' \
+	"$ROOT/src/ErasureKill.CombatCompletion.cs"
+grep -Fq 'SweepTerminalIngresses(ledger);' \
+	"$ROOT/src/ErasureKill.CombatCompletion.cs"
+grep -Fq 'ErasureTerminalIngressPolicy.Evaluate(snapshot)' \
+	"$ROOT/src/ErasureKill.TerminalIngress.cs"
+grep -Fq 'TryQuarantineTerminalIngress(__instance, __result)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+require_method_pattern \
+	"$ROOT/src/ErasureKill.Patches.cs" \
+	'private static bool AddCommandPrefix(' \
+	'__result = CreateTerminalIngressCancellation();'
+grep -Fq 'SealTerminalCombat(ledger);' \
+	"$ROOT/src/ErasureKill.CombatCompletion.cs"
 grep -Fq 'persistence.Commit()' \
 	"$ROOT/src/UniversalDominionSwordCard.cs"
 grep -Fq 'LineageCompletionCertificate' \
