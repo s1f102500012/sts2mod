@@ -1,5 +1,8 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Logging;
 
 namespace UniversalDominionSword;
 
@@ -58,6 +61,97 @@ internal static partial class ErasureKill
 		return turnState == null
 			? null
 			: TurnStateCombatStateField.GetValue(turnState) as ICombatState;
+#endif
+	}
+
+	private static MethodInfo GetCombatProgressSetter()
+	{
+#if STS2_107_1
+		return AccessTools.PropertySetter(
+				typeof(CombatManager),
+				nameof(CombatManager.IsInProgress))
+			?? throw new MissingMethodException(
+				typeof(CombatManager).FullName,
+				"set_IsInProgress");
+#elif STS2_110_0
+		return AccessTools.PropertySetter(
+				ManagerTurnStateField.FieldType,
+				"IsInProgress")
+			?? throw new MissingMethodException(
+				ManagerTurnStateField.FieldType.FullName,
+				"set_IsInProgress");
+#endif
+	}
+
+	private static void CanonicalSettlementProgressPostfix(
+		bool __0)
+	{
+		if (!__0
+			&& ActiveCompletionEvaluation.Value is CombatLedger ledger
+			&& TryGetSettlementProgressOwner(ledger, out object? owner))
+		{
+			SetSettlementProgressRaw(owner, inProgress: false);
+		}
+	}
+
+	private static Exception? CanonicalSettlementProgressFinalizer(
+		bool __0,
+		Exception? __exception)
+	{
+		if (__0
+			|| ActiveCompletionEvaluation.Value is not CombatLedger ledger
+			|| !TryGetSettlementProgressOwner(ledger, out object? owner))
+		{
+			return __exception;
+		}
+
+		SetSettlementProgressRaw(owner, inProgress: false);
+		if (__exception != null)
+		{
+			lock (ledger.Gate)
+			{
+				if (!ledger.LoggedSettlementProgressRepair)
+				{
+					ledger.LoggedSettlementProgressRepair = true;
+					Log.Warn(
+						$"[{ModInfo.Id}] Canonical settlement progress was " +
+						"committed after an intercepted state transition.");
+				}
+			}
+		}
+		return null;
+	}
+
+	private static bool TryGetSettlementProgressOwner(
+		CombatLedger ledger,
+		[NotNullWhen(true)] out object? owner)
+	{
+#if STS2_107_1
+		CombatManager manager = CombatManager.Instance;
+		owner = manager;
+		return ReferenceEquals(
+			LegacyManagerStateField.GetValue(manager),
+			ledger.CombatState);
+#elif STS2_110_0
+		object? currentTurnState = ManagerTurnStateField.GetValue(
+			CombatManager.Instance);
+		owner = currentTurnState;
+		return currentTurnState != null
+			&& ReferenceEquals(currentTurnState, ledger.CombatEpoch)
+			&& ReferenceEquals(
+				TurnStateCombatStateField.GetValue(currentTurnState),
+				ledger.CombatState);
+#endif
+	}
+
+	private static void SetSettlementProgressRaw(
+		object instance,
+		bool inProgress)
+	{
+#if STS2_107_1
+		LegacyManagerInProgressField.SetValue(instance, inProgress);
+#elif STS2_110_0
+		TurnStateInProgressField.SetValue(instance, inProgress);
 #endif
 	}
 

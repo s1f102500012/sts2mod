@@ -15,7 +15,7 @@ Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:00.89
+Time Elapsed 00:00:00.84
   Determining projects to restore...
   All projects are up-to-date for restore.
   UniversalDominionSword.Loader -> <repo>/.build/loader/UniversalDominionSword.Loader.dll
@@ -24,7 +24,7 @@ Build succeeded.
     0 Warning(s)
     0 Error(s)
 
-Time Elapsed 00:00:00.68
+Time Elapsed 00:00:00.67
 generated <repo>/dist/universal-dominion-sword-variants.manifest with 2 variant(s)
 MegaDot v4.5.1.m.14.mono.custom_build - https://godotengine.org
 

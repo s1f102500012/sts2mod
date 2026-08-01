@@ -307,10 +307,10 @@ for target in "${TARGETS[@]}"; do
 	require_exact_line "$manager_dump" \
 		"  F Action<CombatState> CreaturesChanged" "$context"
 	require_regex "$manager_source" \
-		'^[[:space:]]*public (async )?System\.Threading\.Tasks\.Task<bool> CheckWinCondition\(\)$' \
+		'^[[:space:]]*public (async )?(System\.Threading\.Tasks\.)?Task<bool> CheckWinCondition\(\)$' \
 		"$context"
 	require_regex "$manager_source" \
-		'^[[:space:]]*public (async )?System\.Threading\.Tasks\.Task EndCombatInternal\(\)$' \
+		'^[[:space:]]*public (async )?(System\.Threading\.Tasks\.)?Task EndCombatInternal\(\)$' \
 		"$context"
 
 	case "$target" in
@@ -346,10 +346,10 @@ for target in "${TARGETS[@]}"; do
 				"  M Task EndCombatInternal(CombatTurnState turnState)" \
 				"$context"
 			require_regex "$manager_source" \
-				'^[[:space:]]*private (async )?System\.Threading\.Tasks\.Task<bool> CheckWinCondition\(CombatTurnState turnState\)$' \
+				'^[[:space:]]*private (async )?(System\.Threading\.Tasks\.)?Task<bool> CheckWinCondition\(CombatTurnState turnState\)$' \
 				"$context"
 			require_regex "$manager_source" \
-				'^[[:space:]]*private (async )?System\.Threading\.Tasks\.Task EndCombatInternal\(CombatTurnState turnState\)$' \
+				'^[[:space:]]*private (async )?(System\.Threading\.Tasks\.)?Task EndCombatInternal\(CombatTurnState turnState\)$' \
 				"$context"
 
 			context="STS2 $target CombatTurnState"
@@ -410,11 +410,13 @@ for target in "${TARGETS[@]}"; do
 	context="STS2 $target ActionExecutor"
 	require_exact_line "$action_executor_dump" \
 		"  M Void JustBeforeActionFinished(GameAction action)" "$context"
+	require_exact_line "$action_executor_dump" \
+		"  M Void AfterActionFinished(GameAction action)" "$context"
 	require_regex "$action_executor_source" \
-		'CombatManager\.Instance\.CheckWinCondition\(\)\.GetAwaiter\(\)' \
+		'CombatManager\.Instance\.CheckWinCondition\(\)' \
 		"$context"
 	require_regex "$action_executor_source" \
-		'JustBeforeFinished -= actionExecutor\.JustBeforeActionFinished' \
+		'JustBeforeFinished -= .*JustBeforeActionFinished' \
 		"$context"
 
 	context="STS2 $target CreatureCmd"
@@ -425,7 +427,7 @@ for target in "${TARGETS[@]}"; do
 	require_exact_line "$command_dump" \
 		"  M Task KillWithoutCheckingWinCondition(Creature creature, Boolean force, Int32 recursion)" "$context"
 	require_regex "$command_source" \
-		'\[AsyncStateMachine\(typeof\(<KillWithoutCheckingWinCondition>d__[0-9]+\)\)\]' \
+		'\[AsyncStateMachine\(typeof\(<KillWithoutCheckingWinCondition>d__[0-9]+\)\)\]|private static async (System\.Threading\.Tasks\.)?Task KillWithoutCheckingWinCondition\(Creature creature, bool force, int recursion = 0\)' \
 		"$context"
 	require_regex_count "$command_source" 'Hook\.BeforeDeath\(' 1 "$context"
 	require_regex_count "$command_source" 'Hook\.ShouldDie\(' 1 "$context"
@@ -436,7 +438,7 @@ for target in "${TARGETS[@]}"; do
 	require_regex_count "$command_source" \
 		'creature\.RemoveAllPowersAfterDeath\(\)' 1 "$context"
 	require_regex_count "$command_source" \
-		'<isPrimaryEnemy>5__[0-9]+ = creature\.IsPrimaryEnemy;' 1 "$context"
+		'(<isPrimaryEnemy>5__[0-9]+|bool isPrimaryEnemy) = creature\.IsPrimaryEnemy;' 1 "$context"
 
 	context="STS2 $target Hook"
 	require_exact_line "$hook_dump" \

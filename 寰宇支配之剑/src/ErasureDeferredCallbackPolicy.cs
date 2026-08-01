@@ -13,6 +13,7 @@ internal readonly record struct ErasureDeferredCallbackSnapshot(
 	bool HasTrackedScope,
 	bool IsExpectedCombat,
 	bool IsInProgress,
+	bool IsTerminalBarrierArmed,
 	bool IsTerminalSealed,
 	bool IsCompletionFlightRunning,
 	bool IsLineageCertified);
@@ -32,7 +33,8 @@ internal static class ErasureDeferredCallbackPolicy
 		{
 			return ErasureDeferredCallbackDecision.DiscardStaleCombat;
 		}
-		if (snapshot.IsCompletionFlightRunning
+		if ((snapshot.IsTerminalBarrierArmed
+				|| snapshot.IsCompletionFlightRunning)
 			&& snapshot.IsLineageCertified)
 		{
 			return ErasureDeferredCallbackDecision.DiscardCommittedLineage;

@@ -1,6 +1,8 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Nodes.Combat;
@@ -9,6 +11,9 @@ namespace UniversalDominionSword;
 
 internal static partial class ErasureKill
 {
+	private static readonly ConditionalWeakTable<GameAction, CombatLedger>
+		PendingActionSettlements = new();
+
 	private static bool TryTrackCandidate(
 		ICombatState? combatState,
 		Creature creature,
@@ -91,10 +96,10 @@ internal static partial class ErasureKill
 				}
 			}
 
-			ErasureLineage[] terminalTransactions = ledger
-				.ActiveTerminationLineages
-				.Where(lineage =>
-					lineage.WasSoleLivingPrimaryEnemyAtStart)
+				ErasureLineage[] terminalTransactions = ledger
+					.ActiveTerminationLineages
+					.Where(lineage =>
+						lineage.WasTerminalCandidateAtStart)
 				.ToArray();
 			if (terminalTransactions.Length == 1)
 			{
@@ -331,7 +336,13 @@ internal static partial class ErasureKill
 
 		public CompletionDisposition CompletionDisposition { get; set; }
 
-		public bool TerminalSealed { get; set; }
+		public ErasureTerminalBarrierPhase TerminalBarrierPhase { get; set; }
+
+		public bool TerminalBarrierArmed =>
+			TerminalBarrierPhase != ErasureTerminalBarrierPhase.Open;
+
+		public bool TerminalSealed =>
+			TerminalBarrierPhase >= ErasureTerminalBarrierPhase.Committed;
 
 		public HashSet<Creature> TerminalBaselineEnemies { get; } =
 			new(ReferenceEqualityComparer.Instance);
@@ -341,6 +352,12 @@ internal static partial class ErasureKill
 		public bool LoggedIndeterminateCompletion { get; set; }
 
 		public bool LoggedDiscardedDeferredCallback { get; set; }
+
+		public bool LoggedTerminalLossAttempt { get; set; }
+
+		public bool LoggedSettlementProgressRepair { get; set; }
+
+		public HashSet<ErasureCompletionDecision> LoggedCompletionDeferrals { get; } = [];
 
 		public long NextOperationSequence { get; set; }
 

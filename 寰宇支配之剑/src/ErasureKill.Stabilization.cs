@@ -1,7 +1,9 @@
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Logging;
+using MegaCrit.Sts2.Core.Runs;
 
 namespace UniversalDominionSword;
 
@@ -62,8 +64,36 @@ internal static partial class ErasureKill
 			return;
 		}
 
-		await RequestImmediateCombatCompletion(seed.Ledger);
+		ErasureSettlementTimingDecision timing =
+			ErasureSettlementTimingPolicy.Evaluate(
+				new ErasureSettlementTimingSnapshot(
+					RunManager.Instance.ActionExecutor
+						.CurrentlyRunningAction != null));
+		if (timing == ErasureSettlementTimingDecision.EvaluateImmediately)
+		{
+			await RequestImmediateCombatCompletion(seed.Ledger);
+		}
+		else
+		{
+			GameAction? action = RunManager.Instance.ActionExecutor
+				.CurrentlyRunningAction;
+			if (action != null)
+			{
+				ScheduleActionBoundaryCompletion(seed.Ledger, action);
+			}
+		}
 		owner.TrySetResult();
+	}
+
+	private static void ScheduleActionBoundaryCompletion(
+		CombatLedger ledger,
+		GameAction action)
+	{
+		PendingActionSettlements.Remove(action);
+		PendingActionSettlements.Add(action, ledger);
+		Log.Info(
+			$"[{ModInfo.Id}] Normal combat completion is queued for the " +
+			"current game-action boundary.");
 	}
 
 	private static void ScheduleRestabilization(LineageBinding seed)
@@ -198,14 +228,27 @@ internal static partial class ErasureKill
 
 		try
 		{
-			await CombatManager.Instance.CheckWinCondition();
+			CombatManager manager = CombatManager.Instance;
+			CheckWinInvocation invocation = CaptureCheckWinInvocation(
+				manager,
+				invocationTurnState: null);
+			if (!invocation.WasCurrentAtEntry
+				|| invocation.Ledger == null
+				|| !ReferenceEquals(invocation.Ledger, ledger))
+			{
+				return;
+			}
+
+			await CoordinateCombatCompletion(
+				manager,
+				invocation,
+				ledger);
 		}
 		catch (Exception exception)
 		{
 			Log.Warn(
 				$"[{ModInfo.Id}] Immediate normal combat completion check " +
-				$"failed after erasure: " +
-				$"{exception.GetBaseException().Message}");
+				$"failed after erasure: {exception}");
 		}
 	}
 

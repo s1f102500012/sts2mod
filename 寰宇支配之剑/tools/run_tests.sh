@@ -83,7 +83,7 @@ grep -Fq "render_static_cosmic_frame.py" "$ROOT/tools/generate_card_portrait.sh"
 grep -Fq "radial-gradient:'#35145f-#03000b'" "$ROOT/tools/generate_card_portrait.sh"
 
 grep -q '"author": "Natsuki"' "$ROOT/assets/UniversalDominionSword.json"
-grep -q '"version": "0.2.4"' "$ROOT/assets/UniversalDominionSword.json"
+grep -q '"version": "0.2.5"' "$ROOT/assets/UniversalDominionSword.json"
 grep -q '"min_game_version": "0.107.1"' "$ROOT/assets/UniversalDominionSword.json"
 grep -Fq '<AssemblyName>UniversalDominionSword.Loader</AssemblyName>' "$ROOT/loader/UniversalDominionSword.Loader.csproj"
 grep -Fq '<DebugType>none</DebugType>' "$ROOT/loader/UniversalDominionSword.Loader.csproj"
@@ -220,6 +220,20 @@ grep -Fq 'ErasureLineage' "${ERASURE_SOURCES[@]}"
 grep -Fq 'RunTerminationTransaction' "${ERASURE_SOURCES[@]}"
 grep -Fq 'TryBeginCanonicalTermination()' "${ERASURE_SOURCES[@]}"
 grep -Fq 'RequestImmediateCombatCompletion' "${ERASURE_SOURCES[@]}"
+grep -Fq 'RunManager.Instance.ActionExecutor' \
+	"$ROOT/src/ErasureKill.Stabilization.cs"
+grep -Fq 'ErasureSettlementTimingDecision.EvaluateImmediately' \
+	"$ROOT/src/ErasureKill.Stabilization.cs"
+grep -Fq 'ErasureSettlementTimingDecision.DeferToActionBoundary' \
+	"$ROOT/src/ErasureSettlementTimingPolicy.cs"
+grep -Fq 'ScheduleActionBoundaryCompletion(seed.Ledger, action);' \
+	"$ROOT/src/ErasureKill.Stabilization.cs"
+grep -Fq 'nameof(ActionFinishedPostfix)' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'ErasureTerminalIngressPolicy.CreateRejectedIngressTask()' \
+	"$ROOT/src/ErasureKill.TerminalIngress.cs"
+reject_fixed_pattern 'Task.FromCanceled' \
+	"$ROOT/src/ErasureKill.TerminalIngress.cs"
 reject_fixed_pattern 'MaximumStabilizationFrames' "${ERASURE_SOURCES[@]}"
 reject_fixed_pattern 'StableFramesToCloseContinuationLease' "${ERASURE_SOURCES[@]}"
 reject_fixed_pattern 'AcquireContinuationLease()' "${ERASURE_SOURCES[@]}"
@@ -238,8 +252,16 @@ grep -Fq 'ErasureContinuationToken' "$ROOT/src/ErasureLineage.cs"
 grep -Fq 'ErasureAdmissionKind.CausalToken' "$ROOT/src/ErasureLineage.cs"
 grep -Fq 'ErasureAdmissionKind.TerminalTransaction' \
 	"$ROOT/src/ErasureLineage.cs"
-grep -Fq 'WasSoleLivingPrimaryEnemyAtStart' \
+grep -Fq 'WasTerminalCandidateAtStart' \
 	"$ROOT/src/ErasureLineage.cs"
+grep -Fq 'ErasureParticipationPolicy.IsActiveAtSelection(' \
+	"$ROOT/src/ErasureKill.TerminalIngress.cs"
+grep -Fq 'ErasureTerminalBarrierPhase.Armed' \
+	"$ROOT/src/ErasureKill.TerminalIngress.cs"
+grep -Fq 'GetCombatProgressSetter()' \
+	"$ROOT/src/ErasureKill.Patches.cs"
+grep -Fq 'CanonicalSettlementProgressFinalizer' \
+	"$ROOT/src/ErasureKill.ManagerState.cs"
 grep -Fq 'ActiveTerminationLineages' \
 	"$ROOT/src/ErasureKill.Tracking.cs"
 reject_fixed_pattern 'usedGenericSlotAllocator' "$ROOT/src/ErasureLineage.cs"
@@ -387,13 +409,13 @@ grep -Fq 'await InvokeOriginalCombatSettlement(' \
 	"$ROOT/src/ErasureKill.CombatCompletion.cs"
 grep -Fq 'public bool CompletionArmed { get; set; }' \
 	"$ROOT/src/ErasureKill.Tracking.cs"
-grep -Fq 'public bool TerminalSealed { get; set; }' \
+grep -Fq 'public ErasureTerminalBarrierPhase TerminalBarrierPhase { get; set; }' \
 	"$ROOT/src/ErasureKill.Tracking.cs"
 grep -Fq 'public HashSet<Creature> TerminalBaselineEnemies' \
 	"$ROOT/src/ErasureKill.Tracking.cs"
-grep -Fq 'CommitTerminalCombat(ledger, terminalBaseline);' \
+grep -Fq 'CommitTerminalCombat(ledger);' \
 	"$ROOT/src/ErasureKill.CombatCompletion.cs"
-grep -Fq 'SweepTerminalIngresses(ledger);' \
+reject_fixed_pattern 'SweepTerminalIngresses(ledger);' \
 	"$ROOT/src/ErasureKill.CombatCompletion.cs"
 grep -Fq 'ErasureTerminalIngressPolicy.Evaluate(snapshot)' \
 	"$ROOT/src/ErasureKill.TerminalIngress.cs"
@@ -402,11 +424,27 @@ grep -Fq 'TryQuarantineTerminalIngress(__instance, __result)' \
 require_method_pattern \
 	"$ROOT/src/ErasureKill.Patches.cs" \
 	'private static bool AddCommandPrefix(' \
-	'__result = CreateTerminalIngressCancellation();'
+	'__result = CreateTerminalIngressCompletion();'
 grep -Fq 'SealTerminalCombat(ledger);' \
 	"$ROOT/src/ErasureKill.CombatCompletion.cs"
 grep -Fq 'persistence.Commit()' \
 	"$ROOT/src/UniversalDominionSwordCard.cs"
+grep -Fq 'ErasurePersistenceLease' \
+	"$ROOT/src/UniversalDominionSwordCard.cs"
+grep -Fq 'onCommit: () =>' \
+	"$ROOT/src/ErasureKill.Persistence.cs"
+grep -Fq 'onAbandon: () =>' \
+	"$ROOT/src/ErasureKill.Persistence.cs"
+[[ "$(grep -Fc 'ledger.PersistenceLeaseCount - 1' \
+	"$ROOT/src/ErasureKill.Persistence.cs")" == "2" ]]
+require_method_pattern \
+	"$ROOT/src/ErasureKill.Stabilization.cs" \
+	'private static async Task RequestImmediateCombatCompletion(' \
+	'await CoordinateCombatCompletion('
+reject_method_pattern \
+	"$ROOT/src/ErasureKill.Stabilization.cs" \
+	'private static async Task RequestImmediateCombatCompletion(' \
+	'CombatManager.Instance.CheckWinCondition()'
 grep -Fq 'LineageCompletionCertificate' \
 	"$ROOT/src/ErasureLineage.Completion.cs"
 grep -Fq 'TryIssueCompletionCertificate(' \

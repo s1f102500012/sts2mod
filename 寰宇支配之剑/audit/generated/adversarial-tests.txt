@@ -39,6 +39,11 @@ PASS canonical death animation is preserved
 PASS visual exit requires every safety gate
 PASS sealed combat rejects late enemy ingress
 PASS sealed combat preserves its baseline enemies
+PASS dormant preloaded enemies are not active participants
+PASS external hp participants remain in the terminal baseline
+PASS selected target is active despite mirrored hp
+PASS terminal barrier is independent of reserve count
+PASS committed victory rejects contradictory player loss
 PASS completion commit rejects delayed enemy ingress
 PASS terminal ingress guard preserves valid additions
 PASS committed lineage discards its deferred callbacks
@@ -46,6 +51,6 @@ PASS unresolved lineage preserves its deferred callbacks
 PASS audit contract declares scoped interoperability boundaries
 PASS audit contract acknowledges version-sensitive internals
 PASS loader selection is fail-closed
-45/45 adversarial lineage tests passed.
+50/50 adversarial lineage tests passed.
 15/15 adversarial Harmony tests passed.
 Source and asset checks passed.

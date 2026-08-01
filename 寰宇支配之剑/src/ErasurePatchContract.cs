@@ -13,6 +13,9 @@ using System.Reflection;
 	"Erasure.Identity",
 	"Exact object identity or transaction-bound causal evidence; model type and slot alone are insufficient")]
 [assembly: AssemblyMetadata(
+	"Erasure.TerminalParticipation",
+	"Terminal admission is frozen from active participants at selection; dormant reserve count does not extend the transaction")]
+[assembly: AssemblyMetadata(
 	"Erasure.FailureMode",
 	"Required member or IL-shape mismatch aborts patch initialization")]
 [assembly: AssemblyMetadata(
@@ -58,6 +61,10 @@ public static class ErasurePatchContract
 		"Canonical death, removal, and settlement primitives run before the " +
 		"exact-object convergence fallback.";
 
+	public const string TerminalParticipation =
+		"Terminal admission is frozen from active participants at selection; " +
+		"dormant reserve count does not extend the transaction.";
+
 	public const string FailClosedCompatibility =
 		"Required member or IL-shape mismatch aborts patch initialization.";
 
@@ -71,7 +78,8 @@ public static class ErasurePatchContract
 
 	public const string RuntimeSummary =
 		"scope=selected-lineage-only; third-party-unpatch=none; " +
-		"explicit-priority-override=none; compatibility=fail-closed";
+		"explicit-priority-override=none; terminal-baseline=selection-time-active; " +
+		"compatibility=fail-closed";
 
 	private static readonly string[] InvariantValues =
 	[
@@ -79,6 +87,7 @@ public static class ErasurePatchContract
 		ThirdPartyInteroperability,
 		IdentityAdmission,
 		CanonicalFirst,
+		TerminalParticipation,
 		FailClosedCompatibility,
 		KnownCompatibilityRisk,
 		ValidationBoundary

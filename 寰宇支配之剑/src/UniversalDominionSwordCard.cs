@@ -56,7 +56,7 @@ public sealed class UniversalDominionSwordCard : CardModel
 			Owner.Creature,
 			"Attack",
 			Owner.Character.AttackAnimDelay);
-		using ErasureKill.PersistenceLease persistence =
+		using ErasurePersistenceLease persistence =
 			ErasureKill.BeginPersistenceLease(combatState);
 
 		IncreasePermanentCost();

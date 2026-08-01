@@ -14,7 +14,7 @@
       "assemblyReferences": "compiled DLL AssemblyRef table",
       "contractMarkers": "compiled DLL metadata and string heaps"
     },
-    "installPatchCallSiteCount": 21,
+    "installPatchCallSiteCount": 24,
     "installContainsDynamicCheckWinEnumeration": true,
     "reversePatchRegistrationCount": 5,
     "callbacks": [
@@ -30,6 +30,8 @@
       "BlockHpMutationFinalizer",
       "BlockHpMutationPostfix",
       "BlockHpMutationPrefix",
+      "CanonicalSettlementProgressFinalizer",
+      "CanonicalSettlementProgressPostfix",
       "CheckWinCapturePrefix",
       "CheckWinConditionFinalizer",
       "CheckWinGuardPrefix",
@@ -50,7 +52,9 @@
       "NCreatureCreatePostfix",
       "PerformMoveFinalizer",
       "PerformMovePostfix",
-      "PerformMovePrefix"
+      "PerformMovePrefix",
+      "TerminalPlayerCollectionKillPrefix",
+      "TerminalPlayerKillPrefix"
     ],
     "installNameofSymbols": [
       "AddCommandFinalizer",
@@ -66,6 +70,8 @@
       "BlockHpMutationPostfix",
       "BlockHpMutationPrefix",
       "Callable.CallDeferred",
+      "CanonicalSettlementProgressFinalizer",
+      "CanonicalSettlementProgressPostfix",
       "CheckWinCapturePrefix",
       "CheckWinConditionFinalizer",
       "CheckWinGuardPrefix",
@@ -90,6 +96,7 @@
       "Creature.IsDead",
       "Creature.SetCurrentHpInternal",
       "CreatureCmd.Add",
+      "CreatureCmd.Kill",
       "DeferredCallablePrefix",
       "ErasureDeathPipelineTranspiler",
       "Hook.AfterCreatureAddedToCombat",
@@ -102,7 +109,9 @@
       "NCreatureCreatePostfix",
       "PerformMoveFinalizer",
       "PerformMovePostfix",
-      "PerformMovePrefix"
+      "PerformMovePrefix",
+      "TerminalPlayerCollectionKillPrefix",
+      "TerminalPlayerKillPrefix"
     ],
     "reflectedPrivateFields": [
       "<CombatState>k__BackingField",
@@ -129,7 +138,7 @@
     {
       "target": "0.107.1",
       "assembly": "lib/0.107.1/UniversalDominionSword.dll",
-      "sha256": "998918400c892712f2c0e062791ea6e985e93663dd7a7a0fd3472d9a34490482",
+      "sha256": "1d2305604b6583f29d56e09bde9aa56d173dea980ff51c3abfdb42b271f1e9c3",
       "assemblyReferences": [
         "System.Runtime",
         "System.Collections",
@@ -153,7 +162,7 @@
     {
       "target": "0.110.0",
       "assembly": "lib/0.110.0/UniversalDominionSword.dll",
-      "sha256": "ea766d62df61aa439b665c4d6f1d4be81c0a75e108c0eee973e55ab74ebb95f9",
+      "sha256": "6a329edb3a860e2bd3a451c340bda7c3909b384de5ae30bbdcc93cd23b3d3f6e",
       "assemblyReferences": [
         "System.Runtime",
         "System.Collections",

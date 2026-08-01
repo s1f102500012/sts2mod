@@ -125,8 +125,6 @@ internal static partial class ErasureKill
 		try
 		{
 			SettleLedger(ledger);
-			Creature[] terminalBaseline = OrderObservedCreatures(
-				ledger.CombatState.Enemies);
 			ErasureCompletionDecision beforeHook =
 				EvaluateCompletion(
 					manager,
@@ -136,6 +134,7 @@ internal static partial class ErasureKill
 			if (beforeHook
 				!= ErasureCompletionDecision.AllowNormalEnd)
 			{
+				LogCompletionDeferralOnce(ledger, beforeHook);
 				FinishCompletionFlight(
 					ledger,
 					owner,
@@ -144,12 +143,10 @@ internal static partial class ErasureKill
 				return;
 			}
 
-			CommitTerminalCombat(ledger, terminalBaseline);
-			SweepTerminalIngresses(ledger);
+			CommitTerminalCombat(ledger);
 			await InvokeOriginalCombatSettlement(
 				manager,
 				invocation.TurnState);
-			SweepTerminalIngresses(ledger);
 
 			ManagerCombatSnapshot afterEnd = ReadManagerSnapshot(
 				manager,
@@ -224,6 +221,23 @@ internal static partial class ErasureKill
 		}
 	}
 
+	private static void LogCompletionDeferralOnce(
+		CombatLedger ledger,
+		ErasureCompletionDecision decision)
+	{
+		lock (ledger.Gate)
+		{
+			if (!ledger.LoggedCompletionDeferrals.Add(decision))
+			{
+				return;
+			}
+		}
+
+		Log.Info(
+			$"[{ModInfo.Id}] Normal combat completion remains pending; " +
+			$"reason={decision}.");
+	}
+
 	private static void FinishCompletionFlight(
 		CombatLedger ledger,
 		TaskCompletionSource<bool> owner,
@@ -235,7 +249,8 @@ internal static partial class ErasureKill
 			ledger.CompletionDisposition = disposition;
 			if (disposition == CompletionDisposition.Completed)
 			{
-				ledger.TerminalSealed = true;
+				ledger.TerminalBarrierPhase =
+					ErasureTerminalBarrierPhase.Completed;
 			}
 			if (disposition == CompletionDisposition.Idle)
 			{
@@ -275,6 +290,7 @@ internal static partial class ErasureKill
 		HashSet<Creature> trackedCreatures = new(
 			ReferenceEqualityComparer.Instance);
 		bool completionArmed;
+		bool terminalBarrierArmed;
 		bool hasOpenPersistenceLease;
 		bool allCertified;
 		bool hasActiveConvergence;
@@ -282,6 +298,7 @@ internal static partial class ErasureKill
 		{
 			lineages = ledger.Lineages.ToArray();
 			completionArmed = ledger.CompletionArmed;
+			terminalBarrierArmed = ledger.TerminalBarrierArmed;
 			hasOpenPersistenceLease =
 				ledger.PersistenceLeaseCount != 0;
 			allCertified = lineages.All(lineage =>
@@ -302,11 +319,16 @@ internal static partial class ErasureKill
 		}
 
 		ICombatState combatState = ledger.CombatState;
-		bool hasLivingPlayer = combatState.Players.Any(
-			player => ReadRawHp(player.Creature) > 0
-				|| player.Creature.IsAlive);
+		Creature[] allies = ErasureRosterPolicy.SnapshotNonNull(
+			combatState.Allies);
+		Creature[] enemies = ErasureRosterPolicy.SnapshotNonNull(
+			combatState.Enemies);
+		bool hasLivingPlayer = allies
+			.Concat(enemies)
+			.Any(creature => creature.Player != null
+				&& (ReadRawHp(creature) > 0 || creature.IsAlive));
 		bool hasLivingUntrackedPrimaryEnemy =
-			combatState.Enemies.Any(enemy =>
+			enemies.Any(enemy =>
 				(ReadRawHp(enemy) > 0 || enemy.IsAlive)
 				&& enemy.IsPrimaryEnemy
 				&& !trackedCreatures.Contains(enemy));
@@ -328,6 +350,7 @@ internal static partial class ErasureKill
 			HasLivingPlayer: hasLivingPlayer,
 			HasTrackedLineage: lineages.Length != 0,
 			HasOpenPersistenceLease: hasOpenPersistenceLease,
+			IsTerminalBarrierArmed: terminalBarrierArmed,
 			IsCompletionArmed: completionArmed,
 			AreAllLineagesCertified: allCertified,
 			HasActiveConvergence: hasActiveConvergence,

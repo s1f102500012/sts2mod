@@ -3,7 +3,9 @@ using Godot;
 using HarmonyLib;
 using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Combat;
+using MegaCrit.Sts2.Core.Entities.Actions;
 using MegaCrit.Sts2.Core.Entities.Creatures;
+using MegaCrit.Sts2.Core.GameActions;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
@@ -25,6 +27,26 @@ internal static partial class ErasureKill
 			transpilerName: nameof(ErasureDeathPipelineTranspiler));
 		PatchCanonicalDeathEntry(harmony);
 		PatchCanonicalSettlementEntry(harmony);
+		PatchRequired(
+			harmony,
+			GetCombatProgressSetter(),
+			postfixName: nameof(CanonicalSettlementProgressPostfix),
+			finalizerName: nameof(CanonicalSettlementProgressFinalizer));
+
+		PatchRequired(
+			harmony,
+			AccessTools.Method(
+				typeof(CreatureCmd),
+				nameof(CreatureCmd.Kill),
+				[typeof(Creature), typeof(bool)]),
+			prefixName: nameof(TerminalPlayerKillPrefix));
+		PatchRequired(
+			harmony,
+			AccessTools.Method(
+				typeof(CreatureCmd),
+				nameof(CreatureCmd.Kill),
+				[typeof(IReadOnlyCollection<Creature>), typeof(bool)]),
+			prefixName: nameof(TerminalPlayerCollectionKillPrefix));
 
 		PatchRequired(
 			harmony,
@@ -206,6 +228,31 @@ internal static partial class ErasureKill
 				prefixName: nameof(CheckWinGuardPrefix));
 		}
 
+		PatchRequired(
+			harmony,
+			AccessTools.DeclaredMethod(
+				typeof(ActionExecutor),
+				"AfterActionFinished",
+				[typeof(GameAction)]),
+			postfixName: nameof(ActionFinishedPostfix));
+
+	}
+
+	private static void ActionFinishedPostfix(GameAction action)
+	{
+		if (action.State != GameActionState.Finished
+			|| !PendingActionSettlements.TryGetValue(
+				action,
+				out CombatLedger? ledger))
+		{
+			return;
+		}
+
+		PendingActionSettlements.Remove(action);
+		Log.Info(
+			$"[{ModInfo.Id}] Reached the game-action boundary; " +
+			"starting normal combat completion.");
+		_ = RequestImmediateCombatCompletion(ledger);
 	}
 
 	private static bool DeferredCallablePrefix(
@@ -275,11 +322,13 @@ internal static partial class ErasureKill
 			CombatManager.Instance,
 			invocationTurnState: null);
 		bool terminalSealed;
+		bool terminalBarrierArmed;
 		bool completionRunning;
 		bool lineageCertified;
 		lock (ledger.Gate)
 		{
 			terminalSealed = ledger.TerminalSealed;
+			terminalBarrierArmed = ledger.TerminalBarrierArmed;
 			completionRunning = ledger.CompletionDisposition
 				== CompletionDisposition.Running;
 			lineageCertified = scope.Lineage.TryGetCompletionCertificate(
@@ -298,6 +347,7 @@ internal static partial class ErasureKill
 							managerState.TurnState,
 							ledger.CombatEpoch)),
 			IsInProgress: managerState.IsInProgress,
+			IsTerminalBarrierArmed: terminalBarrierArmed,
 			IsTerminalSealed: terminalSealed,
 			IsCompletionFlightRunning: completionRunning,
 			IsLineageCertified: lineageCertified);
@@ -443,7 +493,7 @@ internal static partial class ErasureKill
 			ReadAttachedCombat(creature),
 			creature))
 		{
-			__result = CreateTerminalIngressCancellation();
+			__result = CreateTerminalIngressCompletion();
 			return false;
 		}
 		if (!TryTrackCandidate(
@@ -469,7 +519,7 @@ internal static partial class ErasureKill
 			ReadAttachedCombat(creature),
 			creature))
 		{
-			__result = CreateTerminalIngressCancellation();
+			__result = CreateTerminalIngressCompletion();
 			return;
 		}
 		if (!TryTrackCandidate(
@@ -495,7 +545,7 @@ internal static partial class ErasureKill
 			ReadAttachedCombat(creature),
 			creature))
 		{
-			__result = CreateTerminalIngressCancellation();
+			__result = CreateTerminalIngressCompletion();
 			return null;
 		}
 		if (!TryGetBinding(creature, out LineageBinding? binding))
@@ -641,7 +691,7 @@ internal static partial class ErasureKill
 			ReadAttachedCombat(creature),
 			creature))
 		{
-			__result = CreateTerminalIngressCancellation();
+			__result = CreateTerminalIngressCompletion();
 			return false;
 		}
 		if (!TryTrackCandidate(
@@ -666,7 +716,7 @@ internal static partial class ErasureKill
 	{
 		if (TryQuarantineTerminalIngress(combatState, creature))
 		{
-			__result = CreateTerminalIngressCancellation();
+			__result = CreateTerminalIngressCompletion();
 			return false;
 		}
 		if (!TryTrackCandidate(
@@ -692,7 +742,7 @@ internal static partial class ErasureKill
 			ReadAttachedCombat(creature),
 			creature))
 		{
-			__result = CreateTerminalIngressCancellation();
+			__result = CreateTerminalIngressCompletion();
 			return;
 		}
 		if (!TryTrackCandidate(
@@ -718,7 +768,7 @@ internal static partial class ErasureKill
 			ReadAttachedCombat(creature),
 			creature))
 		{
-			__result = CreateTerminalIngressCancellation();
+			__result = CreateTerminalIngressCompletion();
 			return null;
 		}
 		if (!TryGetBinding(creature, out LineageBinding? binding))
@@ -741,6 +791,12 @@ internal static partial class ErasureKill
 
 	private static bool BlockHpMutationPrefix(Creature __instance)
 	{
+		if (TryQuarantineTerminalIngress(
+			ReadAttachedCombat(__instance),
+			__instance))
+		{
+			return false;
+		}
 		if (!IsErasedOrTerminalIngress(__instance))
 		{
 			return true;
@@ -752,6 +808,9 @@ internal static partial class ErasureKill
 
 	private static void BlockHpMutationPostfix(Creature __instance)
 	{
+		TryQuarantineTerminalIngress(
+			ReadAttachedCombat(__instance),
+			__instance);
 		if (IsErasedOrTerminalIngress(__instance))
 		{
 			SetRawHpZero(__instance);
@@ -770,6 +829,9 @@ internal static partial class ErasureKill
 		Creature __instance,
 		ref bool __result)
 	{
+		TryQuarantineTerminalIngress(
+			ReadAttachedCombat(__instance),
+			__instance);
 		if (IsErasedOrTerminalIngress(__instance))
 		{
 			__result = false;
@@ -780,6 +842,9 @@ internal static partial class ErasureKill
 		Creature __instance,
 		ref bool __result)
 	{
+		TryQuarantineTerminalIngress(
+			ReadAttachedCombat(__instance),
+			__instance);
 		if (IsErasedOrTerminalIngress(__instance))
 		{
 			__result = true;
@@ -800,7 +865,7 @@ internal static partial class ErasureKill
 			return true;
 		}
 
-		if (!TryGetBinding(creature, out _))
+		if (!IsErasedOrTerminalIngress(creature))
 		{
 			return true;
 		}
@@ -858,6 +923,88 @@ internal static partial class ErasureKill
 			binding = null;
 			return false;
 		}
+	}
+
+	private static bool TerminalPlayerKillPrefix(
+		Creature creature,
+		ref Task __result)
+	{
+		if (!ShouldRejectTerminalPlayerKill(creature, out CombatLedger ledger))
+		{
+			return true;
+		}
+
+		LogRejectedTerminalLossOnce(ledger);
+		__result = Task.CompletedTask;
+		return false;
+	}
+
+	private static bool TerminalPlayerCollectionKillPrefix(
+		IReadOnlyCollection<Creature> creatures,
+		ref Task __result)
+	{
+		CombatLedger? ledger = null;
+		if (creatures.Count == 0)
+		{
+			return true;
+		}
+		foreach (Creature creature in creatures)
+		{
+			if (!ShouldRejectTerminalPlayerKill(
+					creature,
+					out CombatLedger candidate)
+				|| (ledger != null && !ReferenceEquals(ledger, candidate)))
+			{
+				return true;
+			}
+			ledger = candidate;
+		}
+
+		LogRejectedTerminalLossOnce(ledger!);
+		__result = Task.CompletedTask;
+		return false;
+	}
+
+	private static bool ShouldRejectTerminalPlayerKill(
+		Creature creature,
+		out CombatLedger ledger)
+	{
+		ICombatState? combatState = ReadAttachedCombat(creature);
+		ledger = null!;
+		if (combatState == null
+			|| !Ledgers.TryGetValue(
+				combatState,
+				out CombatLedger? candidate)
+			|| candidate == null
+			|| creature.Player == null)
+		{
+			return false;
+		}
+		ledger = candidate;
+
+		lock (ledger.Gate)
+		{
+			return ErasureParticipationPolicy.RejectContradictoryLoss(
+				ledger.TerminalBarrierPhase,
+				ledger.CompletionDisposition
+					== CompletionDisposition.Running,
+				isPlayerCreature: true);
+		}
+	}
+
+	private static void LogRejectedTerminalLossOnce(CombatLedger ledger)
+	{
+		lock (ledger.Gate)
+		{
+			if (ledger.LoggedTerminalLossAttempt)
+			{
+				return;
+			}
+			ledger.LoggedTerminalLossAttempt = true;
+		}
+		Log.Info(
+			$"[{ModInfo.Id}] Ignored a contradictory player-death request " +
+			"during committed combat victory settlement.");
 	}
 
 	private static void CheckWinCapturePrefix(

@@ -106,25 +106,26 @@ internal static partial class ErasureKill
 		CombatLedger ledger = Ledgers.GetValue(
 			combatState,
 			state => new CombatLedger(state));
+		bool terminalCandidate = TryArmTerminalCombat(
+			ledger,
+			combatState,
+			target);
 		LineageBinding root;
 		lock (ledger.Gate)
 		{
 			ErasureEvidence evidence = CaptureEvidence(target);
-			ErasureEvidence[] preexisting = combatState.Allies
-				.Concat(combatState.Enemies)
+			ErasureEvidence[] preexisting = ErasureRosterPolicy
+				.SnapshotNonNull(combatState.Allies)
+				.Concat(ErasureRosterPolicy.SnapshotNonNull(
+					combatState.Enemies))
 				.Distinct(CreatureReferenceComparer)
 				.Select(creature => CaptureEvidence(creature))
 				.ToArray();
 			ErasureLineage lineage = new(
-				++ledger.NextOperationSequence,
-				evidence,
-				preexisting,
-				wasSoleLivingPrimaryEnemyAtStart:
-					target.IsPrimaryEnemy
-					&& !combatState.Enemies.Any(enemy =>
-						!ReferenceEquals(enemy, target)
-						&& enemy.IsPrimaryEnemy
-						&& (ReadRawHp(enemy) > 0 || enemy.IsAlive)));
+					++ledger.NextOperationSequence,
+					evidence,
+					preexisting,
+					wasTerminalCandidateAtStart: terminalCandidate);
 			ledger.Lineages.Add(lineage);
 			root = BindMember(
 				ledger,

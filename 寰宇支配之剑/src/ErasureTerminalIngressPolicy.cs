@@ -13,13 +13,18 @@ internal readonly record struct ErasureTerminalIngressSnapshot(
 	bool HasTrackedCombat,
 	bool IsEnemy,
 	bool IsBaselineEnemy,
-	bool IsTerminalSealed,
+	ErasureTerminalBarrierPhase BarrierPhase,
 	bool IsCompletionFlightRunning,
 	bool IsExpectedCombat,
 	bool IsInProgress);
 
 internal static class ErasureTerminalIngressPolicy
 {
+	public static Task CreateRejectedIngressTask()
+	{
+		return Task.CompletedTask;
+	}
+
 	public static ErasureTerminalIngressDecision Evaluate(
 		in ErasureTerminalIngressSnapshot snapshot)
 	{
@@ -28,17 +33,21 @@ internal static class ErasureTerminalIngressPolicy
 			return ErasureTerminalIngressDecision.NoTrackedCombat;
 		}
 
-	if (!snapshot.IsEnemy)
-	{
-		return ErasureTerminalIngressDecision.FriendlyCreature;
-	}
+		if (!snapshot.IsEnemy)
+		{
+			return ErasureTerminalIngressDecision.FriendlyCreature;
+		}
 
-	if (snapshot.IsTerminalSealed)
-	{
-		return snapshot.IsBaselineEnemy
-			? ErasureTerminalIngressDecision.Allow
-			: ErasureTerminalIngressDecision.RejectTerminalIngress;
-	}
+		if (ErasureParticipationPolicy.RejectActivation(
+			snapshot.BarrierPhase,
+			snapshot.IsBaselineEnemy))
+		{
+			return ErasureTerminalIngressDecision.RejectTerminalIngress;
+		}
+		if (snapshot.BarrierPhase != ErasureTerminalBarrierPhase.Open)
+		{
+			return ErasureTerminalIngressDecision.Allow;
+		}
 
 		if (!snapshot.IsCompletionFlightRunning)
 		{

@@ -41,12 +41,23 @@ internal static class Program
 		("combat completion rejects every unsafe gate", CompletionRejectsUnsafeGates),
 		("non-primary summons do not block completion", NonPrimarySummonsDoNotBlockCompletion),
 		("living primary enemy blocks completion", LivingPrimaryEnemyBlocksCompletion),
+		("combat roster ignores null placeholders", CombatRosterIgnoresNullPlaceholders),
+		("settlement waits for the game action boundary", SettlementWaitsForActionBoundary),
+		("settlement runs immediately outside a game action", SettlementRunsOutsideAction),
 		("canonical death animation is preserved", CanonicalDeathAnimationIsPreserved),
 		("visual exit requires every safety gate", VisualExitRequiresEverySafetyGate),
 		("sealed combat rejects late enemy ingress", SealedCombatRejectsLateEnemyIngress),
 		("sealed combat preserves its baseline enemies", SealedCombatPreservesBaselineEnemies),
+		("dormant preloaded enemies are not active participants", DormantPreloadedEnemiesAreInactive),
+		("external hp participants remain in the terminal baseline", ExternalHpParticipantRemainsActive),
+		("selected target is active despite mirrored hp", SelectedTargetIsAuthoritativeParticipant),
+		("terminal barrier is independent of reserve count", TerminalBarrierIgnoresReserveCount),
+		("committed victory rejects contradictory player loss", CommittedVictoryRejectsContradictoryLoss),
+		("committed persistence lease closes before settlement", CommittedPersistenceLeaseClosesBeforeSettlement),
+		("abandoned persistence lease closes without arming", AbandonedPersistenceLeaseClosesWithoutArming),
 		("completion commit rejects delayed enemy ingress", CompletionCommitRejectsDelayedEnemyIngress),
 		("terminal ingress guard preserves valid additions", TerminalIngressGuardPreservesValidAdditions),
+		("rejected terminal ingress completes as a no-op", RejectedTerminalIngressCompletesAsNoOp),
 		("committed lineage discards its deferred callbacks", CommittedLineageDiscardsDeferredCallbacks),
 		("unresolved lineage preserves its deferred callbacks", UnresolvedLineagePreservesDeferredCallbacks),
 		("audit contract declares scoped interoperability boundaries", AuditContractDeclaresBoundaries),
@@ -101,6 +112,10 @@ internal static class Program
 		Assert.True(
 			ErasurePatchContract.IdentityAdmission.Contains(
 				"model type and slot alone are insufficient",
+				StringComparison.Ordinal));
+		Assert.True(
+			ErasurePatchContract.TerminalParticipation.Contains(
+				"active participants at selection",
 				StringComparison.Ordinal));
 	}
 
@@ -257,7 +272,7 @@ internal static class Program
 			1,
 			root,
 			[root],
-			wasSoleLivingPrimaryEnemyAtStart: true);
+			wasTerminalCandidateAtStart: true);
 
 		ErasureAdmission admission = lineage.ObserveTerminalSuccessor(
 			Evidence(
@@ -289,7 +304,7 @@ internal static class Program
 			1,
 			root,
 			[root],
-			wasSoleLivingPrimaryEnemyAtStart: true);
+			wasTerminalCandidateAtStart: true);
 
 		ErasureAdmission admission = lineage.ObserveTerminalSuccessor(
 			Evidence(
@@ -733,9 +748,11 @@ internal static class Program
 					ErasureCompletionDecision.NoLivingPlayer),
 				(safe with { HasTrackedLineage = false },
 					ErasureCompletionDecision.NoTrackedLineage),
-				(safe with { HasOpenPersistenceLease = true },
-					ErasureCompletionDecision.PersistenceLeaseOpen),
-				(safe with { IsCompletionArmed = false },
+					(safe with { HasOpenPersistenceLease = true },
+						ErasureCompletionDecision.PersistenceLeaseOpen),
+					(safe with { IsTerminalBarrierArmed = false },
+						ErasureCompletionDecision.CompletionNotArmed),
+					(safe with { IsCompletionArmed = false },
 					ErasureCompletionDecision.CompletionNotArmed),
 				(safe with { AreAllLineagesCertified = false },
 					ErasureCompletionDecision.UncertifiedLineage),
@@ -773,6 +790,58 @@ internal static class Program
 		Assert.Equal(
 			ErasureCompletionDecision.LivingPrimaryEnemy,
 			ErasureCompletionPolicy.Evaluate(snapshot));
+	}
+
+	private static void CombatRosterIgnoresNullPlaceholders()
+	{
+		RosterEntry livingPrimary = new(IsAlive: true, IsPrimary: true);
+		RosterEntry dormantPrimary = new(IsAlive: false, IsPrimary: true);
+		RosterEntry livingSummon = new(IsAlive: true, IsPrimary: false);
+		RosterEntry?[] roster =
+		[
+			null,
+			dormantPrimary,
+			livingSummon,
+		];
+
+		RosterEntry[] snapshot = ErasureRosterPolicy.SnapshotNonNull(roster);
+		Assert.False(snapshot.Any(entry =>
+			entry.IsAlive && entry.IsPrimary));
+		Assert.Equal(2, snapshot.Length);
+
+		roster = [null, dormantPrimary, livingPrimary];
+		snapshot = ErasureRosterPolicy.SnapshotNonNull(roster);
+		Assert.True(snapshot.Any(entry =>
+			entry.IsAlive && entry.IsPrimary));
+
+		ShrinkingRoster<RosterEntry> shrinking = new(
+			[null, dormantPrimary, livingSummon]);
+		snapshot = ErasureRosterPolicy.SnapshotNonNull(shrinking);
+		Assert.Equal(1, snapshot.Length);
+	}
+
+	private static void SettlementWaitsForActionBoundary()
+	{
+		ErasureSettlementTimingDecision decision =
+			ErasureSettlementTimingPolicy.Evaluate(
+				new ErasureSettlementTimingSnapshot(
+					IsGameActionExecuting: true));
+
+		Assert.Equal(
+			ErasureSettlementTimingDecision.DeferToActionBoundary,
+			decision);
+	}
+
+	private static void SettlementRunsOutsideAction()
+	{
+		ErasureSettlementTimingDecision decision =
+			ErasureSettlementTimingPolicy.Evaluate(
+				new ErasureSettlementTimingSnapshot(
+					IsGameActionExecuting: false));
+
+		Assert.Equal(
+			ErasureSettlementTimingDecision.EvaluateImmediately,
+			decision);
 	}
 
 	private static void CanonicalDeathAnimationIsPreserved()
@@ -827,7 +896,7 @@ internal static class Program
 			HasTrackedCombat: true,
 			IsEnemy: true,
 			IsBaselineEnemy: false,
-			IsTerminalSealed: true,
+			BarrierPhase: ErasureTerminalBarrierPhase.Completed,
 			IsCompletionFlightRunning: false,
 			IsExpectedCombat: false,
 			IsInProgress: false);
@@ -843,7 +912,7 @@ internal static class Program
 			HasTrackedCombat: true,
 			IsEnemy: true,
 			IsBaselineEnemy: true,
-			IsTerminalSealed: true,
+			BarrierPhase: ErasureTerminalBarrierPhase.Committed,
 			IsCompletionFlightRunning: true,
 			IsExpectedCombat: true,
 			IsInProgress: true);
@@ -853,13 +922,73 @@ internal static class Program
 			ErasureTerminalIngressPolicy.Evaluate(snapshot));
 	}
 
+	private static void DormantPreloadedEnemiesAreInactive()
+	{
+		ErasureParticipantSnapshot dormant = new(
+			IsEnemy: true,
+			IsSelectedTarget: false,
+			IsAttachedToExpectedCombat: true,
+			IsPresentInEnemyRoster: true,
+			HasStableCombatPresence: false);
+
+		Assert.False(ErasureParticipationPolicy.IsActiveAtSelection(dormant));
+		Assert.True(ErasureParticipationPolicy.IsActiveAtSelection(
+			dormant with
+			{
+				HasStableCombatPresence = true
+			}));
+	}
+
+	private static void ExternalHpParticipantRemainsActive()
+	{
+		ErasureParticipantSnapshot participant = new(
+			IsEnemy: true,
+			IsSelectedTarget: false,
+			IsAttachedToExpectedCombat: true,
+			IsPresentInEnemyRoster: true,
+			HasStableCombatPresence: true);
+
+		Assert.True(ErasureParticipationPolicy.IsActiveAtSelection(participant));
+	}
+
+	private static void SelectedTargetIsAuthoritativeParticipant()
+	{
+		ErasureParticipantSnapshot selected = new(
+			IsEnemy: true,
+			IsSelectedTarget: true,
+			IsAttachedToExpectedCombat: true,
+			IsPresentInEnemyRoster: true,
+			HasStableCombatPresence: false);
+
+		Assert.True(ErasureParticipationPolicy.IsActiveAtSelection(selected));
+	}
+
+	private static void TerminalBarrierIgnoresReserveCount()
+	{
+		foreach (int count in new[] { 1, 16, 64, 10_000 })
+		{
+			for (int index = 0; index < count; index++)
+			{
+				Assert.True(ErasureParticipationPolicy.RejectActivation(
+					ErasureTerminalBarrierPhase.Armed,
+					isBaselineParticipant: false));
+			}
+		}
+		Assert.False(ErasureParticipationPolicy.RejectActivation(
+			ErasureTerminalBarrierPhase.Committed,
+			isBaselineParticipant: true));
+		Assert.False(ErasureParticipationPolicy.RejectActivation(
+			ErasureTerminalBarrierPhase.Open,
+			isBaselineParticipant: false));
+	}
+
 	private static void CompletionCommitRejectsDelayedEnemyIngress()
 	{
 		ErasureTerminalIngressSnapshot snapshot = new(
 			HasTrackedCombat: true,
 			IsEnemy: true,
 			IsBaselineEnemy: false,
-			IsTerminalSealed: false,
+			BarrierPhase: ErasureTerminalBarrierPhase.Open,
 			IsCompletionFlightRunning: true,
 			IsExpectedCombat: true,
 			IsInProgress: false);
@@ -873,13 +1002,73 @@ internal static class Program
 				snapshot with { IsExpectedCombat = false }));
 	}
 
+	private static void CommittedVictoryRejectsContradictoryLoss()
+	{
+		Assert.True(ErasureParticipationPolicy.RejectContradictoryLoss(
+			ErasureTerminalBarrierPhase.Committed,
+			isCompletionRunning: true,
+			isPlayerCreature: true));
+		Assert.True(ErasureParticipationPolicy.RejectContradictoryLoss(
+			ErasureTerminalBarrierPhase.Completed,
+			isCompletionRunning: true,
+			isPlayerCreature: true));
+		Assert.False(ErasureParticipationPolicy.RejectContradictoryLoss(
+			ErasureTerminalBarrierPhase.Armed,
+			isCompletionRunning: true,
+			isPlayerCreature: true));
+		Assert.False(ErasureParticipationPolicy.RejectContradictoryLoss(
+			ErasureTerminalBarrierPhase.Committed,
+			isCompletionRunning: false,
+			isPlayerCreature: true));
+		Assert.False(ErasureParticipationPolicy.RejectContradictoryLoss(
+			ErasureTerminalBarrierPhase.Committed,
+			isCompletionRunning: true,
+			isPlayerCreature: false));
+	}
+
+	private static void CommittedPersistenceLeaseClosesBeforeSettlement()
+	{
+		int openLeases = 1;
+		bool completionArmed = false;
+		using (ErasurePersistenceLease lease = new(
+			onCommit: () =>
+			{
+				completionArmed = true;
+				openLeases--;
+			},
+			onAbandon: () => openLeases--))
+		{
+			lease.Commit();
+			Assert.True(completionArmed);
+			Assert.Equal(0, openLeases);
+			lease.Commit();
+			Assert.Equal(0, openLeases);
+		}
+		Assert.Equal(0, openLeases);
+	}
+
+	private static void AbandonedPersistenceLeaseClosesWithoutArming()
+	{
+		int openLeases = 1;
+		bool completionArmed = false;
+		ErasurePersistenceLease lease = new(
+			onCommit: () => completionArmed = true,
+			onAbandon: () => openLeases--);
+
+		lease.Dispose();
+		lease.Dispose();
+		Assert.False(completionArmed);
+		Assert.Equal(0, openLeases);
+		Assert.Throws<ObjectDisposedException>(() => lease.Commit());
+	}
+
 	private static void TerminalIngressGuardPreservesValidAdditions()
 	{
 		ErasureTerminalIngressSnapshot active = new(
 			HasTrackedCombat: true,
 			IsEnemy: true,
 			IsBaselineEnemy: false,
-			IsTerminalSealed: false,
+			BarrierPhase: ErasureTerminalBarrierPhase.Open,
 			IsCompletionFlightRunning: true,
 			IsExpectedCombat: true,
 			IsInProgress: true);
@@ -897,12 +1086,22 @@ internal static class Program
 				active with { HasTrackedCombat = false }));
 	}
 
+	private static void RejectedTerminalIngressCompletesAsNoOp()
+	{
+		Task result = ErasureTerminalIngressPolicy.CreateRejectedIngressTask();
+
+		Assert.True(result.IsCompletedSuccessfully);
+		Assert.False(result.IsCanceled);
+		Assert.False(result.IsFaulted);
+	}
+
 	private static void CommittedLineageDiscardsDeferredCallbacks()
 	{
 		ErasureDeferredCallbackSnapshot committed = new(
 			HasTrackedScope: true,
 			IsExpectedCombat: true,
 			IsInProgress: true,
+			IsTerminalBarrierArmed: true,
 			IsTerminalSealed: false,
 			IsCompletionFlightRunning: true,
 			IsLineageCertified: true);
@@ -928,6 +1127,7 @@ internal static class Program
 			HasTrackedScope: true,
 			IsExpectedCombat: true,
 			IsInProgress: true,
+			IsTerminalBarrierArmed: false,
 			IsTerminalSealed: false,
 			IsCompletionFlightRunning: false,
 			IsLineageCertified: false);
@@ -959,6 +1159,7 @@ internal static class Program
 			HasLivingPlayer: true,
 			HasTrackedLineage: true,
 			HasOpenPersistenceLease: false,
+			IsTerminalBarrierArmed: true,
 			IsCompletionArmed: true,
 			AreAllLineagesCertified: true,
 			HasActiveConvergence: false,
@@ -1048,6 +1249,41 @@ internal static class Program
 	}
 
 	private sealed record Ref(string Name);
+	private sealed record RosterEntry(bool IsAlive, bool IsPrimary);
+
+	private sealed class ShrinkingRoster<T>(List<T?> entries)
+		: IReadOnlyList<T?>
+		where T : class
+	{
+		private bool _shrunk;
+
+		public int Count => entries.Count;
+
+		public T? this[int index]
+		{
+			get
+			{
+				if (!_shrunk && index == 0)
+				{
+					_shrunk = true;
+					entries.RemoveAt(entries.Count - 1);
+				}
+				return entries[index];
+			}
+		}
+
+		public IEnumerator<T?> GetEnumerator()
+		{
+			throw new InvalidOperationException(
+				"Snapshot policy must not enumerate the live roster.");
+		}
+
+		System.Collections.IEnumerator
+			System.Collections.IEnumerable.GetEnumerator()
+		{
+			return GetEnumerator();
+		}
+	}
 
 	private readonly record struct Fixture(
 		ErasureLineage Lineage,
@@ -1133,6 +1369,22 @@ internal static class Program
 				throw new InvalidOperationException(
 					$"Expected {expected}, got {actual}.");
 			}
+		}
+
+		public static void Throws<TException>(Action action)
+			where TException : Exception
+		{
+			try
+			{
+				action();
+			}
+			catch (TException)
+			{
+				return;
+			}
+
+			throw new InvalidOperationException(
+				$"Expected {typeof(TException).Name}.");
 		}
 	}
 }

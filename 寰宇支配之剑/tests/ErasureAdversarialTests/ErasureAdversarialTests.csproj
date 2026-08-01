@@ -11,6 +11,10 @@
 	<Compile Include="../../src/ErasurePatchContract.cs" Link="ErasurePatchContract.cs" />
     <Compile Include="../../src/ErasureCompletionPolicy.cs" Link="ErasureCompletionPolicy.cs" />
 	<Compile Include="../../src/ErasureDeferredCallbackPolicy.cs" Link="ErasureDeferredCallbackPolicy.cs" />
+	<Compile Include="../../src/ErasureParticipationPolicy.cs" Link="ErasureParticipationPolicy.cs" />
+	<Compile Include="../../src/ErasurePersistenceLease.cs" Link="ErasurePersistenceLease.cs" />
+	<Compile Include="../../src/ErasureRosterPolicy.cs" Link="ErasureRosterPolicy.cs" />
+	<Compile Include="../../src/ErasureSettlementTimingPolicy.cs" Link="ErasureSettlementTimingPolicy.cs" />
 	<Compile Include="../../src/ErasureTerminalIngressPolicy.cs" Link="ErasureTerminalIngressPolicy.cs" />
     <Compile Include="../../src/ErasureLineage.cs" Link="ErasureLineage.cs" />
     <Compile Include="../../src/ErasureLineage.Completion.cs" Link="ErasureLineage.Completion.cs" />

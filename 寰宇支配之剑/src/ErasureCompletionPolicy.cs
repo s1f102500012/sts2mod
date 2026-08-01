@@ -25,6 +25,7 @@ internal readonly record struct ErasureCompletionSnapshot(
 	bool HasLivingPlayer,
 	bool HasTrackedLineage,
 	bool HasOpenPersistenceLease,
+	bool IsTerminalBarrierArmed,
 	bool IsCompletionArmed,
 	bool AreAllLineagesCertified,
 	bool HasActiveConvergence,
@@ -74,6 +75,11 @@ internal static class ErasureCompletionPolicy
 		if (snapshot.HasOpenPersistenceLease)
 		{
 			return ErasureCompletionDecision.PersistenceLeaseOpen;
+		}
+
+		if (!snapshot.IsTerminalBarrierArmed)
+		{
+			return ErasureCompletionDecision.CompletionNotArmed;
 		}
 
 		if (!snapshot.IsCompletionArmed)

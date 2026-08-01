@@ -121,8 +121,10 @@ internal static partial class ErasureKill
 	private static void ObserveCurrentCombat(LineageBinding seed)
 	{
 		foreach (Creature creature in OrderObservedCreatures(
-			seed.Ledger.CombatState.Allies
-				.Concat(seed.Ledger.CombatState.Enemies)))
+			ErasureRosterPolicy.SnapshotNonNull(
+				seed.Ledger.CombatState.Allies)
+				.Concat(ErasureRosterPolicy.SnapshotNonNull(
+					seed.Ledger.CombatState.Enemies))))
 		{
 			TryTrackCandidate(seed.Ledger.CombatState, creature, out _);
 		}
@@ -709,11 +711,28 @@ internal static partial class ErasureKill
 
 	private static bool ContainsExact(IList list, object value)
 	{
-		foreach (object? item in list)
+		int count;
+		try
 		{
-			if (ReferenceEquals(item, value))
+			count = list.Count;
+		}
+		catch
+		{
+			return false;
+		}
+
+		for (int index = 0; index < count; index++)
+		{
+			try
 			{
-				return true;
+				if (ReferenceEquals(list[index], value))
+				{
+					return true;
+				}
+			}
+			catch (ArgumentOutOfRangeException)
+			{
+				return false;
 			}
 		}
 		return false;

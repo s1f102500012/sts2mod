@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using Godot;
@@ -59,9 +58,9 @@ internal static partial class ErasureKill
 			|| TerminalIngresses.TryGetValue(creature, out _);
 	}
 
-	private static Task CreateTerminalIngressCancellation()
+	private static Task CreateTerminalIngressCompletion()
 	{
-		return Task.FromCanceled(new CancellationToken(canceled: true));
+		return ErasureTerminalIngressPolicy.CreateRejectedIngressTask();
 	}
 
 	private static bool TryResolveTerminalLedger(
@@ -104,12 +103,12 @@ internal static partial class ErasureKill
 		ManagerCombatSnapshot managerState = ReadManagerSnapshot(
 			CombatManager.Instance,
 			invocationTurnState: null);
-		bool isSealed;
+		ErasureTerminalBarrierPhase barrierPhase;
 		bool completionRunning;
 		bool isBaselineEnemy;
 		lock (ledger.Gate)
 		{
-			isSealed = ledger.TerminalSealed;
+			barrierPhase = ledger.TerminalBarrierPhase;
 			completionRunning = ledger.CompletionDisposition
 				== CompletionDisposition.Running;
 			isBaselineEnemy =
@@ -120,7 +119,7 @@ internal static partial class ErasureKill
 			HasTrackedCombat: true,
 			IsEnemy: creature.Side == CombatSide.Enemy,
 			IsBaselineEnemy: isBaselineEnemy,
-			IsTerminalSealed: isSealed,
+			BarrierPhase: barrierPhase,
 			IsCompletionFlightRunning: completionRunning,
 			IsExpectedCombat:
 				managerState.IsCurrentInvocation
@@ -140,61 +139,104 @@ internal static partial class ErasureKill
 	{
 		lock (ledger.Gate)
 		{
-			ledger.TerminalSealed = true;
+			if (ledger.TerminalBarrierPhase
+				< ErasureTerminalBarrierPhase.Completed)
+			{
+				ledger.TerminalBarrierPhase =
+					ErasureTerminalBarrierPhase.Completed;
+			}
 		}
 	}
 
-	private static void CommitTerminalCombat(
-		CombatLedger ledger,
-		IEnumerable<Creature> baselineEnemies)
+	private static void CommitTerminalCombat(CombatLedger ledger)
 	{
 		lock (ledger.Gate)
 		{
-			if (ledger.TerminalSealed)
+			if (ledger.TerminalBarrierPhase
+				>= ErasureTerminalBarrierPhase.Committed)
 			{
 				return;
 			}
-
-			ledger.TerminalBaselineEnemies.Clear();
-			foreach (Creature enemy in baselineEnemies)
+			if (ledger.TerminalBarrierPhase
+				!= ErasureTerminalBarrierPhase.Armed)
 			{
-				ledger.TerminalBaselineEnemies.Add(enemy);
+				throw new InvalidOperationException(
+					"Terminal combat settlement requires an armed participation barrier.");
 			}
-			ledger.TerminalSealed = true;
+			ledger.TerminalBarrierPhase =
+				ErasureTerminalBarrierPhase.Committed;
 		}
 	}
 
-	private static void SweepTerminalIngresses(CombatLedger ledger)
+	private static bool TryArmTerminalCombat(
+		CombatLedger ledger,
+		ICombatState combatState,
+		Creature selectedTarget)
 	{
-		List<Creature> candidates = [];
-		if (ledger.CombatState is CombatState concrete)
-		{
-			candidates.AddRange(
-				GetRequiredList(EnemiesField, concrete)
-					.Cast<Creature>());
-		}
-
-		NCombatRoom? room = NCombatRoom.Instance;
-		if (room != null)
-		{
-			candidates.AddRange(
-				EnumerateRoomCreatureNodes(room)
-					.Where(node => node?.Entity != null)
-					.Select(node => node.Entity));
-		}
-
-		foreach (Creature creature in candidates
+		Creature[] activeParticipants = ErasureRosterPolicy
+			.SnapshotNonNull(combatState.Enemies)
 			.Distinct(CreatureReferenceComparer)
-			.ToArray())
+			.Where(enemy => IsActiveEnemyAtSelection(
+				combatState,
+				selectedTarget,
+				enemy))
+			.ToArray();
+		if (!activeParticipants.Any(enemy =>
+				ReferenceEquals(enemy, selectedTarget))
+			|| activeParticipants.Any(enemy =>
+				!ReferenceEquals(enemy, selectedTarget)
+				&& enemy.IsPrimaryEnemy))
 		{
-			if (!ShouldRejectTerminalIngress(ledger, creature))
+			return false;
+		}
+
+		lock (ledger.Gate)
+		{
+			if (ledger.TerminalBarrierPhase
+				!= ErasureTerminalBarrierPhase.Open)
 			{
-				continue;
+				return true;
 			}
 
-			QuarantineTerminalIngress(ledger, creature);
-			RemoveTerminalIngressNodes(creature);
+			ledger.TerminalBaselineEnemies.Clear();
+			foreach (Creature participant in activeParticipants)
+			{
+				ledger.TerminalBaselineEnemies.Add(participant);
+			}
+			ledger.TerminalBarrierPhase =
+				ErasureTerminalBarrierPhase.Armed;
+			return true;
 		}
+	}
+
+	private static bool IsActiveEnemyAtSelection(
+		ICombatState combatState,
+		Creature selectedTarget,
+		Creature candidate)
+	{
+		bool isPresentInEnemyRoster = combatState is CombatState concrete
+			? ContainsExact(GetRequiredList(EnemiesField, concrete), candidate)
+			: ErasureRosterPolicy.SnapshotNonNull(combatState.Enemies)
+				.Any(enemy => ReferenceEquals(enemy, candidate));
+		bool hasStableCombatPresence = !string.IsNullOrEmpty(candidate.SlotName);
+		NCombatRoom? room = NCombatRoom.Instance;
+		if (!hasStableCombatPresence && room != null)
+		{
+			hasStableCombatPresence = room.CreatureNodes.Any(node =>
+				GodotObject.IsInstanceValid(node)
+				&& !node.IsQueuedForDeletion()
+				&& ReferenceEquals(node.Entity, candidate));
+		}
+
+		return ErasureParticipationPolicy.IsActiveAtSelection(
+			new ErasureParticipantSnapshot(
+				IsEnemy: candidate.Side == CombatSide.Enemy,
+				IsSelectedTarget: ReferenceEquals(candidate, selectedTarget),
+				IsAttachedToExpectedCombat: ReferenceEquals(
+					ReadAttachedCombat(candidate),
+					combatState),
+				IsPresentInEnemyRoster: isPresentInEnemyRoster,
+				HasStableCombatPresence: hasStableCombatPresence));
 	}
 
 	private static void QuarantineTerminalIngress(
@@ -206,30 +248,6 @@ internal static partial class ErasureKill
 		StopMonsterExecution(creature);
 		DetachTerminalIngress(ledger, creature);
 		LogTerminalIngressOnce(ledger, creature);
-	}
-
-	private static void RemoveTerminalIngressNodes(Creature creature)
-	{
-		NCombatRoom? room = NCombatRoom.Instance;
-		if (room == null)
-		{
-			return;
-		}
-
-		IList activeNodes = GetRequiredList(ActiveNodesField, room);
-		IList removingNodes = GetRequiredList(RemovingNodesField, room);
-		foreach (NCreature node in EnumerateRoomCreatureNodes(room)
-			.Where(node => node?.Entity != null
-				&& ReferenceEquals(node.Entity, creature))
-			.ToArray())
-		{
-			RemoveExact(activeNodes, node);
-			RemoveExact(removingNodes, node);
-			if (GodotObject.IsInstanceValid(node))
-			{
-				node.QueueFree();
-			}
-		}
 	}
 
 	private static void RememberTerminalIngress(
@@ -268,7 +286,7 @@ internal static partial class ErasureKill
 		}
 
 		Log.Info(
-			$"[{ModInfo.Id}] Rejected enemy ingress into a completed " +
-			$"combat: {SafeModelId(creature)}.");
+			$"[{ModInfo.Id}] Rejected enemy ingress during terminal combat " +
+			$"settlement: {SafeModelId(creature)}.");
 	}
 }

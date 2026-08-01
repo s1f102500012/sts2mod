@@ -102,11 +102,10 @@ internal sealed partial class ErasureLineage
 		long operationSequence,
 		ErasureEvidence root,
 		IEnumerable<ErasureEvidence> preexisting,
-		bool wasSoleLivingPrimaryEnemyAtStart = false)
+		bool wasTerminalCandidateAtStart = false)
 	{
 		OperationSequence = operationSequence;
-		WasSoleLivingPrimaryEnemyAtStart =
-			wasSoleLivingPrimaryEnemyAtStart;
+		WasTerminalCandidateAtStart = wasTerminalCandidateAtStart;
 		_mutationJournal = new ErasureMutationJournal(operationSequence);
 
 		foreach (ErasureEvidence evidence in preexisting)
@@ -123,7 +122,7 @@ internal sealed partial class ErasureLineage
 
 	public long OperationSequence { get; }
 
-	public bool WasSoleLivingPrimaryEnemyAtStart { get; }
+	public bool WasTerminalCandidateAtStart { get; }
 
 	public ErasureLineageMember Root { get; }
 
@@ -290,7 +289,7 @@ internal sealed partial class ErasureLineage
 			return strong;
 		}
 
-		if (!WasSoleLivingPrimaryEnemyAtStart
+		if (!WasTerminalCandidateAtStart
 			|| !candidate.IsEnemy
 			|| !candidate.IsPrimary)
 		{
