@@ -348,7 +348,6 @@ internal static class HextechAssetHooks
 		texture = null;
 		string? path = self switch
 		{
-			ElicitCard => HextechAssets.ElicitCardPortraitPath,
 			TrickMagicCard => HextechAssets.TrickMagicCardPortraitPath,
 			BladeWaltzCard => HextechAssets.BladeWaltzCardPortraitPath,
 			OceanDragonSoulCard => HextechAssets.OceanDragonSoulCardPortraitPath,

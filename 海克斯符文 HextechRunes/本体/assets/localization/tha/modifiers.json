@@ -6,5 +6,15 @@
   "HEXTECH_GOLD_RUN.title": "การเดินทางโกลด์",
   "HEXTECH_GOLD_RUN.description": "รูนเฮกซ์เทคทุกอันที่สุ่มออกมาในการเดินทางนี้เป็นระดับโกลด์",
   "HEXTECH_PRISMATIC_RUN.title": "การเดินทางพริสแมติก",
-  "HEXTECH_PRISMATIC_RUN.description": "รูนเฮกซ์เทคทุกอันที่สุ่มออกมาในการเดินทางนี้เป็นระดับพริสแมติก"
+  "HEXTECH_PRISMATIC_RUN.description": "รูนเฮกซ์เทคทุกอันที่สุ่มออกมาในการเดินทางนี้เป็นระดับพริสแมติก",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.title": "ยัดจนพัง",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.description": "ผู้เล่นใช้การตั้งค่าเฮกซ์เทคเริ่มต้น ศัตรูจะได้รับรูนเฮกซ์เทคแบบตายตัวที่เกี่ยวข้องกับ[red]การ์ดสถานะ[/red]",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.title": "ปรมาจารย์สวนกลับ",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.description": "ผู้เล่นใช้การตั้งค่าเฮกซ์เทคเริ่มต้น ศัตรูจะได้รับรูนเฮกซ์เทคแบบตายตัวที่เกี่ยวข้องกับ[red]การป้องกันและสวนกลับ[/red]",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.title": "พลังเหนือชั้น",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.description": "ผู้เล่นใช้การตั้งค่าเฮกซ์เทคเริ่มต้น ศัตรูจะได้รับรูนเฮกซ์เทคแบบตายตัวที่เกี่ยวข้องกับ[red]ค่าสถานะ[/red]",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.title": "ประตูแปดเพนนี",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.description": "ผู้เล่นใช้การตั้งค่าเฮกซ์เทคเริ่มต้น ศัตรูจะได้รับรูนเฮกซ์เทคแบบตายตัวที่เกี่ยวข้องกับ[red]ผู้สร้างประตู[/red]",
+  "HEXTECH_LISTLESS_CHALLENGE.title": "หมดเรี่ยวแรง",
+  "HEXTECH_LISTLESS_CHALLENGE.description": "ผู้เล่นใช้การตั้งค่าเฮกซ์เทคเริ่มต้น ศัตรูจะได้รับรูนเฮกซ์เทคแบบตายตัวที่เกี่ยวข้องกับ[red]การลดค่าสถานะ[/red]"
 }

@@ -10,34 +10,55 @@ internal static class HextechEncounterCompatibilityHooks
 
 	public static void Install(Harmony harmony)
 	{
+	#if STS2_107_1 && !STS2_108_OR_NEWER
+		MethodInfo? spitMove = TryResolveEntomancerSpitMove(typeof(Entomancer), warnIfMissing: true);
+		if (spitMove == null)
+		{
+			return;
+		}
+
 		harmony.Patch(
-			RequireMethod(
-				typeof(Entomancer),
-				"SpitMove",
-				BindingFlags.Instance | BindingFlags.NonPublic,
-				typeof(IReadOnlyList<Creature>)),
+			spitMove,
 			prefix: new HarmonyMethod(typeof(HextechEncounterCompatibilityHooks), nameof(EntomancerSpitMovePrefix)));
+	#endif
+	}
+
+	internal static bool ShouldRunOriginalEntomancerSpitMove(bool hasPersonalHive)
+	{
+#if STS2_107_1 && !STS2_108_OR_NEWER
+		return hasPersonalHive;
+#else
+		return true;
+#endif
+	}
+
+	#if STS2_107_1 && !STS2_108_OR_NEWER
+	internal static MethodInfo? TryResolveEntomancerSpitMove(Type entomancerType, bool warnIfMissing)
+	{
+		return TryGetMethod(
+			entomancerType,
+			"SpitMove",
+			BindingFlags.Instance | BindingFlags.NonPublic,
+			warnIfMissing,
+			typeof(IReadOnlyList<Creature>));
 	}
 
 	private static bool EntomancerSpitMovePrefix(Entomancer __instance, ref Task __result)
 	{
-		__result = EntomancerSpitMoveSafe(__instance);
+		if (ShouldRunOriginalEntomancerSpitMove(__instance.Creature.HasPower<PersonalHivePower>()))
+		{
+			return true;
+		}
+
+		__result = EntomancerSpitMoveWithoutPersonalHive(__instance);
 		return false;
 	}
 
-	private static async Task EntomancerSpitMoveSafe(Entomancer entomancer)
+	private static async Task EntomancerSpitMoveWithoutPersonalHive(Entomancer entomancer)
 	{
 		SfxCmd.Play(EntomancerCastSfx);
 		await CreatureCmd.TriggerAnim(entomancer.Creature, "Cast", 0.5f);
-
-		PersonalHivePower? personalHivePower = entomancer.Creature.Powers.OfType<PersonalHivePower>().FirstOrDefault();
-		if (personalHivePower == null || personalHivePower.Amount < 3)
-		{
-			await PowerCmd.Apply<PersonalHivePower>(entomancer.Creature, 1m, entomancer.Creature, null);
-			await PowerCmd.Apply<StrengthPower>(entomancer.Creature, 1m, entomancer.Creature, null);
-			return;
-		}
-
 		await PowerCmd.Apply<StrengthPower>(entomancer.Creature, 2m, entomancer.Creature, null);
 	}
+#endif
 }

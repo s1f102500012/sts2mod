@@ -30,15 +30,14 @@ internal static class HextechExternalContentRegistry
 			if (existingIndex < 0)
 			{
 				PlayerRuneRegistrations.Add(registration);
-				StoreAssetModId(registration.Type, assetModId);
+				TryStoreAssetModId(registration.Type, assetModId);
 				_version++;
 				return;
 			}
 
 			PlayerRuneRegistration existing = PlayerRuneRegistrations[existingIndex];
 			string? existingAssetModId = GetStoredAssetModId(registration.Type);
-			if (!HasSamePlayerRuneMetadata(existing, registration)
-				|| HasConflictingAssetModId(existingAssetModId, assetModId))
+			if (!HasSamePlayerRuneMetadata(existing, registration))
 			{
 				Log.Warn(
 					$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate player rune registration for {registration.Type.FullName}; first metadata retained: "
@@ -47,7 +46,10 @@ internal static class HextechExternalContentRegistry
 					+ $"callerAssembly={registration.Type.Assembly.GetName().Name ?? "<unknown>"}");
 			}
 
-			StoreAssetModId(registration.Type, assetModId);
+			if (TryStoreAssetModId(registration.Type, assetModId))
+			{
+				_version++;
+			}
 		}
 	}
 
@@ -58,22 +60,15 @@ internal static class HextechExternalContentRegistry
 			if (!EventRelicTypes.Any(existing => HextechModelTypeIdentity.IsSame(existing, relicType)))
 			{
 				EventRelicTypes.Add(relicType);
-				StoreAssetModId(relicType, assetModId);
+				TryStoreAssetModId(relicType, assetModId);
 				_version++;
 				return;
 			}
 
-			string? existingAssetModId = GetStoredAssetModId(relicType);
-			if (HasConflictingAssetModId(existingAssetModId, assetModId))
+			if (TryStoreAssetModId(relicType, assetModId))
 			{
-				Log.Warn(
-					$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate event relic asset registration for {relicType.FullName}: "
-					+ $"existingAssetModId={DescribeValue(existingAssetModId)} "
-					+ $"incomingAssetModId={DescribeValue(assetModId)} "
-					+ $"callerAssembly={relicType.Assembly.GetName().Name ?? "<unknown>"}");
+				_version++;
 			}
-
-			StoreAssetModId(relicType, assetModId);
 		}
 	}
 
@@ -86,15 +81,14 @@ internal static class HextechExternalContentRegistry
 			if (existingIndex < 0)
 			{
 				ForgeRegistrations.Add(registration);
-				StoreAssetModId(registration.Type, assetModId);
+				TryStoreAssetModId(registration.Type, assetModId);
 				_version++;
 				return;
 			}
 
 			ForgeRegistration existing = ForgeRegistrations[existingIndex];
 			string? existingAssetModId = GetStoredAssetModId(registration.Type);
-			if (existing.Rarity != registration.Rarity
-				|| HasConflictingAssetModId(existingAssetModId, assetModId))
+			if (existing.Rarity != registration.Rarity)
 			{
 				Log.Warn(
 					$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate forge registration for {registration.Type.FullName}; first metadata retained: "
@@ -103,7 +97,10 @@ internal static class HextechExternalContentRegistry
 					+ $"callerAssembly={registration.Type.Assembly.GetName().Name ?? "<unknown>"}");
 			}
 
-			StoreAssetModId(registration.Type, assetModId);
+			if (TryStoreAssetModId(registration.Type, assetModId))
+			{
+				_version++;
+			}
 		}
 	}
 
@@ -111,7 +108,22 @@ internal static class HextechExternalContentRegistry
 	{
 		lock (SyncRoot)
 		{
-			EnchantmentIconPathsByModelId[ModelDb.GetId(enchantmentType)] = iconPath;
+			ModelId id = ModelDb.GetId(enchantmentType);
+			if (EnchantmentIconPathsByModelId.TryGetValue(id, out string? existingPath))
+			{
+				if (!string.Equals(existingPath, iconPath, StringComparison.Ordinal)
+					&& HextechRunLogBudget.TryConsume("external-content.enchantment-icon-conflict", 12))
+				{
+					Log.Warn(
+						$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate enchantment icon registration for {enchantmentType.FullName}; first path retained: "
+						+ $"existingPath={DescribeValue(existingPath)} incomingPath={DescribeValue(iconPath)} "
+						+ $"callerAssembly={enchantmentType.Assembly.GetName().Name ?? "<unknown>"}");
+				}
+
+				return;
+			}
+
+			EnchantmentIconPathsByModelId.Add(id, iconPath);
 			_version++;
 		}
 	}
@@ -160,14 +172,31 @@ internal static class HextechExternalContentRegistry
 		}
 	}
 
-	private static void StoreAssetModId(Type modelType, string? assetModId)
+	private static bool TryStoreAssetModId(Type modelType, string? assetModId)
 	{
 		if (string.IsNullOrWhiteSpace(assetModId))
 		{
-			return;
+			return false;
 		}
 
-		AssetModIdsByModelId[ModelDb.GetId(modelType)] = assetModId;
+		ModelId id = ModelDb.GetId(modelType);
+		if (AssetModIdsByModelId.TryGetValue(id, out string? existingAssetModId))
+		{
+			if (!string.Equals(existingAssetModId, assetModId, StringComparison.Ordinal)
+				&& HextechRunLogBudget.TryConsume("external-content.asset-owner-conflict", 12))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][ExternalContent] Conflicting asset owner registration for {modelType.FullName}; first owner retained: "
+					+ $"existingAssetModId={DescribeValue(existingAssetModId)} "
+					+ $"incomingAssetModId={DescribeValue(assetModId)} "
+					+ $"callerAssembly={modelType.Assembly.GetName().Name ?? "<unknown>"}");
+			}
+
+			return false;
+		}
+
+		AssetModIdsByModelId.Add(id, assetModId);
+		return true;
 	}
 
 	private static string? GetStoredAssetModId(Type modelType)
@@ -186,13 +215,6 @@ internal static class HextechExternalContentRegistry
 			&& existing.CharacterPool == incoming.CharacterPool
 			&& existing.CharacterOrder == incoming.CharacterOrder
 			&& string.Equals(existing.TagKey, incoming.TagKey, StringComparison.Ordinal);
-	}
-
-	private static bool HasConflictingAssetModId(string? existing, string? incoming)
-	{
-		return !string.IsNullOrWhiteSpace(existing)
-			&& !string.IsNullOrWhiteSpace(incoming)
-			&& !string.Equals(existing, incoming, StringComparison.Ordinal);
 	}
 
 	private static string Describe(PlayerRuneRegistration registration)

@@ -76,23 +76,26 @@ internal static partial class HextechRunLifecycleHooks
 			modifier = GetOrRecoverMayhemModifier(runState, $"OnRoomEntered recovered missing modifier room={runState.CurrentRoom?.GetType().Name ?? "null"} actIndex={runState.CurrentActIndex}");
 		}
 
-		if (modifier != null && !modifier.IsActResolved(runState.CurrentActIndex) && modifier.TryRecoverResolvedActsFromPlayerRelics(nameof(OnRoomEntered)))
+		int stageIndex = modifier == null
+			? -1
+			: ResolveCurrentStageIndex(runState, modifier, out _);
+		if (modifier != null && !modifier.IsStageResolved(stageIndex) && modifier.TryRecoverResolvedActsFromPlayerRelics(nameof(OnRoomEntered), stageIndex))
 		{
 			RefreshEnemyUiSafely(modifier);
 		}
 
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] OnRoomEntered: room={runState.CurrentRoom?.GetType().Name ?? "null"} actIndex={runState.CurrentActIndex} actResolved={modifier?.IsActResolved(runState.CurrentActIndex)} startedWithNeow={runState.ExtraFields.StartedWithNeow} {DescribeCurrentEventState(runState)}");
+		HextechLog.Info($"[{ModInfo.Id}][Mayhem] OnRoomEntered: room={runState.CurrentRoom?.GetType().Name ?? "null"} actIndex={runState.CurrentActIndex} stageIndex={stageIndex} stageResolved={modifier?.IsStageResolved(stageIndex)} startedWithNeow={runState.ExtraFields.StartedWithNeow} {DescribeCurrentEventState(runState)}");
 		if (runState.CurrentRoom is EventRoom { CanonicalEvent: AncientEventModel ancientEvent }
 			&& modifier != null
-			&& runState.CurrentActIndex is >= 0 and <= 2
-			&& !modifier.IsActResolved(runState.CurrentActIndex))
+			&& runState.CurrentActIndex >= 0
+			&& !modifier.IsStageResolved(stageIndex))
 		{
 			HextechLog.Info($"[{ModInfo.Id}][Mayhem] OnRoomEntered: pending act selection is deferred until ancient event proceed. act={runState.CurrentActIndex} event={ancientEvent.Id.Entry} {DescribeCurrentEventState(runState)}");
 		}
-		if (modifier != null && ShouldScheduleActSelectionOnRoomEntered(runState, modifier))
+		if (modifier != null && ShouldScheduleActSelectionOnRoomEntered(runState, modifier, stageIndex))
 		{
 			HextechLog.Info($"[{ModInfo.Id}][Mayhem] OnRoomEntered: scheduling selection for room={runState.CurrentRoom?.GetType().Name ?? "null"}");
-			TaskHelper.RunSafely(HextechRuneSelectionCoordinator.HandleActSelection(runState, modifier));
+			TaskHelper.RunSafely(HextechRuneSelectionCoordinator.HandleStageSelection(runState, modifier, stageIndex));
 		}
 
 		try
@@ -145,10 +148,9 @@ internal static partial class HextechRunLifecycleHooks
 		}
 	}
 
-	private static bool ShouldScheduleActSelectionOnRoomEntered(RunState runState, HextechMayhemModifier modifier)
+	private static bool ShouldScheduleActSelectionOnRoomEntered(RunState runState, HextechMayhemModifier modifier, int stageIndex)
 	{
-		int actIndex = runState.CurrentActIndex;
-		if (actIndex < 0 || actIndex > 2 || modifier.IsActResolved(actIndex) || ShouldDeferActSelectionUntilAfterCurrentEvent(runState))
+		if (stageIndex < 0 || modifier.IsStageResolved(stageIndex) || ShouldDeferActSelectionUntilAfterCurrentEvent(runState))
 		{
 			return false;
 		}

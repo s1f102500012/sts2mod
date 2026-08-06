@@ -103,7 +103,6 @@ internal static class HextechMonsterHexRegistry
 		Monster<ForgottenSoulRune>(MonsterHexKind.ForgottenSoul, HextechRarityTier.Prismatic),
 		Monster<CerberusRune>(MonsterHexKind.Cerberus, HextechRarityTier.Prismatic),
 		Monster<OmniDragonSoulRune>(MonsterHexKind.OmniDragonSoul, HextechRarityTier.Prismatic),
-		Monster<BlankCheckRune>(MonsterHexKind.BlankCheck, HextechRarityTier.Prismatic),
 
 		Monster<CorrosionRune>(MonsterHexKind.Corrosion, HextechRarityTier.Silver),
 		Monster<BrutalityRune>(MonsterHexKind.Brutality, HextechRarityTier.Silver, disabled: true),
@@ -132,7 +131,12 @@ internal static class HextechMonsterHexRegistry
 		Monster<AncientStatueHex>(MonsterHexKind.AncientStatue, HextechRarityTier.Prismatic),
 		Monster<ByrdonisHex>(MonsterHexKind.Byrdonis, HextechRarityTier.Prismatic),
 		Monster<InspectHex>(MonsterHexKind.IInspect, HextechRarityTier.Prismatic),
-		Monster<GripHex>(MonsterHexKind.IGrip, HextechRarityTier.Prismatic)
+		Monster<GripHex>(MonsterHexKind.IGrip, HextechRarityTier.Prismatic),
+		Monster<TwilightVeilRune>(MonsterHexKind.TwilightVeil, HextechRarityTier.Gold),
+		Monster<StatsRune>(MonsterHexKind.Stats, HextechRarityTier.Silver),
+		Monster<StatsOnStatsRune>(MonsterHexKind.StatsOnStats, HextechRarityTier.Gold),
+		Monster<StatsOnStatsOnStatsRune>(MonsterHexKind.StatsOnStatsOnStats, HextechRarityTier.Prismatic),
+		Monster<MiserableFateRune>(MonsterHexKind.MiserableFate, HextechRarityTier.Prismatic)
 	];
 
 	private static MonsterHexRegistration Monster<TRelic>(

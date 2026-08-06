@@ -20,13 +20,13 @@ internal static class MonsterHexCatalog
 		new Dictionary<MonsterHexKind, Type[]>
 		{
 			[MonsterHexKind.Slap] = [typeof(StrengthPower)],
-			[MonsterHexKind.Corrosion] = [typeof(StrengthPower), typeof(DexterityPower)],
+			[MonsterHexKind.Corrosion] = [typeof(FrailPower)],
 			[MonsterHexKind.Brutality] = [typeof(VigorPower)],
 			[MonsterHexKind.EscapePlan] = [typeof(ShrinkPower)],
 			[MonsterHexKind.ProtectiveVeil] = [typeof(ArtifactPower)],
 			[MonsterHexKind.Repulsor] = [typeof(SlipperyPower)],
 			[MonsterHexKind.Thornmail] = [typeof(ThornsPower)],
-			[MonsterHexKind.FrostWraith] = [typeof(SlowPower)],
+			[MonsterHexKind.FrostWraith] = [typeof(HextechPlayerSlowPower)],
 			[MonsterHexKind.DawnbringersResolve] = [typeof(RegenPower)],
 			[MonsterHexKind.ShrinkRay] = [typeof(ShrinkPower)],
 			[MonsterHexKind.SuperBrain] = [typeof(PlatingPower)],

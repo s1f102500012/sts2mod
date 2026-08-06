@@ -2,22 +2,19 @@ namespace HextechRunes;
 
 public sealed class BashUpgradeRune : CardUpgradeRuneBase<Bash>
 {
-	protected override IEnumerable<DynamicVar> CanonicalVars =>
-	[
-		new PowerVar<StrengthPower>(2m),
-		new DynamicVar("BreakStrength", 3m)
-	];
+	internal override bool GrantsCardOnPickup => false;
 
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
 	[
 		HoverTipFactory.FromCard<Bash>(),
 		HoverTipFactory.FromCard<Break>(),
+		HoverTipFactory.FromPower<VulnerablePower>(),
 		HoverTipFactory.FromPower<StrengthPower>()
 	];
 
-	protected override bool DeckContainsRequiredCard(Player player)
+	internal override bool MeetsCardAvailabilityRequirement(IEnumerable<CardModel> deckCards)
 	{
-		return DeckContains<Bash>(player) || DeckContains<Break>(player);
+		return deckCards.Any(static card => card is Bash or Break);
 	}
 
 	protected override bool IsAvailableForCharacter(Player player)
@@ -32,12 +29,7 @@ public sealed class BashUpgradeRune : CardUpgradeRuneBase<Bash>
 			return;
 		}
 
-		decimal amount = cardPlay.Card switch
-		{
-			Bash => DynamicVars["StrengthPower"].BaseValue,
-			Break => DynamicVars["BreakStrength"].BaseValue,
-			_ => 0m
-		};
+		decimal amount = CalculateStrengthGain(cardPlay.Card);
 		if (amount <= 0m)
 		{
 			return;
@@ -45,5 +37,15 @@ public sealed class BashUpgradeRune : CardUpgradeRuneBase<Bash>
 
 		Flash();
 		await PowerCmd.Apply<StrengthPower>(Owner.Creature, amount, Owner.Creature, cardPlay.Card);
+	}
+
+	internal static decimal CalculateStrengthGain(CardModel card)
+	{
+		return card switch
+		{
+			Bash bash => bash.DynamicVars.Vulnerable.BaseValue,
+			Break breakCard => breakCard.DynamicVars.Vulnerable.BaseValue,
+			_ => 0m
+		};
 	}
 }

@@ -4,9 +4,11 @@ internal sealed class SkulkingColonyEnemyHex : HextechEnemyHexEffect
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.SkulkingColony;
 
-	internal override int PersistentOrder => 110;
-
-	internal override async Task ApplyPersistentToEnemy(HextechEnemyHexContext context, Creature creature, int? maxHpBaseOverride, bool replayOneShotPowers)
+	internal override async Task ApplyOpeningCombatStartToEnemy(
+		HextechEnemyHexContext context,
+		Creature creature,
+		CombatRoom room,
+		bool replayOneShotPowers)
 	{
 		if (creature.GetPowerAmount<HardenedShellPower>() <= 0m)
 		{

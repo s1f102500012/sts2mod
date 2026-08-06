@@ -6,15 +6,11 @@ internal static class HextechAssets
 
 	public const string ForgeSubcategoryKey = "HEXTECH_FORGES_SUBCATEGORY";
 
-	public const string ElicitCardPortraitPath = "res://HextechRunes/images/cards/elicitCard.png";
-
 	public const string TrickMagicCardPortraitPath = "res://HextechRunes/images/cards/trickMagicCard.png";
 
 	public const string BladeWaltzCardPortraitPath = "res://HextechRunes/images/cards/bladeWaltzCard.png";
 
 	public const string CatalystCardPortraitPath = "res://HextechRunes/images/cards/catalystCard.png";
-
-	public const string AllInCardPortraitPath = "res://HextechRunes/images/cards/allInCard.png";
 
 	public const string WhiteHoleCardPortraitPath = "res://HextechRunes/images/cards/whiteHoleCard.png";
 

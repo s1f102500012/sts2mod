@@ -1,7 +1,4 @@
 {
-  "ELICIT_CARD.title": "Elicit",
-  "ELICIT_CARD.description": "Evoke all of your Orbs.",
-  "ELICIT_CARD.flavor": "Let every coil discharge at once.",
   "TRICK_MAGIC_CARD.title": "Trick Magic",
   "TRICK_MAGIC_CARD.description": "Draw [blue]{Cards}[/blue] cards. Gain [blue]{BufferPower}[/blue] [gold]Buffer[/gold]. The next Attack you play is replayed [blue]{Replays}[/blue] time(s).",
   "TRICK_MAGIC_CARD.flavor": "The audience sees ribbons. The enemy sees the bill.",
@@ -29,9 +26,6 @@
   "CLOUD_DRAGON_SOUL_CARD.title": "Cloud Dragon Soul",
   "CLOUD_DRAGON_SOUL_CARD.description": "Draw [blue]{Cards}[/blue] extra cards each turn.",
   "CLOUD_DRAGON_SOUL_CARD.flavor": "The wind puts choices in your hand.",
-  "ALL_IN_CARD.title": "All In",
-  "ALL_IN_CARD.description": "Deal {Damage:diff()} damage.\nDiscard all non-Attack cards.",
-  "ALL_IN_CARD.flavor": "Only the wager and the edge remain on the table.",
   "WHITE_HOLE_CARD.title": "White Hole",
   "WHITE_HOLE_CARD.description": "Whenever you draw this, gain {Energy:energyIcons()}.\nDraw {Cards} cards.",
   "WHITE_HOLE_CARD.flavor": "It does not swallow choices. It spits them back into your hand.",

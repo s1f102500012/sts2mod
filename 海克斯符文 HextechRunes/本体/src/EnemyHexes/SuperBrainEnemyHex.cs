@@ -4,11 +4,16 @@ internal sealed class SuperBrainEnemyHex : HextechEnemyHexEffect
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.SuperBrain;
 
-	internal override int PersistentOrder => 80;
-
-	internal override async Task ApplyPersistentToEnemy(HextechEnemyHexContext context, Creature creature, int? maxHpBaseOverride, bool replayOneShotPowers)
+	internal override async Task ApplyOpeningCombatStartToEnemy(
+		HextechEnemyHexContext context,
+		Creature creature,
+		CombatRoom room,
+		bool replayOneShotPowers)
 	{
-		if (!HextechCombatProcTracker.TryMarkPersistentHexApplied(context.Tracking.SuperBrainApplied, creature, replayOneShotPowers))
+		if (!HextechCombatProcTracker.TryMarkPersistentHexApplied(
+			context.Tracking.SuperBrainApplied,
+			creature,
+			replayOneShotPowers))
 		{
 			return;
 		}

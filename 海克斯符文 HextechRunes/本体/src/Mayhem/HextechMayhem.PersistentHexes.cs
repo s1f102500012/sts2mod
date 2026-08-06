@@ -77,6 +77,9 @@ internal sealed partial class HextechMayhemModifier
 			_combatTracking.GoliathApplied.Contains(combatId)
 			|| _combatTracking.AstralBodyApplied.Contains(combatId)
 			|| _combatTracking.GoldenSpatulaApplied.Contains(combatId)
+			|| _combatTracking.StatsApplied.Contains(combatId)
+			|| _combatTracking.StatsOnStatsApplied.Contains(combatId)
+			|| _combatTracking.StatsOnStatsOnStatsApplied.Contains(combatId)
 			|| _combatTracking.MadScientistApplied.Contains(combatId)
 			|| _combatTracking.TankEngineStacks.GetValueOrDefault(combatId, 0) > 0;
 	}
@@ -98,6 +101,21 @@ internal sealed partial class HextechMayhemModifier
 		if (_combatTracking.GoldenSpatulaApplied.Contains(combatId))
 		{
 			appliedFixedBonusFractions.Add(context.TierValue(MonsterHexKind.GoldenSpatula, 0.25m, 0.30m, 0.45m));
+		}
+
+		if (_combatTracking.StatsApplied.Contains(combatId))
+		{
+			appliedFixedBonusFractions.Add(EnemyAttributeBoostValues.GetBonusFraction(MonsterHexKind.Stats, context.GetStrengthTier(MonsterHexKind.Stats)));
+		}
+
+		if (_combatTracking.StatsOnStatsApplied.Contains(combatId))
+		{
+			appliedFixedBonusFractions.Add(EnemyAttributeBoostValues.GetBonusFraction(MonsterHexKind.StatsOnStats, context.GetStrengthTier(MonsterHexKind.StatsOnStats)));
+		}
+
+		if (_combatTracking.StatsOnStatsOnStatsApplied.Contains(combatId))
+		{
+			appliedFixedBonusFractions.Add(EnemyAttributeBoostValues.GetBonusFraction(MonsterHexKind.StatsOnStatsOnStats, context.GetStrengthTier(MonsterHexKind.StatsOnStatsOnStats)));
 		}
 
 		decimal madScientistLossFraction = _combatTracking.MadScientistApplied.Contains(combatId)

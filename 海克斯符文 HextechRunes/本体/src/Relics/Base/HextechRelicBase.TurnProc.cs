@@ -40,6 +40,22 @@ public abstract partial class HextechRelicBase
 			&& Owner != null;
 	}
 
+	protected string GetStableTurnProcKey()
+	{
+		return GetStableTurnProcKey(GetType());
+	}
+
+	internal static string GetStableTurnProcKey(Type runtimeType)
+	{
+		if (runtimeType.Assembly == typeof(HextechRelicBase).Assembly)
+		{
+			return runtimeType.Name;
+		}
+
+		string assemblyName = runtimeType.Assembly.GetName().Name ?? "<unknown>";
+		return $"{assemblyName}:{runtimeType.FullName ?? runtimeType.Name}";
+	}
+
 	protected bool TryGetNetworkTurnProcCount(string procKey, out int count)
 	{
 		count = 0;

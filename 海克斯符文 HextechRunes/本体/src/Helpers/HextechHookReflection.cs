@@ -11,25 +11,6 @@ internal static class HextechHookReflection
 			?? throw new InvalidOperationException($"Could not find required method {type.FullName}.{name}.");
 	}
 
-	public static MethodInfo RequireMethodAllowingSingleArityFallback(Type type, string name, BindingFlags flags, params Type[] parameters)
-	{
-		MethodInfo? exact = type.GetMethod(name, flags, binder: null, parameters, modifiers: null);
-		if (exact != null)
-		{
-			return exact;
-		}
-
-		MethodInfo[] candidates = type.GetMethods(flags | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static)
-			.Where(method => method.Name == name && method.GetParameters().Length == parameters.Length)
-			.ToArray();
-		if (candidates.Length == 1)
-		{
-			return candidates[0];
-		}
-
-		throw new InvalidOperationException($"Could not find required method {type.FullName}.{name}.");
-	}
-
 	public static MethodInfo? TryGetMethod(Type type, string name, BindingFlags flags, params Type[] parameters)
 	{
 		return TryGetMethod(type, name, flags, warnIfMissing: true, parameters);

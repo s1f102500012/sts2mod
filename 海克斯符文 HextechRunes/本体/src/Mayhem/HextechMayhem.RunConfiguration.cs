@@ -10,11 +10,14 @@ internal sealed partial class HextechMayhemModifier
 
 	internal IReadOnlySet<string> DisabledForgeIdsForPool => GetEffectiveRunConfigurationSnapshot().DisabledForgeIds;
 
-	internal HextechRarityWeights FirstActRuneRarityWeights => GetEffectiveRunConfigurationSnapshot().FirstActRuneRarityWeights;
+	internal HextechRarityWeights GetRuneRarityWeightsForAct(int actIndex)
+	{
+		return GetEffectiveRunConfigurationSnapshot().GetRuneRarityWeightsForAct(actIndex);
+	}
 
-	internal HextechRarityWeights NormalRuneRarityWeights => GetEffectiveRunConfigurationSnapshot().NormalRuneRarityWeights;
+	internal bool PreventConsecutiveSilverRunes => GetEffectiveRunConfigurationSnapshot().PreventConsecutiveSilverRunes;
 
-	internal HextechRarityWeights SecondActAfterSilverRuneRarityWeights => GetEffectiveRunConfigurationSnapshot().SecondActAfterSilverRuneRarityWeights;
+	internal int GoldenRerollChancePercent => GetEffectiveRunConfigurationSnapshot().GoldenRerollChancePercent;
 
 	internal HextechForgeRarityWeights ForgeRarityWeights => GetEffectiveRunConfigurationSnapshot().ForgeRarityWeights;
 
@@ -86,7 +89,8 @@ internal sealed partial class HextechMayhemModifier
 		_runContext.PlayerHexCounts.Set(normalized.PlayerHexCountsByAct);
 		_runContext.EnemyHexCounts.Set(normalized.EnemyHexCountsByAct);
 		_runContext.PlayerRuneConfig.Set(normalized.DisabledPlayerRuneIds);
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] Run config snapshot set: reason={reason} playerCounts={string.Join(",", PlayerHexCountsByAct)} enemyCounts={string.Join(",", EnemyHexCountsByAct)} playerRerolls={normalized.PlayerRuneRerollLimit} monsterRerolls={normalized.MonsterHexRerollLimit} playerDisabled={PlayerRuneConfigDisabledIds.Count} enemyDisabled={normalized.DisabledMonsterHexIds.Count} forgeDisabled={normalized.DisabledForgeIds.Count} forgePrice={normalized.RandomForgeShopPrice} forgeDirect={normalized.RandomForgeDirectGrant}");
+		string runeWeights = string.Join("/", normalized.RuneRarityWeightsByAct.Select(static weights => $"{weights.Silver},{weights.Gold},{weights.Prismatic}"));
+		HextechLog.Info($"[{ModInfo.Id}][Mayhem] Run config snapshot set: reason={reason} playerCounts={string.Join(",", PlayerHexCountsByAct)} enemyCounts={string.Join(",", EnemyHexCountsByAct)} playerRerolls={normalized.PlayerRuneRerollLimit} monsterRerolls={normalized.MonsterHexRerollLimit} runeWeightsByAct={runeWeights} preventConsecutiveSilver={normalized.PreventConsecutiveSilverRunes} goldenRerollChance={normalized.GoldenRerollChancePercent}% playerDisabled={PlayerRuneConfigDisabledIds.Count} enemyDisabled={normalized.DisabledMonsterHexIds.Count} forgeDisabled={normalized.DisabledForgeIds.Count} forgePrice={normalized.RandomForgeShopPrice} forgeDirect={normalized.RandomForgeDirectGrant}");
 	}
 
 	private static HextechRunConfigurationSnapshot CreateNewRunConfigurationSnapshot()
@@ -118,9 +122,9 @@ internal sealed partial class HextechMayhemModifier
 		string[] DisabledPlayerRuneIds,
 		string[] DisabledMonsterHexIds,
 		string[] DisabledForgeIds,
-		HextechRarityWeights FirstActRuneRarityWeights,
-		HextechRarityWeights NormalRuneRarityWeights,
-		HextechRarityWeights SecondActAfterSilverRuneRarityWeights,
+		HextechRarityWeights[] RuneRarityWeightsByAct,
+		bool PreventConsecutiveSilverRunes,
+		int GoldenRerollChancePercent,
 		HextechForgeRarityWeights ForgeRarityWeights,
 		int RandomForgeShopPrice,
 		bool RandomForgeDirectGrant,
@@ -135,9 +139,9 @@ internal sealed partial class HextechMayhemModifier
 				OrderedIds(snapshot.DisabledPlayerRuneIds),
 				OrderedIds(snapshot.DisabledMonsterHexIds),
 				OrderedIds(snapshot.DisabledForgeIds),
-				snapshot.FirstActRuneRarityWeights,
-				snapshot.NormalRuneRarityWeights,
-				snapshot.SecondActAfterSilverRuneRarityWeights,
+				snapshot.RuneRarityWeightsByAct,
+				snapshot.PreventConsecutiveSilverRunes,
+				snapshot.GoldenRerollChancePercent,
 				snapshot.ForgeRarityWeights,
 				snapshot.RandomForgeShopPrice,
 				snapshot.RandomForgeDirectGrant,
@@ -151,6 +155,38 @@ internal sealed partial class HextechMayhemModifier
 		}
 	}
 
+	private sealed record LegacyRunConfigurationSnapshotJson(
+		int[] PlayerHexCountsByAct,
+		int[] EnemyHexCountsByAct,
+		int PlayerRuneRerollLimit,
+		int MonsterHexRerollLimit,
+		string[] DisabledPlayerRuneIds,
+		string[] DisabledMonsterHexIds,
+		string[] DisabledForgeIds,
+		HextechRarityWeights FirstActRuneRarityWeights,
+		HextechRarityWeights NormalRuneRarityWeights,
+		HextechRarityWeights SecondActAfterSilverRuneRarityWeights,
+		HextechForgeRarityWeights ForgeRarityWeights,
+		int RandomForgeShopPrice,
+		bool RandomForgeDirectGrant,
+		bool ModEnabled);
+
+	private sealed record PreviousRunConfigurationSnapshotJson(
+		int[] PlayerHexCountsByAct,
+		int[] EnemyHexCountsByAct,
+		int PlayerRuneRerollLimit,
+		int MonsterHexRerollLimit,
+		string[] DisabledPlayerRuneIds,
+		string[] DisabledMonsterHexIds,
+		string[] DisabledForgeIds,
+		HextechRarityWeights RuneRarityWeights,
+		bool PreventConsecutiveSilverRunes,
+		int GoldenRerollChancePercent,
+		HextechForgeRarityWeights ForgeRarityWeights,
+		int RandomForgeShopPrice,
+		bool RandomForgeDirectGrant,
+		bool ModEnabled);
+
 	private void RestoreRunConfigurationSnapshot(string json)
 	{
 		if (string.IsNullOrWhiteSpace(json))
@@ -161,7 +197,71 @@ internal sealed partial class HextechMayhemModifier
 
 		try
 		{
-			HextechRunConfigurationSnapshot? snapshot = JsonSerializer.Deserialize<HextechRunConfigurationSnapshot>(json, HextechTelemetry.JsonOptions);
+			using JsonDocument document = JsonDocument.Parse(json);
+			bool usesActRarityConfig = document.RootElement.EnumerateObject()
+				.Any(static property => property.Name.Equals(nameof(HextechRunConfigurationSnapshot.RuneRarityWeightsByAct), StringComparison.OrdinalIgnoreCase));
+			bool usesSingleRarityConfig = document.RootElement.EnumerateObject()
+				.Any(static property => property.Name.Equals(nameof(PreviousRunConfigurationSnapshotJson.RuneRarityWeights), StringComparison.OrdinalIgnoreCase));
+			bool hasGoldenRerollChance = document.RootElement.EnumerateObject()
+				.Any(static property => property.Name.Equals(nameof(HextechRunConfigurationSnapshot.GoldenRerollChancePercent), StringComparison.OrdinalIgnoreCase));
+			HextechRunConfigurationSnapshot? snapshot;
+			if (usesActRarityConfig)
+			{
+				snapshot = JsonSerializer.Deserialize<HextechRunConfigurationSnapshot>(json, HextechTelemetry.JsonOptions);
+				if (snapshot != null && !hasGoldenRerollChance)
+				{
+					snapshot = snapshot with
+					{
+						GoldenRerollChancePercent = HextechRuneConfiguration.GetDefaultGoldenRerollChancePercent()
+					};
+				}
+			}
+			else if (usesSingleRarityConfig)
+			{
+				PreviousRunConfigurationSnapshotJson? previous = JsonSerializer.Deserialize<PreviousRunConfigurationSnapshotJson>(json, HextechTelemetry.JsonOptions);
+				HextechRarityWeights[] weightsByAct = previous == null
+					? HextechRuneConfiguration.GetDefaultRuneRarityWeightsByAct()
+					: [ previous.RuneRarityWeights, previous.RuneRarityWeights, previous.RuneRarityWeights ];
+				snapshot = previous == null
+					? null
+					: new HextechRunConfigurationSnapshot(
+						previous.PlayerHexCountsByAct,
+						previous.EnemyHexCountsByAct,
+						previous.PlayerRuneRerollLimit,
+						previous.MonsterHexRerollLimit,
+						previous.DisabledPlayerRuneIds.ToHashSet(StringComparer.Ordinal),
+						previous.DisabledMonsterHexIds.ToHashSet(StringComparer.Ordinal),
+						previous.DisabledForgeIds.ToHashSet(StringComparer.Ordinal),
+						weightsByAct,
+						previous.PreventConsecutiveSilverRunes,
+						hasGoldenRerollChance ? previous.GoldenRerollChancePercent : HextechRuneConfiguration.GetDefaultGoldenRerollChancePercent(),
+						previous.ForgeRarityWeights,
+						previous.RandomForgeShopPrice,
+						previous.RandomForgeDirectGrant,
+						previous.ModEnabled);
+			}
+			else
+			{
+				LegacyRunConfigurationSnapshotJson? legacy = JsonSerializer.Deserialize<LegacyRunConfigurationSnapshotJson>(json, HextechTelemetry.JsonOptions);
+				snapshot = legacy == null
+					? null
+					: new HextechRunConfigurationSnapshot(
+						legacy.PlayerHexCountsByAct,
+						legacy.EnemyHexCountsByAct,
+						legacy.PlayerRuneRerollLimit,
+						legacy.MonsterHexRerollLimit,
+						legacy.DisabledPlayerRuneIds.ToHashSet(StringComparer.Ordinal),
+						legacy.DisabledMonsterHexIds.ToHashSet(StringComparer.Ordinal),
+						legacy.DisabledForgeIds.ToHashSet(StringComparer.Ordinal),
+						[ legacy.NormalRuneRarityWeights, legacy.NormalRuneRarityWeights, legacy.NormalRuneRarityWeights ],
+						HextechRuneConfiguration.GetDefaultPreventConsecutiveSilverRunes(),
+						HextechRuneConfiguration.GetDefaultGoldenRerollChancePercent(),
+						legacy.ForgeRarityWeights,
+						legacy.RandomForgeShopPrice,
+						legacy.RandomForgeDirectGrant,
+						legacy.ModEnabled);
+			}
+
 			if (snapshot != null)
 			{
 				SetRunConfigurationSnapshot(snapshot, "restore saved run config");

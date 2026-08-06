@@ -13,6 +13,8 @@ internal sealed class HextechMayhemRunContext
 	public HextechRunConfigurationSnapshot? RunConfigurationSnapshot { get; set; }
 	public int HexCountRecoveryBaseline { get; set; }
 	public int MonsterHexStrengthTierFloor { get; set; }
+	public int ActSelectionIndexOffset { get; set; }
+	public int? ActiveExtraStageIndex { get; set; }
 	public int EnemyTezcatarasMercyCombatCounter { get; set; }
 	public bool HostUsesBetterMultiplayerScaling { get; set; }
 
@@ -27,6 +29,8 @@ internal sealed class HextechMayhemRunContext
 		PlayerHexCounts.Set(playerHexCountsByAct);
 		EnemyHexCounts.Set(enemyHexCountsByAct);
 		ModActiveForRun = null;
+		ActSelectionIndexOffset = 0;
+		ActiveExtraStageIndex = null;
 		ResetProgressState(hexCountRecoveryBaseline: 0, monsterHexStrengthTierFloor: 0);
 		ActState.Reset();
 		ChoiceHistory.Reset();
@@ -36,6 +40,8 @@ internal sealed class HextechMayhemRunContext
 
 	public void ResetForEndlessLoop(int hexCountRecoveryBaseline)
 	{
+		ActSelectionIndexOffset = Math.Max(ActState.ActCount, ActSelectionIndexOffset + 1);
+		ActiveExtraStageIndex = null;
 		ResetProgressState(hexCountRecoveryBaseline, monsterHexStrengthTierFloor: 3);
 		ActState.ResetForEndlessLoop();
 		ChoiceHistory.Reset();
@@ -47,6 +53,8 @@ internal sealed class HextechMayhemRunContext
 	{
 		PlayerHexCounts.ResetToDefault();
 		EnemyHexCounts.ResetToDefault();
+		ActSelectionIndexOffset = 0;
+		ActiveExtraStageIndex = null;
 		ResetProgressState(hexCountRecoveryBaseline: 0, monsterHexStrengthTierFloor: 0);
 		ActState.DebugSetOnlyMonsterHex(actIndex, hex, rarity);
 		ChoiceHistory.Reset();

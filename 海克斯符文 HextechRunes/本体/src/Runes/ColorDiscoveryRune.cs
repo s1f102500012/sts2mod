@@ -1,6 +1,5 @@
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Localization;
-using MegaCrit.Sts2.Core.Models.CardPools;
 
 namespace HextechRunes;
 
@@ -115,8 +114,9 @@ public sealed class ColorDiscoveryRune : HextechRelicBase
 	private static IEnumerable<CardModel> GetOtherCharacterCards(Player player)
 	{
 		ModelId ownerPoolId = player.Character.CardPool.Id;
-		IEnumerable<CardModel> candidates = GetCharacterPools()
-			.Where(pool => !pool.Id.Equals(ownerPoolId))
+		IEnumerable<CardModel> candidates = GetOtherCharacterPools(
+			ModelDb.AllCharacters.Select(static character => character.CardPool),
+			ownerPoolId)
 			.SelectMany(pool => CardFactory.FilterForCombat(
 				pool.GetUnlockedCards(player.UnlockState, player.RunState.CardMultiplayerConstraint)))
 			.Where(static card => card.CanBeGeneratedByModifiers)
@@ -133,12 +133,10 @@ public sealed class ColorDiscoveryRune : HextechRelicBase
 			.ToArray();
 	}
 
-	private static IEnumerable<CardPoolModel> GetCharacterPools()
+	internal static IEnumerable<CardPoolModel> GetOtherCharacterPools(
+		IEnumerable<CardPoolModel> characterPools,
+		ModelId ownerPoolId)
 	{
-		yield return ModelDb.CardPool<IroncladCardPool>();
-		yield return ModelDb.CardPool<SilentCardPool>();
-		yield return ModelDb.CardPool<RegentCardPool>();
-		yield return ModelDb.CardPool<NecrobinderCardPool>();
-		yield return ModelDb.CardPool<DefectCardPool>();
+		return characterPools.Where(pool => !pool.Id.Equals(ownerPoolId));
 	}
 }

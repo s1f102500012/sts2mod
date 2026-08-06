@@ -2,47 +2,21 @@ namespace HextechRunes;
 
 public sealed class CorrosionRune : HextechRelicBase
 {
-	private bool _triggeredThisTurn;
+	internal const int TemporarySlowAmount = 6;
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new PowerVar<StrengthPower>(1m),
-		new PowerVar<DexterityPower>(1m)
+		new PowerVar<HextechPlayerSlowPower>("SlowPower", TemporarySlowAmount)
 	];
 
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
 	[
-		HoverTipFactory.FromPower<StrengthPower>(),
-		HoverTipFactory.FromPower<DexterityPower>()
+		HoverTipFactory.FromPower<HextechPlayerSlowPower>()
 	];
-
-	public override Task BeforeCombatStart()
-	{
-		ResetTurnState(null);
-		return Task.CompletedTask;
-	}
-
-	public override Task AfterCombatEnd(CombatRoom room)
-	{
-		ResetTurnState(null);
-		return Task.CompletedTask;
-	}
-
-	public override Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, HextechCombatState combatState)
-	{
-		if (Owner != null && side == Owner.Creature.Side)
-		{
-			ResetTurnState(combatState);
-		}
-
-		return Task.CompletedTask;
-	}
 
 	public override async Task AfterDamageGiven(PlayerChoiceContext choiceContext, Creature? dealer, DamageResult result, ValueProp props, Creature target, CardModel? cardSource)
 	{
-		EnsureTurnScopedStateCurrent(ResetTurnState);
-		if (HasTurnProcTriggered(nameof(CorrosionRune), _triggeredThisTurn)
-			|| Owner == null
+		if (Owner == null
 			|| target.Side != CombatSide.Enemy
 			|| !target.IsAlive
 			|| result.TotalDamage <= 0m
@@ -51,24 +25,11 @@ public sealed class CorrosionRune : HextechRelicBase
 			return;
 		}
 
-		if (!TryConsumeTurnProc(nameof(CorrosionRune), ref _triggeredThisTurn))
-		{
-			return;
-		}
-
 		Flash([target]);
-		await PowerCmd.Apply<StrengthPower>(target, -DynamicVars.Strength.BaseValue, Owner.Creature, cardSource);
-		await PowerCmd.Apply<DexterityPower>(target, -DynamicVars.Dexterity.BaseValue, Owner.Creature, cardSource);
-	}
-
-	private void ResetTurnState()
-	{
-		ResetTurnState(null);
-	}
-
-	private void ResetTurnState(HextechCombatState? combatState)
-	{
-		_triggeredThisTurn = false;
-		UpdateTurnScopedStateIdentity(combatState);
+		await PowerCmd.Apply<HextechTemporarySlowPower>(
+			target,
+			DynamicVars["SlowPower"].BaseValue,
+			Owner.Creature,
+			cardSource);
 	}
 }

@@ -4,11 +4,16 @@ internal sealed class ThornmailEnemyHex : HextechEnemyHexEffect
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.Thornmail;
 
-	internal override int PersistentOrder => 70;
-
-	internal override async Task ApplyPersistentToEnemy(HextechEnemyHexContext context, Creature creature, int? maxHpBaseOverride, bool replayOneShotPowers)
+	internal override async Task ApplyOpeningCombatStartToEnemy(
+		HextechEnemyHexContext context,
+		Creature creature,
+		CombatRoom room,
+		bool replayOneShotPowers)
 	{
-		if (HextechCombatProcTracker.TryMarkPersistentHexApplied(context.Tracking.ThornmailApplied, creature, replayOneShotPowers))
+		if (HextechCombatProcTracker.TryMarkPersistentHexApplied(
+			context.Tracking.ThornmailApplied,
+			creature,
+			replayOneShotPowers))
 		{
 			await HextechEnemyPowerScalingHooks.Apply<ThornsPower>(creature, context.TierValue(Kind, 0, 1, 2), creature, null);
 		}

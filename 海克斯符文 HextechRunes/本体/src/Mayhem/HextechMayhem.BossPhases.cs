@@ -9,7 +9,7 @@ internal sealed partial class HextechMayhemModifier
 	private const int DoormakerShellMaxHpThreshold = 1_000_000;
 	private static readonly FieldInfo DoormakerIsPortalOpenField = RequireField(typeof(Doormaker), "_isPortalOpen");
 #endif
-	private static readonly FieldInfo TestSubjectRespawnsField = RequireField(typeof(TestSubject), "_respawns");
+	private static readonly FieldInfo? TestSubjectRespawnsField = TryGetField(typeof(TestSubject), "_respawns");
 
 	public override async Task AfterOstyRevived(Creature osty)
 	{
@@ -83,6 +83,13 @@ internal sealed partial class HextechMayhemModifier
 		using (TwilightVeilRune.BeginMirrorSuppression())
 		{
 			await ApplyPersistentMonsterHexes(creature, replayOneShotPowers: true);
+			await HextechEnemyHexDispatcher.ForEachActive(
+				this,
+				(effect, context) => effect.ApplyOpeningCombatStartToEnemy(
+					context,
+					creature,
+					room,
+					replayOneShotPowers: true));
 			await ApplyMonsterCombatStartHexesToEnemy(creature, room);
 		}
 	}
@@ -126,6 +133,11 @@ internal sealed partial class HextechMayhemModifier
 
 	private static int GetTestSubjectRespawns(TestSubject testSubject)
 	{
-		return TestSubjectRespawnsField.GetValue(testSubject) is int respawns ? Math.Max(0, respawns) : 0;
+		return NormalizeTestSubjectRespawns(TestSubjectRespawnsField?.GetValue(testSubject));
+	}
+
+	internal static int NormalizeTestSubjectRespawns(object? fieldValue)
+	{
+		return fieldValue is int respawns ? Math.Max(0, respawns) : 0;
 	}
 }

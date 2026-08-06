@@ -1,7 +1,4 @@
 {
-  "ELICIT_CARD.title": "激发",
-  "ELICIT_CARD.description": "激发你的所有充能球。",
-  "ELICIT_CARD.flavor": "把它们一口气全放出去。",
   "TRICK_MAGIC_CARD.title": "欺诈魔术",
   "TRICK_MAGIC_CARD.description": "抽[blue]{Cards}[/blue]张牌。获得[blue]{BufferPower}[/blue]层[gold]缓冲[/gold]。下一张打出的攻击牌会被重放[blue]{Replays}[/blue]次。",
   "TRICK_MAGIC_CARD.flavor": "观众看见的是彩带，敌人看见的是账单。",
@@ -29,9 +26,6 @@
   "CLOUD_DRAGON_SOUL_CARD.title": "云霄龙魂",
   "CLOUD_DRAGON_SOUL_CARD.description": "每回合额外抽[blue]{Cards}[/blue]张牌。",
   "CLOUD_DRAGON_SOUL_CARD.flavor": "风会把选择送到手边。",
-  "ALL_IN_CARD.title": "乾坤一掷",
-  "ALL_IN_CARD.description": "造成{Damage:diff()}点伤害。\n丢弃所有非攻击牌。",
-  "ALL_IN_CARD.flavor": "桌面上只剩下注与刀口。",
   "WHITE_HOLE_CARD.title": "白洞",
   "WHITE_HOLE_CARD.description": "每当你抽到这张牌时，获得{Energy:energyIcons()}。\n抽{Cards}张牌。",
   "WHITE_HOLE_CARD.flavor": "它不吞噬选择，只把选择吐回手心。",

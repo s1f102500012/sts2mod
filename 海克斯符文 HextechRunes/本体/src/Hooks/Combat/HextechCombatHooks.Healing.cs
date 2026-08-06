@@ -4,7 +4,7 @@ namespace HextechRunes;
 
 internal static partial class HextechCombatHooks
 {
-	private readonly record struct HealPostState(Player? Player, Creature Creature, decimal Amount, bool ShouldProcess);
+	private readonly record struct HealPostState(Player? Player, Creature Creature, int CurrentHpBefore, bool ShouldProcess);
 
 	private static bool HealPrefix(Creature creature, ref decimal amount, ref Task __result, out HealPostState __state)
 	{
@@ -65,7 +65,7 @@ internal static partial class HextechCombatHooks
 			return false;
 		}
 
-		__state = new HealPostState(player, creature, amount, ShouldProcess: true);
+		__state = new HealPostState(player, creature, creature.CurrentHp, ShouldProcess: true);
 		return true;
 	}
 
@@ -85,29 +85,10 @@ internal static partial class HextechCombatHooks
 
 		Player? player = state.Player;
 		Creature creature = state.Creature;
-		decimal amount = state.Amount;
-		if (player?.GetRelic<HolyFireRune>() != null
-			&& creature == player.Creature
-			&& creature.CombatState != null
-			&& CombatManager.Instance.IsInProgress)
+		decimal amount = CalculateActualHealAmount(state.CurrentHpBefore, creature.CurrentHp);
+		if (amount <= 0m)
 		{
-			List<Creature> enemies = creature.CombatState.Enemies.Where(static enemy => enemy.IsAlive).ToList();
-			int burnAmount = (int)Math.Floor(amount);
-			if (enemies.Count > 0 && burnAmount > 0)
-			{
-				int targetOrdinal = HextechMayhemModifier.FindIn(player.RunState)
-					?.ConsumeGlobalProcInCombat(string.Join(":", nameof(HolyFireRune), HextechStableRandom.PlayerKey(player)))
-					?? 0;
-				Creature target = enemies[HextechStableRandom.Index(
-					(RunState)player.RunState,
-					enemies.Count,
-					"holy-fire-heal-target",
-					HextechStableRandom.PlayerKey(player),
-					creature.CombatState.RoundNumber.ToString(),
-					burnAmount.ToString(),
-					targetOrdinal.ToString())];
-				await PowerCmd.Apply<HextechBurnPower>(target, burnAmount, player.Creature, null);
-			}
+			return;
 		}
 
 		if (player?.GetRelic<CircleOfDeathRune>() is CircleOfDeathRune circleOfDeathRune
@@ -119,6 +100,11 @@ internal static partial class HextechCombatHooks
 
 		// 我们的治疗(仅联机):队友被治疗后镜像给持有者,战斗内外通吃。
 		await OurHealingRune.MirrorTeammateHeal(creature, amount);
+	}
+
+	internal static decimal CalculateActualHealAmount(int currentHpBefore, int currentHpAfter)
+	{
+		return Math.Max(0m, currentHpAfter - (decimal)currentHpBefore);
 	}
 
 	private static bool IsSkulkingColony(Creature creature)

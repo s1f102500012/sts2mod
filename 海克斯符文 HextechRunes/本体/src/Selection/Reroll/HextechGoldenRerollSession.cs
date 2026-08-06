@@ -2,8 +2,6 @@ namespace HextechRunes;
 
 internal static class HextechGoldenRerollRules
 {
-	internal const int ActivationPercent = 5;
-
 	public static bool TryGetUpgradedRarity(
 		HextechRarityTier rarity,
 		out HextechRarityTier upgradedRarity)
@@ -25,12 +23,14 @@ internal static class HextechGoldenRerollRules
 	public static bool ShouldActivateForRoll(
 		HextechRarityTier rarity,
 		bool hasUpgradedCandidates,
-		int percentRoll)
+		int percentRoll,
+		int activationPercent)
 	{
+		int normalizedPercent = HextechRuneConfiguration.ClampGoldenRerollChancePercent(activationPercent);
 		return hasUpgradedCandidates
 			&& TryGetUpgradedRarity(rarity, out _)
 			&& percentRoll >= 0
-			&& percentRoll < ActivationPercent;
+			&& percentRoll < normalizedPercent;
 	}
 
 	public static bool ShouldActivate(
@@ -39,7 +39,8 @@ internal static class HextechGoldenRerollRules
 		int actIndex,
 		int choiceOrdinal,
 		HextechRarityTier rarity,
-		bool hasUpgradedCandidates)
+		bool hasUpgradedCandidates,
+		int activationPercent)
 	{
 		if (!hasUpgradedCandidates || !TryGetUpgradedRarity(rarity, out _))
 		{
@@ -48,7 +49,7 @@ internal static class HextechGoldenRerollRules
 
 		return HextechStableRandom.PercentChance(
 			runState,
-			ActivationPercent,
+			HextechRuneConfiguration.ClampGoldenRerollChancePercent(activationPercent),
 			BuildSaltParts(
 				actIndex,
 				choiceOrdinal,
@@ -97,7 +98,8 @@ internal sealed class HextechGoldenRerollSession
 		int actIndex,
 		int choiceOrdinal,
 		HextechRarityTier rarity,
-		bool hasUpgradedCandidates)
+		bool hasUpgradedCandidates,
+		int activationPercent)
 	{
 		HextechRarityTier upgradedRarity = rarity;
 		bool canActivate = hasUpgradedCandidates
@@ -117,7 +119,8 @@ internal sealed class HextechGoldenRerollSession
 			actIndex,
 			choiceOrdinal,
 			rarity,
-			hasUpgradedCandidates);
+			hasUpgradedCandidates,
+			activationPercent);
 		return new HextechGoldenRerollSession(
 			canActivate: true,
 			isActive: active,

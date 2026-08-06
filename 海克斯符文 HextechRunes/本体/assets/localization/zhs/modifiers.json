@@ -6,5 +6,15 @@
   "HEXTECH_GOLD_RUN.title": "黄金局",
   "HEXTECH_GOLD_RUN.description": "本局刷新的所有海克斯均为黄金级别。",
   "HEXTECH_PRISMATIC_RUN.title": "棱彩局",
-  "HEXTECH_PRISMATIC_RUN.description": "本局刷新的所有海克斯均为棱彩级别。"
+  "HEXTECH_PRISMATIC_RUN.description": "本局刷新的所有海克斯均为棱彩级别。",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.title": "塞穿塞烂",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.description": "玩家固定使用默认海克斯配置。敌人会固定获得[red]状态牌[/red]相关的海克斯。",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.title": "防反大师",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.description": "玩家固定使用默认海克斯配置。敌人会固定获得[red]防御反击[/red]相关的海克斯。",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.title": "力大砖飞",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.description": "玩家固定使用默认海克斯配置。敌人会固定获得[red]属性数值[/red]相关的海克斯。",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.title": "扉八分钱",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.description": "玩家固定使用默认海克斯配置。敌人会固定获得[red]门扉缔造者[/red]相关的海克斯。",
+  "HEXTECH_LISTLESS_CHALLENGE.title": "有气无力",
+  "HEXTECH_LISTLESS_CHALLENGE.description": "玩家固定使用默认海克斯配置。敌人会固定获得[red]属性削减[/red]相关的海克斯。"
 }

@@ -2,13 +2,26 @@ namespace HextechRunes;
 
 public sealed class HastyScribbleRune : HextechRelicBase
 {
-	protected override IEnumerable<DynamicVar> CanonicalVars =>
-	[
-		new CardsVar(5)
-	];
-
-	public override decimal ModifyHandDraw(Player player, decimal count)
+	public override async Task AfterPlayerTurnStartLate(PlayerChoiceContext choiceContext, Player player)
 	{
-		return player == Owner ? count + DynamicVars.Cards.BaseValue : count;
+		var combatState = player.PlayerCombatState;
+		if (player != Owner || combatState == null)
+		{
+			return;
+		}
+
+		int cardsToDraw = CalculateCardsToDraw(combatState.Hand.Cards.Count);
+		if (cardsToDraw <= 0)
+		{
+			return;
+		}
+
+		Flash();
+		await CardPileCmd.Draw(choiceContext, cardsToDraw, player);
+	}
+
+	internal static int CalculateCardsToDraw(int handCount)
+	{
+		return Math.Max(0, CardPile.MaxCardsInHand - handCount);
 	}
 }

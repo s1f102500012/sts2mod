@@ -391,16 +391,34 @@ internal static class HextechRewardSafetyHooks
 
 		if (save.RewardType == RewardType.SpecialCard
 			&& save.PredeterminedModelId == ModelDb.GetId<ColorDiscoveryRune>()
-			&& save.SpecialCard != null)
+			&& save.SpecialCard != null
+			&& ColorDiscoveryCardReward.TryFromSavedSpecialCardReward(
+				save,
+				__result,
+				player,
+				out ColorDiscoveryCardReward? restoredColorDiscoveryReward)
+			&& restoredColorDiscoveryReward != null)
 		{
-			__result = ColorDiscoveryCardReward.FromSavedSpecialCardReward(save, __result, player);
+			__result = restoredColorDiscoveryReward;
 			return;
 		}
 
-		if (save.CustomDescriptionEncounterSourceId == ModelDb.GetId<RandomForgeShopRelic>()
-			&& save.CardPoolIds.Count > 0)
+		TryRestoreForgeChoiceReward(save, player, ref __result);
+	}
+
+	internal static bool TryRestoreForgeChoiceReward(SerializableReward save, Player player, ref Reward result)
+	{
+		if (save.RewardType != RewardType.Gold
+			|| result is not GoldReward
+			|| save.CustomDescriptionEncounterSourceId != ModelDb.GetId<RandomForgeShopRelic>()
+			|| save.CardPoolIds.Count == 0
+			|| !HextechForgeChoiceReward.TryFromSavedReward(save, player, out HextechForgeChoiceReward? restored)
+			|| restored == null)
 		{
-			__result = HextechForgeChoiceReward.FromSavedReward(save, player);
+			return false;
 		}
+
+		result = restored;
+		return true;
 	}
 }

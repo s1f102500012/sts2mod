@@ -6,37 +6,37 @@ namespace HextechRunes;
 // HextechRelicBase.GetResolvedIconPath 回退占位图，不会崩。
 // loc：relics.json 的 {stem}.title/.description/.flavor/.enemyDescription。
 
-/// <summary>升级：鬼祟珊瑚群（旧 ImmortalBone 敌方海克斯的独立身份）</summary>
+/// <summary>升级：鬼祟珊瑚群</summary>
 public sealed class SkulkingColonyHex : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player) => false;
 }
 
-/// <summary>升级：花园幽灵鳗（旧 ScaredStiff 敌方海克斯的独立身份）</summary>
+/// <summary>升级：花园幽灵鳗</summary>
 public sealed class PhantasmalGardenerHex : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player) => false;
 }
 
-/// <summary>升级：女王（旧 Queen 敌方海克斯的独立身份）</summary>
+/// <summary>升级：女王</summary>
 public sealed class QueenHex : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player) => false;
 }
 
-/// <summary>升级：乐加维林族母（旧 Misery 敌方海克斯的独立身份）</summary>
+/// <summary>升级：乐加维林族母</summary>
 public sealed class LagavulinMatriarchHex : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player) => false;
 }
 
-/// <summary>升级：外骨骼虫（旧 GhostForm 敌方海克斯的独立身份）</summary>
+/// <summary>升级：外骨骼虫</summary>
 public sealed class ExoskeletonHex : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player) => false;
 }
 
-/// <summary>升级：实验体（旧 SymphonyOfWar 敌方海克斯的独立身份）</summary>
+/// <summary>升级：实验体</summary>
 public sealed class TestSubjectHex : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player) => false;

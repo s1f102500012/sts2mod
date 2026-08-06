@@ -13,7 +13,8 @@ internal static partial class HextechRuneSelectionCoordinator
 		IReadOnlyList<MonsterHexKind> previousMonsterHexes,
 		IReadOnlyList<MonsterHexKind> initialNewMonsterHexes,
 		RelicModel? monsterHexRelic,
-		int choiceOrdinal)
+		int choiceOrdinal,
+		bool allowEnemyHexAdjustment)
 	{
 		RunManager runManager = RunManager.Instance;
 		IReadOnlyList<MonsterHexKind> initialActiveMonsterHexes = CombineMonsterHexes(previousMonsterHexes, initialNewMonsterHexes);
@@ -63,6 +64,7 @@ internal static partial class HextechRuneSelectionCoordinator
 				player,
 				rarity,
 				runState,
+				actIndex,
 				excludedIds,
 				useEndlessTagWindow: modifier.IsEndlessLoopActive);
 			if (options.Count == 0)
@@ -81,7 +83,7 @@ internal static partial class HextechRuneSelectionCoordinator
 		}
 
 		EnemyHexAdjustmentSyncContext? enemyHexSync =
-			pendingSelections.Count > 0 && initialNewMonsterHexes.Count > 0
+			allowEnemyHexAdjustment && pendingSelections.Count > 0 && initialNewMonsterHexes.Count > 0
 				? CreateEnemyHexAdjustmentSyncContext(
 					runManager,
 					runState,

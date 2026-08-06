@@ -1,7 +1,4 @@
 {
-  "ELICIT_CARD.title": "Высвобождение",
-  "ELICIT_CARD.description": "Разрядите все ваши сферы.",
-  "ELICIT_CARD.flavor": "Пусть каждая катушка разрядится разом.",
   "TRICK_MAGIC_CARD.title": "Иллюзорная магия",
   "TRICK_MAGIC_CARD.description": "Вы добираете [blue]{Cards}[/blue] карты. Получите [blue]{BufferPower}[/blue] [gold]Буфер(а)[/gold]. Следующая разыгранная вами Атака разыгрывается ещё [blue]{Replays}[/blue] раз.",
   "TRICK_MAGIC_CARD.flavor": "Зрители видят ленты. Враг видит счёт.",
@@ -29,9 +26,6 @@
   "CLOUD_DRAGON_SOUL_CARD.title": "Душа облачного дракона",
   "CLOUD_DRAGON_SOUL_CARD.description": "Вы добираете ещё [blue]{Cards}[/blue] в начале хода.",
   "CLOUD_DRAGON_SOUL_CARD.flavor": "Ветер дарует тебе право выбора.",
-  "ALL_IN_CARD.title": "Ва-банк",
-  "ALL_IN_CARD.description": "Наносит {Damage:diff()} урона.\nСбрасывает все карты, кроме Атак.",
-  "ALL_IN_CARD.flavor": "Ставка. Клинок. И пустой стол.",
   "WHITE_HOLE_CARD.title": "Белая дыра",
   "WHITE_HOLE_CARD.description": "Вы получаете {Energy:energyIcons()} когда добираете эту карту.\nДоберите {Cards} карт.",
   "WHITE_HOLE_CARD.flavor": "Оно не проглатывает выбор. Оно выплёвывает его обратно — тебе в руку.",

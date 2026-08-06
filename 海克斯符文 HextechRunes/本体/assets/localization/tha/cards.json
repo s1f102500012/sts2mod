@@ -1,7 +1,4 @@
 {
-  "ELICIT_CARD.title": "ปลดปล่อย",
-  "ELICIT_CARD.description": "ปล่อยพลังลูกแก้วทั้งหมดของคุณ",
-  "ELICIT_CARD.flavor": "ปล่อยให้ทุกขดลวดคายประจุพร้อมกัน",
   "TRICK_MAGIC_CARD.title": "มายากลลวง",
   "TRICK_MAGIC_CARD.description": "จั่วการ์ด [blue]{Cards}[/blue] ใบ ได้รับ [blue]{BufferPower}[/blue] [gold]ม่านกันชน[/gold] การ์ดโจมตีใบถัดไปที่คุณเล่นจะถูกเล่นซ้ำ [blue]{Replays}[/blue] ครั้ง",
   "TRICK_MAGIC_CARD.flavor": "ผู้ชมเห็นริบบิ้น ศัตรูเห็นใบเรียกเก็บเงิน",
@@ -29,9 +26,6 @@
   "CLOUD_DRAGON_SOUL_CARD.title": "วิญญาณมังกรเมฆา",
   "CLOUD_DRAGON_SOUL_CARD.description": "จั่วการ์ดเพิ่ม [blue]{Cards}[/blue] ใบทุกเทิร์น",
   "CLOUD_DRAGON_SOUL_CARD.flavor": "สายลมวางตัวเลือกไว้ในมือคุณ",
-  "ALL_IN_CARD.title": "หมดหน้าตัก",
-  "ALL_IN_CARD.description": "สร้างความเสียหาย {Damage:diff()}\nทิ้งการ์ดที่ไม่ใช่การ์ดโจมตีทั้งหมด",
-  "ALL_IN_CARD.flavor": "เหลือไว้บนโต๊ะเพียงเงินเดิมพันกับคมดาบ",
   "WHITE_HOLE_CARD.title": "หลุมขาว",
   "WHITE_HOLE_CARD.description": "ทุกครั้งที่คุณจั่วการ์ดใบนี้ ได้รับ {Energy:energyIcons()}\nจั่วการ์ด {Cards} ใบ",
   "WHITE_HOLE_CARD.flavor": "มันไม่กลืนกินตัวเลือก แต่คายมันกลับคืนสู่มือคุณ",

@@ -1,19 +1,15 @@
-using MegaCrit.Sts2.Core.Entities.Orbs;
-using MegaCrit.Sts2.Core.Nodes.Orbs;
-using MegaCrit.Sts2.Core.Nodes.Rooms;
-
 namespace HextechRunes;
 
 public sealed class DrawYourSwordRune : AttributeConversionRelicBase
 {
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new PowerVar<FocusPower>(1m)
+		new PowerVar<FocusPower>(2m)
 	];
 
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
 	[
-		HoverTipFactory.FromOrb<LightningOrb>(),
+		HoverTipFactory.Static(StaticHoverTip.Evoke),
 		HoverTipFactory.FromPower<StrengthPower>(),
 		HoverTipFactory.FromPower<DexterityPower>(),
 		HoverTipFactory.FromPower<FocusPower>()
@@ -24,58 +20,24 @@ public sealed class DrawYourSwordRune : AttributeConversionRelicBase
 		return IsDefectPlayer(player);
 	}
 
-	public override async Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, HextechCombatState combatState)
+	internal bool ShouldReplaceOrbEvoke(OrbModel orb)
 	{
-		if (side != CombatSide.Enemy
-			|| Owner == null
-			|| !IsDefectOwner
-			|| Owner.Creature.IsDead
-			|| Owner.Creature.CombatState != combatState
-			|| CombatManager.Instance?.IsOverOrEnding == true
-			|| Owner.PlayerCombatState == null)
-		{
-			return;
-		}
+		return Owner != null
+			&& !Owner.Creature.IsDead
+			&& IsDefectOwner
+			&& ReferenceEquals(orb.Owner, Owner)
+			&& ReferenceEquals(Owner.GetRelic<DrawYourSwordRune>(), this);
+	}
 
-		OrbQueue orbQueue = Owner.PlayerCombatState.OrbQueue;
-		List<OrbModel> orbs = orbQueue.Orbs.ToList();
-		if (orbs.Count == 0)
-		{
-			return;
-		}
-
-		NOrbManager? orbManager = NCombatRoom.Instance?.GetCreatureNode(Owner.Creature)?.OrbManager;
-		int removedCount = 0;
-		foreach (OrbModel orb in orbs)
-		{
-			if (!orbQueue.Remove(orb))
-			{
-				continue;
-			}
-
-			orb.RemoveInternal();
-			removedCount++;
-			try
-			{
-				orbManager?.EvokeOrbAnim(orb);
-			}
-			catch (Exception ex)
-			{
-				Log.Warn($"[{ModInfo.Id}][DrawYourSword] Orb removal animation failed: {ex.Message}");
-			}
-		}
-
-		if (removedCount == 0)
-		{
-			return;
-		}
-
+	internal async Task<IEnumerable<Creature>> ReplaceOrbEvoke()
+	{
 		Flash();
 		await PowerCmd.Apply<FocusPower>(
 			Owner.Creature,
-			removedCount * DynamicVars["FocusPower"].BaseValue,
+			DynamicVars["FocusPower"].BaseValue,
 			Owner.Creature,
 			null);
+		return Array.Empty<Creature>();
 	}
 
 	protected override bool ShouldConvert(PowerModel canonicalPower)

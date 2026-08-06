@@ -189,7 +189,7 @@ internal static partial class HextechCatalog
 			.Concat(HextechContentRegistry.AllCustomRelicTypes)
 			.Concat(HextechContentRegistry.EventRelicTypes)
 			.Concat(HextechContentRegistry.CustomCardTypes)
-			.Concat(HextechCustomModelRegistry.CustomRarityModifierTypes)
+			.Concat(HextechCustomModelRegistry.AllCustomModifierTypes)
 			.Append(modelType);
 		EnsureModelIdAvailable(modelType, knownModelTypes, ModelDb.GetId);
 	}

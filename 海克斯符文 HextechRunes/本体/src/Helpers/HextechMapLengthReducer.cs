@@ -9,8 +9,15 @@ internal static class HextechMapLengthReducer
 
 	internal static ActMap ReduceNodeLength(IRunState runState, ActMap map, MapCoord? currentCoord, int rowsToRemove)
 	{
-		if (rowsToRemove <= 0 || IsSpecialMap(map))
+		if (rowsToRemove <= 0)
 		{
+			return map;
+		}
+
+		Type mapType = map.GetType();
+		if (!IsSupportedMapType(mapType))
+		{
+			WarnUnsupportedExternalMapOnce(mapType);
 			return map;
 		}
 
@@ -33,9 +40,24 @@ internal static class HextechMapLengthReducer
 		return modifiedMap;
 	}
 
-	private static bool IsSpecialMap(ActMap map)
+	internal static bool IsSupportedMapType(Type mapType)
 	{
-		return map.GetType().Name == "GoldenPathActMap";
+		return typeof(ActMap).IsAssignableFrom(mapType)
+			&& mapType.Assembly == typeof(ActMap).Assembly
+			&& !typeof(GoldenPathActMap).IsAssignableFrom(mapType);
+	}
+
+	private static void WarnUnsupportedExternalMapOnce(Type mapType)
+	{
+		if (mapType.Assembly == typeof(ActMap).Assembly
+			|| !HextechRunLogBudget.TryConsume($"map.hasty-scribble.unsupported:{mapType.AssemblyQualifiedName}", 1))
+		{
+			return;
+		}
+
+		Log.Warn(
+			$"[{ModInfo.Id}][Mayhem] Hasty Scribble map shrink skipped for external ActMap; "
+			+ $"runtimeType={mapType.FullName ?? mapType.Name} assembly={mapType.Assembly.FullName}");
 	}
 
 	private static bool TryFindSafeRowToRemove(ActMap map, int searchStartRow, out int rowToRemove)

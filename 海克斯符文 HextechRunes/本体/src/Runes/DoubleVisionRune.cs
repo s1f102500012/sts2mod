@@ -593,7 +593,7 @@ public sealed class DoubleVisionRune : HextechRelicBase
 	{
 		bool rewardComplete = await originalTask;
 
-		if (!rewardComplete || scope.Tracker.AddedCards.Count == 0)
+		if (!ShouldDuplicateTrackedCardRewards(rewardComplete, scope.Tracker.AddedCards.Count))
 		{
 			return rewardComplete;
 		}
@@ -604,6 +604,12 @@ public sealed class DoubleVisionRune : HextechRelicBase
 		}
 
 		return rewardComplete;
+	}
+
+	internal static bool ShouldDuplicateTrackedCardRewards(bool rewardComplete, int addedCardCount)
+	{
+		// 手快全拿允许先领取若干张卡再以“跳过”结束，此时原版返回 false，但已经加入牌组的卡仍是有效奖励。
+		return addedCardCount > 0;
 	}
 
 	private static async Task<bool> CompleteRelicRewardAsync(RelicReward reward, Task<bool> originalTask, RewardDuplicationScope scope)

@@ -20,13 +20,6 @@ public sealed class WhiteHoleCard : HextechOwnerPoolTokenCard
 	{
 	}
 
-	internal static bool AllowsPlaying(CardModel card)
-	{
-		return card is WhiteHoleCard
-			&& card.Owner != null
-			&& card.Pile?.Type is PileType.Hand or PileType.Play;
-	}
-
 	internal Task AfterDrawn()
 	{
 		return Owner == null ? Task.CompletedTask : PlayerCmd.GainEnergy(DynamicVars.Energy.BaseValue, Owner);

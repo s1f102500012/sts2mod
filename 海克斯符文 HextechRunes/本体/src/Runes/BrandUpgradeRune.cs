@@ -2,6 +2,8 @@ namespace HextechRunes;
 
 public sealed class BrandUpgradeRune : CardUpgradeRuneBase<Brand>
 {
+	internal const int DamagePercentPerBrand = 3;
+
 	private int _brandPlays;
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
@@ -21,7 +23,7 @@ public sealed class BrandUpgradeRune : CardUpgradeRuneBase<Brand>
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new DynamicVar("DamagePercentPerBrand", 2m)
+		new DynamicVar("DamagePercentPerBrand", DamagePercentPerBrand)
 	];
 
 	protected override bool IsAvailableForCharacter(Player player) => IsIroncladPlayer(player);

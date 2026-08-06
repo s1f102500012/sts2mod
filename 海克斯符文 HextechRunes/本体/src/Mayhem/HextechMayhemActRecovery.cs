@@ -8,9 +8,10 @@ internal static class HextechMayhemActRecovery
 		HextechMayhemChoiceHistoryState choiceHistory,
 		int hexCountRecoveryBaseline,
 		IReadOnlyList<int> playerHexCountsByAct,
-		int maxRecoverActIndex = int.MaxValue)
+		int maxRecoverActIndex = int.MaxValue,
+		int? currentStageIndex = null)
 	{
-		int currentActIndex = Math.Min(runState.CurrentActIndex, actState.ActCount - 1);
+		int currentActIndex = currentStageIndex ?? runState.CurrentActIndex;
 		int recoveryCeiling = Math.Min(currentActIndex, maxRecoverActIndex);
 		if (recoveryCeiling < 0 || runState.Players.Count == 0)
 		{

@@ -20,22 +20,22 @@ internal static class HextechShopForgeHooks
 	{
 		bool purchaseHookInstalled = TryPatch(
 			harmony,
-			() => RequireMethodAllowingSingleArityFallback(typeof(MerchantRelicEntry), "OnTryPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(MerchantInventory), typeof(bool)),
+			() => RequireMethod(typeof(MerchantRelicEntry), "OnTryPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(MerchantInventory), typeof(bool)),
 			"random forge purchase",
 			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantRelicPurchasePrefix)));
 		bool restockHookInstalled = TryPatch(
 			harmony,
-			() => RequireMethodAllowingSingleArityFallback(typeof(MerchantRelicEntry), "RestockAfterPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(MerchantInventory)),
+			() => RequireMethod(typeof(MerchantRelicEntry), "RestockAfterPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(MerchantInventory)),
 			"random forge restock",
 			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantRelicRestockPrefix)));
 		bool priceHookInstalled = TryPatch(
 			harmony,
-			() => RequireMethodAllowingSingleArityFallback(typeof(CoreHook), nameof(CoreHook.ModifyMerchantPrice), BindingFlags.Static | BindingFlags.Public, typeof(IRunState), typeof(Player), typeof(MerchantEntry), typeof(decimal)),
+			() => RequireMethod(typeof(CoreHook), nameof(CoreHook.ModifyMerchantPrice), BindingFlags.Static | BindingFlags.Public, typeof(IRunState), typeof(Player), typeof(MerchantEntry), typeof(decimal)),
 			"random forge price",
 			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(ModifyMerchantPricePrefix)));
 		bool refillHookInstalled = TryPatch(
 			harmony,
-			() => RequireMethodAllowingSingleArityFallback(typeof(CoreHook), nameof(CoreHook.ShouldRefillMerchantEntry), BindingFlags.Static | BindingFlags.Public, typeof(IRunState), typeof(MerchantEntry), typeof(Player)),
+			() => RequireMethod(typeof(CoreHook), nameof(CoreHook.ShouldRefillMerchantEntry), BindingFlags.Static | BindingFlags.Public, typeof(IRunState), typeof(MerchantEntry), typeof(Player)),
 			"random forge refill",
 			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(ShouldRefillMerchantEntryPrefix)));
 
@@ -47,12 +47,12 @@ internal static class HextechShopForgeHooks
 
 		TryPatch(
 			harmony,
-			() => RequireMethodAllowingSingleArityFallback(typeof(MerchantInventory), nameof(MerchantInventory.CreateForNormalMerchant), BindingFlags.Static | BindingFlags.Public, typeof(Player)),
+			() => RequireMethod(typeof(MerchantInventory), nameof(MerchantInventory.CreateForNormalMerchant), BindingFlags.Static | BindingFlags.Public, typeof(Player)),
 			"random forge merchant entry",
 			postfix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(CreateForNormalMerchantPostfix)));
 		TryPatch(
 			harmony,
-			() => RequireMethodAllowingSingleArityFallback(typeof(NMerchantInventory), nameof(NMerchantInventory.Initialize), BindingFlags.Instance | BindingFlags.Public, typeof(MerchantInventory), typeof(MerchantDialogueSet)),
+			() => RequireMethod(typeof(NMerchantInventory), nameof(NMerchantInventory.Initialize), BindingFlags.Instance | BindingFlags.Public, typeof(MerchantInventory), typeof(MerchantDialogueSet)),
 			"random forge shop layout",
 			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantInventoryInitializePrefix)),
 			postfix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantInventoryInitializePostfix)));

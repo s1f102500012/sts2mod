@@ -92,7 +92,7 @@ internal static partial class HextechRunLifecycleHooks
 		eventId = "null";
 
 		if (RunManager.Instance.DebugOnlyGetState() is not RunState currentRunState
-			|| currentRunState.CurrentActIndex is < 0 or > 2
+			|| currentRunState.CurrentActIndex < 0
 			|| currentRunState.CurrentRoom is not EventRoom { CanonicalEvent: AncientEventModel ancientEvent })
 		{
 			return false;

@@ -21,7 +21,7 @@ public sealed class HundredRefinementsRune : HextechRelicBase
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new DynamicVar("BodyForges", 3m),
+		new DynamicVar("BodyForges", 2m),
 		new DynamicVar("ForgeCount", 1m)
 	];
 

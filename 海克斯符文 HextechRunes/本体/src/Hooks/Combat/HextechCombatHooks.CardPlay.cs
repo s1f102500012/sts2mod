@@ -2,26 +2,52 @@ namespace HextechRunes;
 
 internal static partial class HextechCombatHooks
 {
-	private static void CardCanPlayPostfix(CardModel __instance, ref bool __result)
+	private static void CardCanPlayAllowanceWithReasonPostfix(
+		CardModel __instance,
+		ref bool __result,
+		ref UnplayableReason reason,
+		ref AbstractModel preventer)
 	{
-		if (!__result && BlueCandleMedkitRune.AllowsPlaying(__instance))
+		UnplayableReason allowedReasons = ResolveCardPlayAllowanceReasons(
+			BlueCandleMedkitRune.AllowsPlaying(__instance),
+			GrandFinaleUpgradeRune.AllowsPlaying(__instance));
+		ApplyCardPlayAllowance(ref __result, ref reason, preventer != null, allowedReasons);
+	}
+
+	internal static UnplayableReason ResolveCardPlayAllowanceReasons(
+		bool blueCandleAllows,
+		bool grandFinaleAllows)
+	{
+		UnplayableReason allowedReasons = UnplayableReason.None;
+		if (blueCandleAllows)
 		{
-			__result = true;
+			allowedReasons |= UnplayableReason.HasUnplayableKeyword;
+		}
+		if (grandFinaleAllows)
+		{
+			allowedReasons |= UnplayableReason.BlockedByCardLogic;
+		}
+
+		return allowedReasons;
+	}
+
+	internal static void ApplyCardPlayAllowance(
+		ref bool result,
+		ref UnplayableReason reason,
+		bool hasPreventer,
+		UnplayableReason allowedReasons)
+	{
+		if (result || reason == UnplayableReason.None)
+		{
 			return;
 		}
 
-		if (!__result && WhiteHoleCard.AllowsPlaying(__instance))
-		{
-			__result = true;
-			return;
-		}
+		reason &= ~allowedReasons;
+		result = reason == UnplayableReason.None && !hasPreventer;
+	}
 
-		if (!__result && GrandFinaleUpgradeRune.AllowsPlaying(__instance))
-		{
-			__result = true;
-			return;
-		}
-
+	private static void CardCanPlayBlockerPostfix(CardModel __instance, ref bool __result)
+	{
 		if (__result && IsBlockedByBackToBasics(__instance))
 		{
 			__result = false;
@@ -34,47 +60,25 @@ internal static partial class HextechCombatHooks
 		}
 	}
 
-	private static void CardCanPlayWithReasonPostfix(CardModel __instance, ref bool __result, ref UnplayableReason reason, ref AbstractModel preventer)
+	private static void CardCanPlayBlockerWithReasonPostfix(
+		CardModel __instance,
+		ref bool __result,
+		ref UnplayableReason reason,
+		ref AbstractModel preventer)
 	{
-		if (!__result)
+		if (__result && IsBlockedByBackToBasics(__instance, out AbstractModel? backToBasicsPreventer))
 		{
-			if (BlueCandleMedkitRune.AllowsPlaying(__instance))
-			{
-				reason = default;
-				preventer = null!;
-				__result = true;
-				return;
-			}
-
-			if (WhiteHoleCard.AllowsPlaying(__instance))
-			{
-				reason = default;
-				preventer = null!;
-				__result = true;
-				return;
-			}
-
-			if (GrandFinaleUpgradeRune.AllowsPlaying(__instance))
-			{
-				reason = default;
-				preventer = null!;
-				__result = true;
-			}
-
-			return;
-		}
-
-		if (IsBlockedByBackToBasics(__instance, out AbstractModel? backToBasicsPreventer))
-		{
-			reason = default;
+			reason |= UnplayableReason.BlockedByHook;
 			preventer = backToBasicsPreventer!;
 			__result = false;
 			return;
 		}
 
-		if (KakaRune.BlocksAttack(__instance) && __instance.Owner?.GetRelic<KakaRune>() is KakaRune kakaRune)
+		if (__result
+			&& KakaRune.BlocksAttack(__instance)
+			&& __instance.Owner?.GetRelic<KakaRune>() is KakaRune kakaRune)
 		{
-			reason = default;
+			reason |= UnplayableReason.BlockedByHook;
 			preventer = kakaRune;
 			__result = false;
 		}

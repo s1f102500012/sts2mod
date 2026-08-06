@@ -31,12 +31,12 @@ public sealed class FeelTheBurnCard : HextechOwnerPoolTokenCard
 			return;
 		}
 
-		// 移除全部增益(结构性怪物机制 buff 除外,与升级:暴露同口径)。
+		// 移除全部增益(受保护的怪物机制与战利品结算 buff 除外,与升级:暴露同口径)。
 		foreach (Creature enemy in enemies)
 		{
 			List<PowerModel> buffs = enemy.Powers
 				.Where(static power => power.GetTypeForAmount(power.Amount) == PowerType.Buff
-					&& !HextechMonsterInteractionPolicy.IsStructuralMonsterBuff(power))
+					&& !HextechMonsterInteractionPolicy.ShouldPreserveFromBuffRemoval(power))
 				.ToList();
 			foreach (PowerModel power in buffs)
 			{

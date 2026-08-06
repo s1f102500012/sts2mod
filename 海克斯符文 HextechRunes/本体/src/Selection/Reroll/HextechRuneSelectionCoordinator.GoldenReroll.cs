@@ -3,6 +3,7 @@ namespace HextechRunes;
 internal static partial class HextechRuneSelectionCoordinator
 {
 	private static HextechGoldenRerollSession CreateGoldenRerollSession(
+		HextechMayhemModifier modifier,
 		Player player,
 		int actIndex,
 		int choiceOrdinal,
@@ -21,12 +22,13 @@ internal static partial class HextechRuneSelectionCoordinator
 			actIndex,
 			choiceOrdinal,
 			rarity,
-			hasUpgradedCandidates);
+			hasUpgradedCandidates,
+			modifier.GoldenRerollChancePercent);
 		if (session.IsActive)
 		{
 			HextechLog.Info(
 				$"[{ModInfo.Id}][Mayhem] Golden reroll active: act={actIndex} choice={choiceOrdinal} " +
-				$"player={player.NetId} rarity={rarity} upgraded={session.UpgradedRarity}");
+				$"player={player.NetId} rarity={rarity} upgraded={session.UpgradedRarity} chance={modifier.GoldenRerollChancePercent}%");
 		}
 
 		return session;

@@ -108,6 +108,8 @@ public sealed class FlyingKickRune : HextechRelicBase
 			{
 				FlyingKickCorpseLaunchDriver.MarkPendingUntilConsumed(target);
 			}
+
+			Owner.GetRelic<CollectorRune>()?.RecordExecution(target);
 		}
 		finally
 		{

@@ -15,28 +15,6 @@ internal static partial class HextechEnemyPowerScalingHooks
 
 	public static void Install(Harmony harmony)
 	{
-#if STS2_107_OR_NEWER
-		HarmonyMethod prefix = new(typeof(HextechEnemyPowerScalingHooks), nameof(ModifyPowerAmountGivenHookPrefix))
-		{
-			priority = Priority.First
-		};
-#else
-		HarmonyMethod prefix = new(typeof(HextechEnemyPowerScalingHooks), nameof(ModifyPowerAmountGivenPrefix))
-		{
-			priority = Priority.First
-		};
-#endif
-
-		MethodInfo? modifyPowerAmountGivenTarget = TryResolveModifyPowerAmountGivenTarget();
-		if (modifyPowerAmountGivenTarget != null)
-		{
-			harmony.Patch(modifyPowerAmountGivenTarget, prefix: prefix);
-		}
-		else
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem][Compat] Enemy power multiplayer scaling hook skipped: ModifyPowerAmountGiven target not found in this runtime.");
-		}
-
 #if STS2_105_OR_NEWER
 		HarmonyMethod scaledPrefix = new(typeof(HextechEnemyPowerScalingHooks), nameof(GetScaledAmountForMultiplayerPrefix))
 		{
@@ -91,74 +69,6 @@ internal static partial class HextechEnemyPowerScalingHooks
 		{
 			return await PowerCmd.Apply<T>(target, finalAmount, effectiveApplier, cardSource, silent);
 		}
-	}
-
-#if STS2_107_OR_NEWER
-	private static bool ModifyPowerAmountGivenHookPrefix(
-		ICombatState combatState,
-		PowerModel power,
-		Creature? giver,
-		decimal amount,
-		Creature? target,
-		CardModel? cardSource,
-		ref IEnumerable<AbstractModel> modifiers,
-		ref decimal __result)
-	{
-		if (!TryCalculateModifiedPowerAmountGiven(power, giver, amount, target, out decimal modifiedAmount))
-		{
-			return true;
-		}
-
-		modifiers = Array.Empty<AbstractModel>();
-		__result = modifiedAmount;
-		return false;
-	}
-#else
-	private static bool ModifyPowerAmountGivenPrefix(
-		PowerModel power,
-		Creature? giver,
-		decimal amount,
-		Creature? target,
-		CardModel? cardSource,
-		ref decimal __result)
-	{
-		if (!TryCalculateModifiedPowerAmountGiven(power, giver, amount, target, out decimal modifiedAmount))
-		{
-			return true;
-		}
-
-		__result = modifiedAmount;
-		return false;
-	}
-#endif
-
-	private static bool TryCalculateModifiedPowerAmountGiven(
-		PowerModel power,
-		Creature? giver,
-		decimal amount,
-		Creature? target,
-		out decimal modifiedAmount)
-	{
-		modifiedAmount = amount;
-		ScalingOverride? activeOverride = CurrentOverride.Value;
-		ScalingOverride? powerOverride = GetScalingOverride(power.GetType());
-		if (activeOverride == null
-			|| target == null
-			|| (!target.IsPrimaryEnemy && !target.IsSecondaryEnemy)
-			|| powerOverride == null
-			|| (activeOverride.Value != ScalingOverride.FinalAmount && powerOverride != activeOverride))
-		{
-			return false;
-		}
-
-		modifiedAmount = activeOverride.Value switch
-		{
-			ScalingOverride.PlayerCount => ClampPowerOffsetForApply(power, target, MultiplyByPlayerCount(amount, GetPlayerCount(giver, target))),
-			ScalingOverride.Unscaled => ClampPowerOffsetForApply(power, target, amount),
-			ScalingOverride.FinalAmount => ClampPowerOffsetForApply(power, target, amount),
-			_ => ClampPowerOffsetForApply(power, target, amount)
-		};
-		return true;
 	}
 
 #if STS2_105_OR_NEWER

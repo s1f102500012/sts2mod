@@ -10,6 +10,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SRC = REPO_ROOT / "src"
 LOCALIZATION = REPO_ROOT / "assets" / "localization"
+TELEMETRY_LABELS = REPO_ROOT / "server" / "hextech-telemetry" / "labels.json"
 
 def read(path: Path) -> str:
     return path.read_text(encoding="utf-8")
@@ -53,6 +54,11 @@ def model_loc_stem(type_name: str) -> str:
     slug = re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", slug)
     parts = [p for p in slug.lower().split("_") if p]
     return parts[0] + "".join(p[:1].upper() + p[1:] for p in parts[1:])
+
+
+def model_id_entry(type_name: str) -> str:
+    stem = model_loc_stem(type_name)
+    return re.sub(r"([a-z0-9])([A-Z])", r"\1_\2", stem).upper()
 
 
 def extract_enum_values(text: str, enum_name: str) -> list[str]:
@@ -379,6 +385,12 @@ def validate_icon_assets(errors: list[str], warnings: list[str]) -> None:
         for type_name in extract_type_list(registry_text, values_list):
             expected_stems.add(model_loc_stem(type_name))
 
+    run_modifiers_dir = SRC / "RunModifiers"
+    for source_path in run_modifiers_dir.glob("*.cs"):
+        expected_stems.update(
+            re.findall(r'images/relics/([^"/]+)\.png', read(source_path))
+        )
+
     missing = sorted(
         stem
         for stem in expected_stems
@@ -441,6 +453,39 @@ def validate_localization_key_parity(errors: list[str]) -> None:
                 fail(errors, f"{locale_dir.name}/{file_name} extra keys vs eng: {', '.join(extra[:8])}{'…' if len(extra) > 8 else ''}")
 
 
+def validate_telemetry_labels(errors: list[str]) -> None:
+    """统计服务使用稳定模型 ID 与敌方枚举名，中文名必须和简中标题保持同步。"""
+    if not TELEMETRY_LABELS.exists():
+        fail(errors, f"telemetry labels missing: {TELEMETRY_LABELS.relative_to(REPO_ROOT)}")
+        return
+
+    labels = json.loads(read(TELEMETRY_LABELS))
+    rune_labels = labels.get("runes", {})
+    monster_labels = labels.get("monsterHexes", {})
+    zhs_relics = json.loads(read(LOCALIZATION / "zhs" / "relics.json"))
+    registry_text = registry_source_text()
+
+    for registration in extract_rune_registrations(registry_text):
+        model_id = model_id_entry(str(registration["type"]))
+        title_key = f"{model_id}.title"
+        expected = zhs_relics.get(title_key)
+        actual = rune_labels.get(model_id)
+        if expected is None:
+            fail(errors, f"zhs relic title missing for telemetry rune: {title_key}")
+        elif actual != expected:
+            fail(errors, f"telemetry rune label mismatch for {model_id}: expected {expected!r}, got {actual!r}")
+
+    for registration in extract_monster_hex_registrations(registry_text):
+        kind = str(registration["kind"])
+        title_key = f"{model_id_entry(str(registration['type']))}.title"
+        expected = zhs_relics.get(title_key)
+        actual = monster_labels.get(kind)
+        if expected is None:
+            fail(errors, f"zhs relic title missing for telemetry monster hex: {title_key}")
+        elif actual != expected:
+            fail(errors, f"telemetry monster label mismatch for {kind}: expected {expected!r}, got {actual!r}")
+
+
 def main() -> int:
     errors: list[str] = []
     warnings: list[str] = []
@@ -451,6 +496,7 @@ def main() -> int:
     validate_combat_tracking_state(errors)
     validate_icon_assets(errors, warnings)
     validate_localization_key_parity(errors)
+    validate_telemetry_labels(errors)
 
     if errors:
         print("Hextech content validation failed:")

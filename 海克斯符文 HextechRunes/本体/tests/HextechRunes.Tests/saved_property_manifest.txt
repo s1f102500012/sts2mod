@@ -6,6 +6,7 @@ HextechSelfUpgradeBlockBonus
 HextechSelfUpgradeDamageBonus
 IsMelted
 IsWax
+SavedActSelectionIndexOffset
 SavedAddedThisCombat
 SavedAttacksPlayedThisCombat
 SavedAttacksPlayedThisTurn
@@ -24,6 +25,7 @@ SavedDeathsThisCombat
 SavedEnemyHexCountsByAct
 SavedEnemyTezcatarasMercyCombatCounter
 SavedExhaustedCardsThisCombat
+SavedExtraStageIndexesJson
 SavedFeedBonusGranted
 SavedGeneratedCardsThisCombat
 SavedHasPreviousTurn
@@ -31,6 +33,7 @@ SavedHexCountRecoveryBaseline
 SavedHextechHostUsesBetterMultiplayerScaling
 SavedHextechRunConfigurationSnapshotJson
 SavedHpGainedThisCombat
+SavedInitialForgeGrantPending
 SavedInitialPowerAppliedThisCombat
 SavedLastRecordedRound
 SavedLingeringBuff
@@ -59,7 +62,6 @@ SavedRarityByAct
 SavedRemovedPowerCardsJson
 SavedResolvedActs
 SavedRuneSelectionJournalJson
-SavedSecondTurnStrengthGranted
 SavedSeenPlayerRuneIdsJson
 SavedShivsPlayedThisCombat
 SavedStackCount

@@ -162,66 +162,13 @@ public sealed class HextechAttackReplayPower : PowerModel
 
 public sealed class HextechPlayerSlowPower : HextechPowerBase
 {
-	internal const decimal PlayerCombatStartAmount = 0m;
-	internal const decimal EnemyCombatStartAmount = 0m;
-	internal const int RoundStartAmount = 0;
-
-	public override PowerType Type => PowerType.Buff;
+	public override PowerType Type => PowerType.None;
 
 	public override PowerStackType StackType => PowerStackType.Counter;
 
 	public override bool AllowNegative => true;
 
 	public override int DisplayAmount => (int)decimal.Round(Amount, 0, MidpointRounding.AwayFromZero);
-
-	internal static async Task ApplyAtZero(
-		Creature target,
-		Creature? applier,
-		CardModel? cardSource)
-	{
-		HextechPlayerSlowPower? existing = target.GetPower<HextechPlayerSlowPower>();
-		if (existing != null)
-		{
-			existing.SetAmount(0, silent: true);
-			return;
-		}
-
-		// PowerCmd.Apply(0) 会直接跳过。先用 1 层种子完成正规应用，再归零以保留实例。
-		// 这项系数状态统一按 Buff 处理，不参与“施加负面效果”类响应。
-		HextechPlayerSlowPower? applied = await HextechPowerCmdCompat.Apply<HextechPlayerSlowPower>(
-			target,
-			1m,
-			applier,
-			cardSource,
-			silent: true);
-		applied?.SetAmount(0, silent: true);
-	}
-
-	internal static decimal NormalizeEnemyReductionAmount(decimal amount)
-	{
-		return decimal.Abs(amount);
-	}
-
-	internal void NormalizeEnemyReductionAmount()
-	{
-		decimal normalized = NormalizeEnemyReductionAmount(Amount);
-		if (normalized != Amount)
-		{
-			SetAmount((int)normalized, silent: true);
-		}
-	}
-
-	internal static void ResetEnemyHexSlowForRound(IEnumerable<Creature> creatures)
-	{
-		foreach (Creature creature in creatures)
-		{
-			HextechPlayerSlowPower? slow = creature.GetPower<HextechPlayerSlowPower>();
-			if (slow != null && slow.Amount != RoundStartAmount)
-			{
-				slow.SetAmount(RoundStartAmount, silent: true);
-			}
-		}
-	}
 
 	public override decimal ModifyDamageMultiplicativeCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
 	{
@@ -230,11 +177,12 @@ public sealed class HextechPlayerSlowPower : HextechPowerBase
 			return 1m;
 		}
 
-		decimal signedAmount = Owner.Side == CombatSide.Enemy
-			? -NormalizeEnemyReductionAmount(Amount)
-			: Amount;
-		decimal multiplier = 1m + signedAmount / 100m;
-		return Math.Max(0m, multiplier);
+		return ResolveDamageMultiplier(Amount);
+	}
+
+	internal static decimal ResolveDamageMultiplier(decimal amount)
+	{
+		return Math.Max(0m, 1m + amount / 100m);
 	}
 
 	public override Task AfterModifyingDamageAmount(CardModel? cardSource)
@@ -252,19 +200,21 @@ public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPowe
 {
 	private bool _shouldIgnoreNextInstance;
 
-	public override PowerType Type => PowerType.Debuff;
+	public override PowerType Type => PowerType.None;
 
 	public override PowerStackType StackType => PowerStackType.Counter;
 
+	public override bool AllowNegative => true;
+
 	protected override bool IsVisibleInternal => false;
 
-	public AbstractModel OriginModel => ModelDb.Relic<FrostWraithRune>();
+	public AbstractModel OriginModel => ModelDb.Power<HextechPlayerSlowPower>();
 
-	public PowerModel InternallyAppliedPower => ModelDb.Power<SlowPower>();
+	public PowerModel InternallyAppliedPower => ModelDb.Power<HextechPlayerSlowPower>();
 
-	public override LocString Title => ModelDb.Power<SlowPower>().Title;
+	public override LocString Title => ModelDb.Power<HextechPlayerSlowPower>().Title;
 
-	public override LocString Description => ModelDb.Power<SlowPower>().Description;
+	public override LocString Description => ModelDb.Power<HextechPlayerSlowPower>().Description;
 
 	public void IgnoreNextInstance()
 	{
@@ -279,7 +229,7 @@ public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPowe
 			return;
 		}
 
-		await PowerCmd.Apply<SlowPower>(target, amount, applier, cardSource, silent: true);
+		await PowerCmd.Apply<HextechPlayerSlowPower>(target, amount, applier, cardSource, silent: true);
 	}
 
 #if STS2_104_OR_NEWER
@@ -299,17 +249,22 @@ public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPowe
 			return;
 		}
 
-		await PowerCmd.Apply<SlowPower>(Owner, amount, applier, cardSource, silent: true);
+		await PowerCmd.Apply<HextechPlayerSlowPower>(Owner, amount, applier, cardSource, silent: true);
 	}
 
 	public override async Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
 	{
-		if (side != Owner.Side)
+		if (!ShouldExpireAtSide(side))
 		{
 			return;
 		}
 
 		await PowerCmd.Remove(this);
-		await PowerCmd.Apply<SlowPower>(Owner, -Amount, Owner, null, silent: true);
+		await PowerCmd.Apply<HextechPlayerSlowPower>(Owner, -Amount, Owner, null, silent: true);
+	}
+
+	internal static bool ShouldExpireAtSide(CombatSide side)
+	{
+		return side == CombatSide.Player;
 	}
 }

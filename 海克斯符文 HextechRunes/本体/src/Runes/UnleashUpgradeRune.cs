@@ -2,15 +2,17 @@ namespace HextechRunes;
 
 public sealed class UnleashUpgradeRune : CardUpgradeRuneBase<Unleash>
 {
+	internal override bool GrantsCardOnPickup => false;
+
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
 	[
 		HoverTipFactory.FromCard<Unleash>(),
 		HoverTipFactory.FromCard<Protector>()
 	];
 
-	protected override bool DeckContainsRequiredCard(Player player)
+	internal override bool MeetsCardAvailabilityRequirement(IEnumerable<CardModel> deckCards)
 	{
-		return DeckContains<Unleash>(player) || DeckContains<Protector>(player);
+		return deckCards.Any(static card => card is Unleash or Protector);
 	}
 
 	protected override bool IsAvailableForCharacter(Player player)

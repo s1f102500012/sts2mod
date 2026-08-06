@@ -26,7 +26,7 @@ public sealed class UndyingUpgradeRune : CardUpgradeRuneBase<Undeath>
 
 	public override async Task AfterObtained()
 	{
-		// 先走基类补卡(牌组无不死则加入 1 张),再给全部不死(含刚补的)加持久虚无词条。
+		// 先加入不死，再给全部不死（含刚加入的牌）加持久虚无词条。
 		await base.AfterObtained();
 		if (Owner == null)
 		{

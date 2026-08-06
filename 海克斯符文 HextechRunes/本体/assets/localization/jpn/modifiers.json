@@ -6,5 +6,15 @@
   "HEXTECH_GOLD_RUN.title": "ゴールドラン",
   "HEXTECH_GOLD_RUN.description": "このランで更新されるヘクステックルーンはすべてゴールド階です。",
   "HEXTECH_PRISMATIC_RUN.title": "プリズムラン",
-  "HEXTECH_PRISMATIC_RUN.description": "このランで更新されるヘクステックルーンはすべてプリズム階です。"
+  "HEXTECH_PRISMATIC_RUN.description": "このランで更新されるヘクステックルーンはすべてプリズム階です。",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.title": "詰め込み地獄",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.description": "プレイヤーはデフォルトのヘクステック設定を使用します。敵は[red]状態異常カード[/red]に関連する固定ヘクステックルーンを獲得します。",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.title": "防御反撃の達人",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.description": "プレイヤーはデフォルトのヘクステック設定を使用します。敵は[red]防御反撃[/red]に関連する固定ヘクステックルーンを獲得します。",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.title": "力こそ正義",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.description": "プレイヤーはデフォルトのヘクステック設定を使用します。敵は[red]能力値[/red]に関連する固定ヘクステックルーンを獲得します。",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.title": "八銭の扉",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.description": "プレイヤーはデフォルトのヘクステック設定を使用します。敵は[red]扉の創造者[/red]に関連する固定ヘクステックルーンを獲得します。",
+  "HEXTECH_LISTLESS_CHALLENGE.title": "気力なし",
+  "HEXTECH_LISTLESS_CHALLENGE.description": "プレイヤーはデフォルトのヘクステック設定を使用します。敵は[red]能力値低下[/red]に関連する固定ヘクステックルーンを獲得します。"
 }

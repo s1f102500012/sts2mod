@@ -3,6 +3,12 @@ namespace HextechRunes;
 public static class HextechRunesApi
 {
 	public const string PersistentInnateMarkerSavedPropertyName = "SavedCosplayInnateMarker";
+	private const PlayerRuneFlags AllKnownPlayerRuneFlags =
+		PlayerRuneFlags.Disabled
+		| PlayerRuneFlags.AttributeConversionExclusive
+		| PlayerRuneFlags.FirstActExcluded
+		| PlayerRuneFlags.ThirdActExcluded
+		| PlayerRuneFlags.SelectionExcluded;
 
 	/// <summary>
 	/// 注册外部玩家符文。必须在模组初始化阶段、共享遗物池首次枚举前调用。
@@ -33,9 +39,19 @@ public static class HextechRunesApi
 		string tagKey = "COMPREHENSIVE",
 		string? assetModId = null)
 	{
-		if (runeType.IsAbstract || !typeof(HextechRelicBase).IsAssignableFrom(runeType))
+		ValidateConcreteModelType(runeType, typeof(HextechRelicBase), nameof(runeType), "Player rune");
+		ValidateRarity(rarity);
+		ValidatePlayerRuneFlags(flags);
+		if (characterPool.HasValue && !Enum.IsDefined(characterPool.Value))
 		{
-			throw new ArgumentException($"Player rune type must be a concrete {nameof(HextechRelicBase)}: {runeType.FullName}", nameof(runeType));
+			throw new ArgumentOutOfRangeException(
+				nameof(characterPool),
+				characterPool,
+				$"Unknown player rune character pool: {characterPool.Value}.");
+		}
+		if (string.IsNullOrWhiteSpace(tagKey))
+		{
+			throw new ArgumentException("Player rune tag key must not be empty.", nameof(tagKey));
 		}
 
 		PlayerRuneRegistration registration = new(runeType, rarity, flags, characterPool, characterOrder, tagKey);
@@ -63,10 +79,7 @@ public static class HextechRunesApi
 	/// <exception cref="InvalidOperationException">模型池或 SavedProperty 注册窗口已经关闭。</exception>
 	public static void RegisterEventRelic(Type relicType, string? assetModId = null)
 	{
-		if (relicType.IsAbstract || !typeof(RelicModel).IsAssignableFrom(relicType))
-		{
-			throw new ArgumentException($"Event relic type must be a concrete {nameof(RelicModel)}: {relicType.FullName}", nameof(relicType));
-		}
+		ValidateConcreteModelType(relicType, typeof(RelicModel), nameof(relicType), "Event relic");
 
 		HextechSavedPropertyBootstrap.EnsureModelTypeRegistrationAllowed(relicType);
 		HextechCatalog.EnsureExternalModelIdAvailable(relicType);
@@ -91,10 +104,8 @@ public static class HextechRunesApi
 	/// <exception cref="InvalidOperationException">模型池或 SavedProperty 注册窗口已经关闭。</exception>
 	public static void RegisterForge(Type forgeType, HextechRarityTier rarity, string? assetModId = null)
 	{
-		if (forgeType.IsAbstract || !typeof(HextechForgeBase).IsAssignableFrom(forgeType))
-		{
-			throw new ArgumentException($"Forge type must be a concrete {nameof(HextechForgeBase)}: {forgeType.FullName}", nameof(forgeType));
-		}
+		ValidateConcreteModelType(forgeType, typeof(HextechForgeBase), nameof(forgeType), "Forge");
+		ValidateRarity(rarity);
 
 		HextechSavedPropertyBootstrap.EnsureModelTypeRegistrationAllowed(forgeType);
 		HextechCatalog.EnsureExternalModelIdAvailable(forgeType);
@@ -159,10 +170,7 @@ public static class HextechRunesApi
 	/// <exception cref="InvalidOperationException">官方序列化缓存已初始化，且目标载体未被缓存。</exception>
 	public static void RegisterSavedPropertyCarrier(Type modelType)
 	{
-		if (modelType.IsAbstract || !typeof(AbstractModel).IsAssignableFrom(modelType))
-		{
-			throw new ArgumentException($"SavedProperty carrier type must be a concrete {nameof(AbstractModel)}: {modelType.FullName}", nameof(modelType));
-		}
+		ValidateConcreteModelType(modelType, typeof(AbstractModel), nameof(modelType), "SavedProperty carrier");
 
 		HextechSavedPropertyBootstrap.InjectModelType(modelType);
 	}
@@ -181,10 +189,7 @@ public static class HextechRunesApi
 	/// </summary>
 	public static void RegisterEnchantmentIcon(Type enchantmentType, string iconPath)
 	{
-		if (enchantmentType.IsAbstract || !typeof(EnchantmentModel).IsAssignableFrom(enchantmentType))
-		{
-			throw new ArgumentException($"Enchantment type must be a concrete {nameof(EnchantmentModel)}: {enchantmentType.FullName}", nameof(enchantmentType));
-		}
+		ValidateConcreteModelType(enchantmentType, typeof(EnchantmentModel), nameof(enchantmentType), "Enchantment");
 		if (string.IsNullOrWhiteSpace(iconPath))
 		{
 			throw new ArgumentException("Enchantment icon path must not be empty.", nameof(iconPath));
@@ -206,5 +211,42 @@ public static class HextechRunesApi
 	public static void RestorePersistentInnate(CardModel card)
 	{
 		CosplayInnateKeywordPersistence.Restore(card);
+	}
+
+	private static void ValidateConcreteModelType(
+		Type modelType,
+		Type requiredBaseType,
+		string parameterName,
+		string label)
+	{
+		ArgumentNullException.ThrowIfNull(modelType, parameterName);
+		if (modelType.IsAbstract
+			|| modelType.ContainsGenericParameters
+			|| !requiredBaseType.IsAssignableFrom(modelType))
+		{
+			throw new ArgumentException(
+				$"{label} type must be a concrete, closed {requiredBaseType.Name}: {modelType.FullName ?? modelType.Name}",
+				parameterName);
+		}
+	}
+
+	private static void ValidateRarity(HextechRarityTier rarity)
+	{
+		if (!Enum.IsDefined(rarity))
+		{
+			throw new ArgumentOutOfRangeException(nameof(rarity), rarity, $"Unknown Hextech rarity tier: {rarity}.");
+		}
+	}
+
+	private static void ValidatePlayerRuneFlags(PlayerRuneFlags flags)
+	{
+		PlayerRuneFlags unknownFlags = flags & ~AllKnownPlayerRuneFlags;
+		if (unknownFlags != PlayerRuneFlags.None)
+		{
+			throw new ArgumentOutOfRangeException(
+				nameof(flags),
+				flags,
+				$"Unknown player rune flag bits: {unknownFlags}.");
+		}
 	}
 }

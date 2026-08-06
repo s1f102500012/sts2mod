@@ -4,11 +4,16 @@ internal sealed class UnmovableMountainEnemyHex : HextechEnemyHexEffect
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.UnmovableMountain;
 
-	internal override int PersistentOrder => 100;
-
-	internal override async Task ApplyPersistentToEnemy(HextechEnemyHexContext context, Creature creature, int? maxHpBaseOverride, bool replayOneShotPowers)
+	internal override async Task ApplyOpeningCombatStartToEnemy(
+		HextechEnemyHexContext context,
+		Creature creature,
+		CombatRoom room,
+		bool replayOneShotPowers)
 	{
-		if (HextechCombatProcTracker.TryMarkPersistentHexApplied(context.Tracking.UnmovableMountainApplied, creature, replayOneShotPowers))
+		if (HextechCombatProcTracker.TryMarkPersistentHexApplied(
+			context.Tracking.UnmovableMountainApplied,
+			creature,
+			replayOneShotPowers))
 		{
 			await PowerCmd.Apply<BarricadePower>(creature, 1m, creature, null);
 		}

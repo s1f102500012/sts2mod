@@ -95,9 +95,9 @@ public sealed class EnemyHexConsoleCmd : AbstractConsoleCmd
 	private static CmdResult SetEnemyHex(RunState runState, HextechMayhemModifier modifier, MonsterHexKind hex)
 	{
 		int actIndex = runState.CurrentActIndex;
-		if (actIndex < 0 || actIndex > 2)
+		if (actIndex < 0)
 		{
-			return new CmdResult(success: false, "替换当前楼层敌方海克斯只支持第 1-3 层；无尽模式请使用 enemyhex add/remove。");
+			return new CmdResult(success: false, "当前不在有效幕内，无法替换本阶段敌方海克斯。");
 		}
 
 		modifier.DebugSetOnlyMonsterHex(actIndex, hex, MonsterHexCatalog.GetMonsterHexRarity(hex));

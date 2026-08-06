@@ -10,7 +10,12 @@ public sealed class StrikeUpgradeRune : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player)
 	{
-		return player.Deck.Cards.Any(IsBasicStrike);
+		return HasBasicStrike(player.Deck.Cards);
+	}
+
+	internal static bool HasBasicStrike(IEnumerable<CardModel> deckCards)
+	{
+		return deckCards.Any(IsBasicStrike);
 	}
 
 	internal static bool IsBasicStrike(CardModel card)

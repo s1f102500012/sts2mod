@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Godot;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Orbs;
@@ -20,6 +21,62 @@ internal static partial class HextechPlayerRuneHooks
 	private static FieldInfo? OrbManagerOrbsField;
 	private static FieldInfo? OrbManagerCreatureField;
 	private static FieldInfo? OrbManagerCurrentTweenField;
+	private static readonly ConditionalWeakTable<NOrbManager, OrbLayoutFrameState> OrbLayoutFrameStates = new();
+
+	private sealed class OrbLayoutFrameState
+	{
+		private ulong _processFrame = ulong.MaxValue;
+		private int _capacity;
+		private bool _isLocal;
+		private int _orbCount;
+		private NOrb[] _orbs = [];
+
+		public bool Matches(ulong processFrame, int capacity, bool isLocal, List<NOrb> orbs)
+		{
+			if (_processFrame != processFrame
+				|| _capacity != capacity
+				|| _isLocal != isLocal
+				|| _orbCount != orbs.Count)
+			{
+				return false;
+			}
+
+			// 容量与数量相同也可能发生激发后补位，节点序列必须完全一致才算重复布局。
+			for (int i = 0; i < _orbCount; i++)
+			{
+				if (!ReferenceEquals(_orbs[i], orbs[i]))
+				{
+					return false;
+				}
+			}
+
+			return true;
+		}
+
+		public void Capture(ulong processFrame, int capacity, bool isLocal, List<NOrb> orbs)
+		{
+			_processFrame = processFrame;
+			_capacity = capacity;
+			_isLocal = isLocal;
+			if (_orbs.Length < orbs.Count)
+			{
+				int newLength = Math.Max(orbs.Count, Math.Max(16, _orbs.Length * 2));
+				Array.Resize(ref _orbs, newLength);
+			}
+
+			int previousCount = _orbCount;
+			_orbCount = orbs.Count;
+			for (int i = 0; i < _orbCount; i++)
+			{
+				_orbs[i] = orbs[i];
+			}
+
+			if (_orbCount < previousCount)
+			{
+				Array.Clear(_orbs, _orbCount, previousCount - _orbCount);
+			}
+		}
+	}
 
 	private static void EnsureOrbLayoutFields()
 	{
@@ -68,7 +125,7 @@ internal static partial class HextechPlayerRuneHooks
 
 	private static bool OrbTweenLayoutPrefixCore(NOrbManager __instance)
 	{
-		if (!TryGetOrbLayoutState(__instance, out List<NOrb> orbs, out int capacity)
+		if (!TryGetOrbLayoutState(__instance, out List<NOrb> orbs, out Player? player, out int capacity)
 			|| capacity <= OrbLayoutRadiusSoftCapSlots)
 		{
 			return true;
@@ -77,6 +134,19 @@ internal static partial class HextechPlayerRuneHooks
 		if (orbs.Count == 0)
 		{
 			return false;
+		}
+
+		bool optimizeMadScientistOverflow = player?.GetRelic<MadScientistRune>() != null;
+		OrbLayoutFrameState? frameState = null;
+		ulong processFrame = 0;
+		if (optimizeMadScientistOverflow)
+		{
+			processFrame = Engine.GetProcessFrames();
+			frameState = OrbLayoutFrameStates.GetValue(__instance, static _ => new OrbLayoutFrameState());
+			if (frameState.Matches(processFrame, capacity, __instance.IsLocal, orbs))
+			{
+				return false;
+			}
 		}
 
 		float angle = OrbLayoutRangeDegrees;
@@ -92,24 +162,49 @@ internal static partial class HextechPlayerRuneHooks
 		OrbManagerCurrentTweenField?.SetValue(__instance, tween);
 
 		int layoutCount = Math.Min(capacity, orbs.Count);
+		int tweenedCount = ResolveTweenedOrbCount(optimizeMadScientistOverflow, capacity, orbs.Count);
 		for (int i = 0; i < layoutCount; i++)
 		{
 			float radians = (OrbLayoutAngleOffsetDegrees - angle) * MathF.PI / 180f;
 			Vector2 position = new(-MathF.Cos(radians) * radius, MathF.Sin(radians) * radius);
-			tween.TweenProperty(orbs[i], "position", position, OrbLayoutTweenSpeed)
-				.SetEase(Tween.EaseType.InOut)
-				.SetTrans(Tween.TransitionType.Sine);
+			if (i < tweenedCount)
+			{
+				tween.TweenProperty(orbs[i], "position", position, OrbLayoutTweenSpeed)
+					.SetEase(Tween.EaseType.InOut)
+					.SetTrans(Tween.TransitionType.Sine);
+			}
+			else
+			{
+				// 超量球沿用同一目标坐标，只省去会随球数线性膨胀的位置补间。
+				orbs[i].Position = position;
+			}
+
 			angle -= angleStep;
 		}
+
+		frameState?.Capture(processFrame, capacity, __instance.IsLocal, orbs);
 
 		return false;
 	}
 
-	private static bool TryGetOrbLayoutState(NOrbManager manager, out List<NOrb> orbs, out int capacity)
+	internal static int ResolveTweenedOrbCount(bool optimizeMadScientistOverflow, int capacity, int orbCount)
+	{
+		int layoutCount = Math.Min(Math.Max(0, capacity), Math.Max(0, orbCount));
+		return optimizeMadScientistOverflow
+			? Math.Min(OrbLayoutRadiusSoftCapSlots, layoutCount)
+			: layoutCount;
+	}
+
+	private static bool TryGetOrbLayoutState(
+		NOrbManager manager,
+		out List<NOrb> orbs,
+		out Player? player,
+		out int capacity)
 	{
 		orbs = (List<NOrb>?)OrbManagerOrbsField?.GetValue(manager) ?? new List<NOrb>();
 		NCreature? creature = (NCreature?)OrbManagerCreatureField?.GetValue(manager);
-		capacity = creature?.Entity.Player?.PlayerCombatState?.OrbQueue.Capacity ?? 0;
+		player = creature?.Entity.Player;
+		capacity = player?.PlayerCombatState?.OrbQueue.Capacity ?? 0;
 		return capacity > 0;
 	}
 

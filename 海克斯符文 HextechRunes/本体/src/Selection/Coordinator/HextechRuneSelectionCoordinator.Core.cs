@@ -22,10 +22,14 @@ internal static partial class HextechRuneSelectionCoordinator
 		return HandleActSelection(modifier.ActiveRunState, modifier);
 	}
 
-	public static async Task HandleActSelection(RunState runState, HextechMayhemModifier modifier)
+	public static Task HandleActSelection(RunState runState, HextechMayhemModifier modifier)
 	{
-		int actIndex = runState.CurrentActIndex;
-		if (!modifier.IsActResolved(actIndex) && modifier.TryRecoverResolvedActsFromPlayerRelics(nameof(HandleActSelection)))
+		return HandleStageSelection(runState, modifier, modifier.GetCurrentActSelectionIndex());
+	}
+
+	public static async Task HandleStageSelection(RunState runState, HextechMayhemModifier modifier, int actIndex)
+	{
+		if (!modifier.IsStageResolved(actIndex) && modifier.TryRecoverResolvedActsFromPlayerRelics(nameof(HandleStageSelection), actIndex))
 		{
 			HextechEnemyUi.Refresh(modifier);
 		}
@@ -35,10 +39,24 @@ internal static partial class HextechRuneSelectionCoordinator
 			Log.Warn($"[{ModInfo.Id}][Mayhem] HandleHextechActSelection: clearing stale handling state for previous run");
 		}
 
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] HandleHextechActSelection enter: room={runState.CurrentRoom?.GetType().Name ?? "null"} actIndex={actIndex} resolved={modifier.IsActResolved(actIndex)} handling={ActSelectionGate.IsHandling}");
-		if (ActSelectionGate.IsHandling || !IsCurrentRun(runState) || actIndex < 0 || actIndex > 2 || modifier.IsActResolved(actIndex))
+		HextechLog.Info($"[{ModInfo.Id}][Mayhem] HandleHextechActSelection enter: room={runState.CurrentRoom?.GetType().Name ?? "null"} actIndex={actIndex} resolved={modifier.IsStageResolved(actIndex)} handling={ActSelectionGate.IsHandling}");
+		if (ActSelectionGate.IsHandling || !IsCurrentRun(runState) || actIndex < 0 || modifier.IsStageResolved(actIndex))
 		{
 			HextechLog.Info($"[{ModInfo.Id}][Mayhem] HandleHextechActSelection skip");
+			return;
+		}
+
+		if (HextechPresetChallengeRegistry.IsActive(runState)
+			&& !HextechPresetChallengeRegistry.TryGetActPlan(runState, actIndex, out _))
+		{
+			IReadOnlyList<MonsterHexKind> activeMonsterHexes = modifier.GetActiveMonsterHexesBeforeAct(actIndex);
+			modifier.SetMonsterHexesForAct(actIndex, activeMonsterHexes);
+			modifier.SetStageResolved(actIndex, true);
+			modifier.ApplyMapModifiersToCurrentAct(nameof(HandleStageSelection), actIndex);
+			HextechEnemyUi.Refresh(modifier);
+			await modifier.ApplyToCurrentEnemiesIfNeeded();
+			await PersistActSelection(runState, actIndex);
+			HextechLog.Info($"[{ModInfo.Id}][Challenge] Skipped acquisition after the three preset acts: act={actIndex}");
 			return;
 		}
 
@@ -98,7 +116,8 @@ internal static partial class HextechRuneSelectionCoordinator
 			NetGameType gameType = RunManager.Instance.NetService.Type;
 			for (int choiceOrdinal = 0; choiceOrdinal < playerHexCount; choiceOrdinal++)
 			{
-				bool allowEnemyHexAdjustment = choiceOrdinal == 0;
+				bool allowEnemyHexAdjustment = choiceOrdinal == 0
+					&& !HextechPresetChallengeRegistry.IsActive(runState);
 				if (gameType is NetGameType.Singleplayer or NetGameType.None)
 				{
 					foreach (Player player in runState.Players)
@@ -177,10 +196,11 @@ internal static partial class HextechRuneSelectionCoordinator
 						modifier,
 						actIndex,
 						rarity,
-						allowEnemyHexAdjustment ? previousMonsterHexes : finalMonsterHexes,
-						allowEnemyHexAdjustment ? newMonsterHexes : [],
+						previousMonsterHexes,
+						newMonsterHexes,
 						monsterHexRelic,
-						choiceOrdinal);
+						choiceOrdinal,
+						allowEnemyHexAdjustment);
 					if (allowEnemyHexAdjustment)
 					{
 						newMonsterHexes = finalMonsterHexes
@@ -203,8 +223,8 @@ internal static partial class HextechRuneSelectionCoordinator
 			}
 
 			modifier.SetMonsterHexesForAct(actIndex, finalMonsterHexes);
-			modifier.SetActResolved(actIndex, true);
-			modifier.ApplyMapModifiersToCurrentAct(nameof(HandleActSelection));
+			modifier.SetStageResolved(actIndex, true);
+			modifier.ApplyMapModifiersToCurrentAct(nameof(HandleStageSelection), actIndex);
 			HextechEnemyUi.Refresh(modifier);
 			await modifier.ApplyToCurrentEnemiesIfNeeded();
 			await PersistActSelection(runState, actIndex);

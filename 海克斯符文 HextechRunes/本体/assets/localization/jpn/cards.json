@@ -1,7 +1,4 @@
 {
-  "ELICIT_CARD.title": "引き出す",
-  "ELICIT_CARD.description": "すべてのオーブを呼び出します。",
-  "ELICIT_CARD.flavor": "すべてのコイルを一度に放電させます。",
   "TRICK_MAGIC_CARD.title": "トリックマジック",
   "TRICK_MAGIC_CARD.description": "[blue]{Cards}[/blue] カードを引きます。 [blue]{BufferPower}[/blue] [gold]バッファー[/gold]を獲得します。次にプレイする攻撃は [blue]{Replays}[/blue] 回再生されます。",
   "TRICK_MAGIC_CARD.flavor": "観客にはリボンが見えます。敵はその請求書を見ます。",
@@ -29,9 +26,6 @@
   "CLOUD_DRAGON_SOUL_CARD.title": "クラウドドラゴンソウル",
   "CLOUD_DRAGON_SOUL_CARD.description": "毎ターン[blue]{Cards}[/blue]枚の追加カードを引く。",
   "CLOUD_DRAGON_SOUL_CARD.flavor": "風が自分の手に選択肢をもたらします。",
-  "ALL_IN_CARD.title": "オールイン",
-  "ALL_IN_CARD.description": "{Damage:diff()} のダメージを与える。\n攻撃以外のカードをすべて捨てる。",
-  "ALL_IN_CARD.flavor": "テーブル上には賭け金とエッジだけが残ります。",
   "WHITE_HOLE_CARD.title": "ホワイトホール",
   "WHITE_HOLE_CARD.description": "これを引くたび、{Energy:energyIcons()}.\n{Cards} カードを獲得します。",
   "WHITE_HOLE_CARD.flavor": "それは選択肢を飲み込みません。それは自分の手にそれらを吐き戻します。",

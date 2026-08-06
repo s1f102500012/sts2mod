@@ -125,31 +125,10 @@ internal static class HextechEnemyUi
 		return HextechRelicVisibilityHooks.GetCollapseEnemyHexes();
 	}
 
-	// 折叠面板按「幕」分行:第 N 行 = 第 N 幕**单独新增**的敌方海克斯。GetMonsterHexesForAct 返回的是累积集,
-	// 所以每幕单独 = 该幕累积集 − 上一幕累积集(累积为 append,新增即不在上一幕里的那些)。未到达的幕为空,跳过。
+	// 折叠面板按获得批次分行。阶段序号跨额外幕与无尽轮次单调递增，不能再按三幕配置数组截断。
 	private static List<IReadOnlyList<MonsterHexKind>> BuildHexRowsByAct(HextechMayhemModifier modifier)
 	{
-		List<IReadOnlyList<MonsterHexKind>> rows = [];
-		IReadOnlyList<MonsterHexKind> previous = [];
-		int actCount = modifier.EnemyHexCountsByAct.Length;
-		for (int act = 0; act < actCount; act++)
-		{
-			IReadOnlyList<MonsterHexKind> cumulative = modifier.GetMonsterHexesForAct(act);
-			if (cumulative.Count == 0)
-			{
-				continue;
-			}
-
-			List<MonsterHexKind> delta = cumulative.Where(hex => !previous.Contains(hex)).ToList();
-			if (delta.Count > 0)
-			{
-				rows.Add(delta);
-			}
-
-			previous = cumulative;
-		}
-
-		return rows;
+		return modifier.GetMonsterHexRows().Select(static row => row).ToList();
 	}
 
 	// 深色底保留列数 = 各幕海克斯数量的最大值(既看配置每幕数量,也兜住实际行长),钳到 [1,6]。

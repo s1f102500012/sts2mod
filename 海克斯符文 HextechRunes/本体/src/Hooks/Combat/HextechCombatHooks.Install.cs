@@ -51,22 +51,39 @@ internal static partial class HextechCombatHooks
 
 	private static void InstallCardPlayHooks(Harmony harmony)
 	{
-		// Priority.Last 是禁玩终裁位：封禁必须压过第三方放行；本模组的放行分支只处理原结果为 false 的情形。
-		HarmonyMethod canPlayPostfix = new(typeof(HextechCombatHooks), nameof(CardCanPlayPostfix))
+		HarmonyMethod canPlayAllowanceWithReasonPostfix = new(
+			typeof(HextechCombatHooks),
+			nameof(CardCanPlayAllowanceWithReasonPostfix))
+		{
+			priority = Priority.First
+		};
+		HarmonyMethod canPlayBlockerPostfix = new(typeof(HextechCombatHooks), nameof(CardCanPlayBlockerPostfix))
 		{
 			priority = Priority.Last
 		};
-		HarmonyMethod canPlayWithReasonPostfix = new(typeof(HextechCombatHooks), nameof(CardCanPlayWithReasonPostfix))
+		HarmonyMethod canPlayBlockerWithReasonPostfix = new(
+			typeof(HextechCombatHooks),
+			nameof(CardCanPlayBlockerWithReasonPostfix))
 		{
 			priority = Priority.Last
 		};
 
+		MethodInfo canPlay = RequireMethod(typeof(CardModel), nameof(CardModel.CanPlay), BindingFlags.Instance | BindingFlags.Public);
+		MethodInfo canPlayWithReason = RequireMethod(
+			typeof(CardModel),
+			nameof(CardModel.CanPlay),
+			BindingFlags.Instance | BindingFlags.Public,
+			typeof(UnplayableReason).MakeByRefType(),
+			typeof(AbstractModel).MakeByRefType());
 		harmony.Patch(
-			RequireMethod(typeof(CardModel), nameof(CardModel.CanPlay), BindingFlags.Instance | BindingFlags.Public),
-			postfix: canPlayPostfix);
+			canPlay,
+			postfix: canPlayBlockerPostfix);
 		harmony.Patch(
-			RequireMethod(typeof(CardModel), nameof(CardModel.CanPlay), BindingFlags.Instance | BindingFlags.Public, typeof(UnplayableReason).MakeByRefType(), typeof(AbstractModel).MakeByRefType()),
-			postfix: canPlayWithReasonPostfix);
+			canPlayWithReason,
+			postfix: canPlayAllowanceWithReasonPostfix);
+		harmony.Patch(
+			canPlayWithReason,
+			postfix: canPlayBlockerWithReasonPostfix);
 		harmony.Patch(
 			RequireMethod(typeof(CardModel), nameof(CardModel.SpendResources), BindingFlags.Instance | BindingFlags.Public),
 			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(CardSpendResourcesPrefix)));
@@ -100,6 +117,9 @@ internal static partial class HextechCombatHooks
 	private static void InstallPowerCompatibilityHooks(Harmony harmony)
 	{
 		InstallShrinkPowerCompatibilityHooks(harmony);
+		harmony.Patch(
+			RequireMethod(typeof(PowerModel), nameof(PowerModel.GetTypeForAmount), BindingFlags.Public | BindingFlags.Instance, typeof(decimal)),
+			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(PowerModelGetTypeForAmountPrefix)));
 		harmony.Patch(
 			RequireMethod(typeof(StormPower), nameof(StormPower.BeforeCardPlayed), BindingFlags.Public | BindingFlags.Instance, typeof(CardPlay)),
 			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(StormBeforeCardPlayedPrefix)));
@@ -259,6 +279,17 @@ internal static partial class HextechCombatHooks
 				typeof(Creature),
 				typeof(CardModel)),
 			postfix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(SlipperyAfterDamageReceivedPostfix)));
+		harmony.Patch(
+			RequireMethod(
+				typeof(Creature),
+				nameof(Creature.DamageBlockInternal),
+				BindingFlags.Instance | BindingFlags.Public,
+				typeof(decimal),
+				typeof(ValueProp)),
+			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(PiercingThreadDamageBlockPrefix))
+			{
+				priority = Priority.First
+			});
 		harmony.Patch(
 			RequireMethod(
 				typeof(DieForYouPower),

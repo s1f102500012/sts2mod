@@ -142,23 +142,61 @@ internal static class HextechMultiplayerCompatibilityHooks
 		return null;
 	}
 
-	private static bool IsSavedPropertiesProtocolException(Exception? exception)
+	internal static bool IsSavedPropertiesProtocolException(Exception? exception)
 	{
 		for (Exception? current = exception; current != null; current = current.InnerException)
 		{
-			string message = current.Message ?? string.Empty;
-			// 栈帧类名用字面量:0.109 起缓存类真名是 ModelIdSerializationCache(mod 内经别名仍叫
-			// SavedPropertiesTypeCache),两个名字都匹配以覆盖新旧版本的栈。
-			if (message.Contains("SavedProperty net ID", StringComparison.Ordinal)
-				|| current.StackTrace?.Contains("SavedPropertiesTypeCache", StringComparison.Ordinal) == true
-				|| current.StackTrace?.Contains("ModelIdSerializationCache", StringComparison.Ordinal) == true
-				|| current.StackTrace?.Contains(nameof(SavedProperties), StringComparison.Ordinal) == true)
+			if (current.GetType() == typeof(ArgumentException)
+				&& IsUnknownSavedPropertyNameMessage(current.Message))
+			{
+				return true;
+			}
+
+			if (current.GetType() == typeof(ArgumentOutOfRangeException)
+				&& current is ArgumentOutOfRangeException outOfRange
+				&& (IsSavedPropertyNetIdOutOfRangeMessage(outOfRange.ParamName)
+					|| IsSavedPropertyNetIdOutOfRangeMessage(outOfRange.Message)))
 			{
 				return true;
 			}
 		}
 
 		return false;
+	}
+
+	private static bool IsUnknownSavedPropertyNameMessage(string? message)
+	{
+		const string prefix = "SavedProperty name ";
+		const string suffix = " could not be mapped to any net ID!";
+		return message != null
+			&& message.Length > prefix.Length + suffix.Length
+			&& message.StartsWith(prefix, StringComparison.Ordinal)
+			&& message.EndsWith(suffix, StringComparison.Ordinal);
+	}
+
+	private static bool IsSavedPropertyNetIdOutOfRangeMessage(string? message)
+	{
+		const string prefix = "SavedProperty net ID ";
+		const string separator = " is out of range! We have ";
+		const string suffix = " property names";
+		if (message == null
+			|| !message.StartsWith(prefix, StringComparison.Ordinal)
+			|| !message.EndsWith(suffix, StringComparison.Ordinal))
+		{
+			return false;
+		}
+
+		int separatorIndex = message.IndexOf(separator, prefix.Length, StringComparison.Ordinal);
+		if (separatorIndex < 0)
+		{
+			return false;
+		}
+
+		ReadOnlySpan<char> netId = message.AsSpan(prefix.Length, separatorIndex - prefix.Length);
+		int countStart = separatorIndex + separator.Length;
+		ReadOnlySpan<char> propertyCount = message.AsSpan(countStart, message.Length - countStart - suffix.Length);
+		return int.TryParse(netId, out _)
+			&& int.TryParse(propertyCount, out _);
 	}
 
 	private static bool TryPatchPacketFinalizer(Harmony harmony, Type type, string methodName, string finalizerName)

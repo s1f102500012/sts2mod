@@ -1,42 +1,5 @@
 namespace HextechRunes;
 
-public sealed class ElicitCard : HextechOwnerPoolTokenCard
-{
-	public override OrbEvokeType OrbEvokeType => OrbEvokeType.All;
-
-	public override string PortraitPath => HextechAssets.ElicitCardPortraitPath;
-
-	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
-	[
-		HoverTipFactory.Static(StaticHoverTip.Evoke)
-	];
-
-	public override IEnumerable<CardKeyword> CanonicalKeywords =>
-	[
-		CardKeyword.Retain,
-		CardKeyword.Exhaust
-	];
-
-	public ElicitCard()
-		: base(0, CardType.Skill, CardRarity.Token, TargetType.Self, shouldShowInCardLibrary: true)
-	{
-	}
-
-	protected override async Task OnPlay(PlayerChoiceContext choiceContext, CardPlay cardPlay)
-	{
-		int orbCount = Owner.PlayerCombatState?.OrbQueue.Orbs.Count ?? 0;
-		for (int i = 0; i < orbCount; i++)
-		{
-			await OrbCmd.EvokeNext(choiceContext, Owner);
-		}
-	}
-
-	protected override void OnUpgrade()
-	{
-		RemoveKeyword(CardKeyword.Exhaust);
-	}
-}
-
 public sealed class TrickMagicCard : HextechOwnerPoolTokenCard
 {
 	public override string PortraitPath => HextechAssets.TrickMagicCardPortraitPath;

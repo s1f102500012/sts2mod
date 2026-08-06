@@ -25,6 +25,7 @@ internal static partial class HextechRuneSelectionCoordinator
 			HashSet<ModelId> seenOptionIds = CreateSeenOptionIds(options, monsterHexRelic, modifier.GetSeenPlayerRuneIds(player));
 			AddMonsterHexIconIds(seenOptionIds, GetEnemyHexesExcludedFromPlayerRerolls(enemyHexOptions));
 			HextechGoldenRerollSession goldenReroll = CreateGoldenRerollSession(
+				modifier,
 				player,
 				actIndex,
 				choiceOrdinal,
@@ -56,6 +57,7 @@ internal static partial class HextechRuneSelectionCoordinator
 			HashSet<ModelId> seenOptionIds = CreateSeenOptionIds(options, monsterHexRelic, modifier.GetSeenPlayerRuneIds(player));
 			AddMonsterHexIconIds(seenOptionIds, GetEnemyHexesExcludedFromPlayerRerolls(enemyHexOptions));
 			HextechGoldenRerollSession goldenReroll = CreateGoldenRerollSession(
+				modifier,
 				player,
 				actIndex,
 				choiceOrdinal,
@@ -68,6 +70,7 @@ internal static partial class HextechRuneSelectionCoordinator
 					player,
 					relics,
 					slotIndex,
+					actIndex,
 					rerollOrdinal,
 					seenOptionIds,
 					GetGoldenRerollOverride(goldenReroll)),
@@ -144,6 +147,7 @@ internal static partial class HextechRuneSelectionCoordinator
 			HashSet<ModelId> seenOptionIds = CreateSeenOptionIds(selection.Options, monsterHexRelic, modifier.GetSeenPlayerRuneIds(selection.Player));
 			AddMonsterHexIconIds(seenOptionIds, GetEnemyHexesExcludedFromPlayerRerolls(enemyHexOptions));
 			HextechGoldenRerollSession goldenReroll = CreateGoldenRerollSession(
+				modifier,
 				selection.Player,
 				actIndex,
 				choiceOrdinal,
@@ -156,6 +160,7 @@ internal static partial class HextechRuneSelectionCoordinator
 					selection.Player,
 					relics,
 					slotIndex,
+					actIndex,
 					rerollOrdinal,
 					seenOptionIds,
 					GetGoldenRerollOverride(goldenReroll)),
@@ -283,7 +288,7 @@ internal static partial class HextechRuneSelectionCoordinator
 			options,
 			monsterHexRelic,
 			useMultiplayerReroll
-				? (relics, slotIndex, rerollOrdinal) => RerollSingleOptionAndTrackMultiplayer(modifier, player, relics, slotIndex, rerollOrdinal, seenOptionIds)
+				? (relics, slotIndex, rerollOrdinal) => RerollSingleOptionAndTrackMultiplayer(modifier, player, relics, slotIndex, modifier.GetCurrentStageIndex(), rerollOrdinal, seenOptionIds)
 				: (relics, slotIndex, _) => RerollSingleOptionAndTrack(modifier, player, relics, slotIndex, seenOptionIds),
 			enemyHexOptions,
 			modifier.PlayerRuneRerollLimit,

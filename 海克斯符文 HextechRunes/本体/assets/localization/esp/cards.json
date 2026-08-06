@@ -1,7 +1,4 @@
 {
-  "ELICIT_CARD.title": "provocar",
-  "ELICIT_CARD.description": "Evoca todos tus orbes.",
-  "ELICIT_CARD.flavor": "Deje que cada bobina se descargue a la vez.",
   "TRICK_MAGIC_CARD.title": "Magia trucada",
   "TRICK_MAGIC_CARD.description": "Roba cartas [blue]{Cards}[/blue]. Ganancia [blue]{BufferPower}[/blue] [gold]Amortiguador[/gold]. El siguiente ataque que juegues se repite [blue]{Replays}[/blue] veces.",
   "TRICK_MAGIC_CARD.flavor": "El público ve cintas. El enemigo ve la factura.",
@@ -29,9 +26,6 @@
   "CLOUD_DRAGON_SOUL_CARD.title": "Alma de Dragón Nube",
   "CLOUD_DRAGON_SOUL_CARD.description": "Roba [blue]{Cards}[/blue] cartas adicionales en cada turno.",
   "CLOUD_DRAGON_SOUL_CARD.flavor": "El viento pone opciones en tu mano.",
-  "ALL_IN_CARD.title": "Todo dentro",
-  "ALL_IN_CARD.description": "Inflige {Damage:diff()} daño. \nDescarta todas las cartas que no sean de Ataque.",
-  "ALL_IN_CARD.flavor": "Sólo la apuesta y la ventaja permanecen sobre la mesa.",
   "WHITE_HOLE_CARD.title": "Agujero blanco",
   "WHITE_HOLE_CARD.description": "Cada vez que robes esto, ganarás {Energy:energyIcons()}.\nRoba {Cards} cartas.",
   "WHITE_HOLE_CARD.flavor": "No se traga las opciones. Los escupe de nuevo en tu mano.",

@@ -75,7 +75,15 @@ internal static partial class HextechCombatHooks
 
 	private static bool ShouldUseHextechStormHandling(StormPower stormPower)
 	{
-		return stormPower.Owner?.CombatState?.RunState is RunState runState
-			&& HextechMayhemModifier.FindIn(runState) != null;
+		Player? owner = stormPower.Owner?.Player;
+		return ShouldUseHextechStormHandling(
+			owner?.Creature.CombatState?.RunState is RunState runState
+				&& HextechMayhemModifier.FindIn(runState) != null,
+			owner?.GetRelic<StormUpgradeRune>() != null);
+	}
+
+	internal static bool ShouldUseHextechStormHandling(bool hasMayhemModifier, bool hasStormUpgradeRune)
+	{
+		return hasMayhemModifier && hasStormUpgradeRune;
 	}
 }

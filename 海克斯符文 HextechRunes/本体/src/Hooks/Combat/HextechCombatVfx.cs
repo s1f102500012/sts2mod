@@ -137,6 +137,16 @@ internal static class HextechCreatureNodeRegistry
 
 internal static class HextechCombatVfx
 {
+	private enum MissileStyle
+	{
+		MagicMissile,
+		TwinFlames
+	}
+
+	internal const float MagicMissileLaunchIntervalSeconds = 0.055f;
+	internal const float MagicMissileBaseFlightSeconds = 0.28f;
+	internal const float MagicMissileFlightStepSeconds = 0.025f;
+
 	// 死亡之环改用 LoL 卡尔萨斯式幽绿光环色调(原血色已弃用)。
 	private static readonly Color DeathRingColor = new(0.24f, 0.96f, 0.45f);
 	private static readonly Color DeathFlashColor = new(0.62f, 1f, 0.64f);
@@ -327,6 +337,77 @@ internal static class HextechCombatVfx
 	internal static void SoulDrain(Creature source, Creature destination, int wispCount)
 	{
 		Callable.From(() => RunSoulDrain(source, destination, wispCount)).CallDeferred();
+	}
+
+	/// <summary>
+	/// 红黑飞弹从玩家飞向目标;返回值只表示弹道是否真实抵达。取不到节点时视为已抵达，
+	/// 让 headless/测试和纯逻辑环境继续结算;场景退出导致节点销毁时返回 false，阻止旧战斗补伤害。
+	/// </summary>
+	internal static Task<bool> PlayMagicMissile(Creature source, Creature target, int missileIndex)
+	{
+		try
+		{
+			NCreature? sourceNode = HextechCreatureNodeRegistry.TryGet(source);
+			NCreature? targetNode = HextechCreatureNodeRegistry.TryGet(target);
+			if (sourceNode == null || targetNode == null)
+			{
+				return Task.FromResult(true);
+			}
+
+			Node? parent = targetNode.GetParent();
+			if (!GodotObject.IsInstanceValid(parent))
+			{
+				return Task.FromResult(true);
+			}
+
+			return SpawnMissile(
+				parent!,
+				CreatureCenter(sourceNode),
+				CreatureCenter(targetNode),
+				Mathf.Min(CreatureWidth(sourceNode), CreatureWidth(targetNode)),
+				missileIndex,
+				missileIndex * MagicMissileLaunchIntervalSeconds,
+				MissileStyle.MagicMissile);
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][CombatVfx] Magic missile failed: {ex.Message}");
+			return Task.FromResult(true);
+		}
+	}
+
+	/// <summary>蓝黄双生火焰沿相反弧线飞向同一随机目标，结算时序与魔法飞弹一致。</summary>
+	internal static Task<bool> PlayTwinFlamesMissile(Creature source, Creature target, int missileIndex)
+	{
+		try
+		{
+			NCreature? sourceNode = HextechCreatureNodeRegistry.TryGet(source);
+			NCreature? targetNode = HextechCreatureNodeRegistry.TryGet(target);
+			if (sourceNode == null || targetNode == null)
+			{
+				return Task.FromResult(true);
+			}
+
+			Node? parent = targetNode.GetParent();
+			if (!GodotObject.IsInstanceValid(parent))
+			{
+				return Task.FromResult(true);
+			}
+
+			return SpawnMissile(
+				parent!,
+				CreatureCenter(sourceNode),
+				CreatureCenter(targetNode),
+				Mathf.Min(CreatureWidth(sourceNode), CreatureWidth(targetNode)),
+				missileIndex,
+				missileIndex * MagicMissileLaunchIntervalSeconds,
+				MissileStyle.TwinFlames);
+		}
+		catch (Exception ex)
+		{
+			Log.Warn($"[{ModInfo.Id}][CombatVfx] Twin Flames missile failed: {ex.Message}");
+			return Task.FromResult(true);
+		}
 	}
 
 	// ---- 回力OK镖:镖沿弧线依次扫过所有敌人再飞回 ----
@@ -1075,6 +1156,186 @@ internal static class HextechCombatVfx
 		{
 			Log.Warn($"[{ModInfo.Id}][CombatVfx] Soul drain failed: {ex.Message}");
 		}
+	}
+
+	private static Task<bool> SpawnMissile(
+		Node parent,
+		Vector2 from,
+		Vector2 to,
+		float creatureWidth,
+		int missileIndex,
+		float launchDelaySeconds,
+		MissileStyle style)
+	{
+		bool twinFlames = style == MissileStyle.TwinFlames;
+		string effectName = twinFlames ? "TwinFlamesMissile" : "MagicMissile";
+		TaskCompletionSource<bool> arrival = new();
+		Node2D head = new() { Name = $"HextechRunes_{effectName}" };
+		parent.AddChildSafely(head);
+		PlaceAboveCreatures(parent, head);
+		head.GlobalPosition = from;
+		head.TreeExiting += () => arrival.TrySetResult(false);
+
+		float diameter = Mathf.Clamp(creatureWidth * 0.15f, 20f, 40f);
+		Sprite2D shadow = new()
+		{
+			Texture = GetGlowTexture(),
+			Centered = true,
+			Modulate = twinFlames
+				? new Color(0.015f, 0.055f, 0.13f, 0.92f)
+				: new Color(0.015f, 0.005f, 0.01f, 0.95f),
+			Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Mix }
+		};
+		Sprite2D core = MakeSprite(
+			GetGlowTexture(),
+			twinFlames ? new Color(0.12f, 0.58f, 1f, 0.98f) : new Color(1f, 0.045f, 0.025f, 0.98f));
+		Sprite2D innerCore = MakeSprite(
+			GetGlowTexture(),
+			twinFlames ? new Color(1f, 0.84f, 0.18f, 0.96f) : new Color(1f, 0.32f, 0.12f, 0.9f));
+		head.AddChild(shadow);
+		head.AddChild(core);
+		head.AddChild(innerCore);
+		SetSpriteDiameter(shadow, diameter * 1.5f);
+		SetSpriteDiameter(core, diameter);
+		SetSpriteDiameter(innerCore, diameter * 0.38f);
+
+		Line2D outerTrail = new()
+		{
+			Name = $"HextechRunes_{effectName}OuterTrail",
+			Width = diameter * 0.72f,
+			BeginCapMode = Line2D.LineCapMode.Round,
+			EndCapMode = Line2D.LineCapMode.Round,
+			JointMode = Line2D.LineJointMode.Round,
+			WidthCurve = MakeTrailWidthCurve(),
+			Gradient = twinFlames
+				? new Gradient
+				{
+					Offsets = [0f, 0.42f, 1f],
+					Colors =
+					[
+						new Color(0.08f, 0.55f, 1f, 0.94f),
+						new Color(0.015f, 0.16f, 0.52f, 0.68f),
+						new Color(0f, 0.02f, 0.12f, 0f)
+					]
+				}
+				: new Gradient
+				{
+					Offsets = [0f, 0.45f, 1f],
+					Colors =
+					[
+						new Color(0.08f, 0.005f, 0.008f, 0.9f),
+						new Color(0.015f, 0.002f, 0.004f, 0.65f),
+						new Color(0f, 0f, 0f, 0f)
+					]
+				},
+			Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Mix }
+		};
+		Line2D innerTrail = new()
+		{
+			Name = $"HextechRunes_{effectName}InnerTrail",
+			Width = diameter * 0.34f,
+			BeginCapMode = Line2D.LineCapMode.Round,
+			EndCapMode = Line2D.LineCapMode.Round,
+			JointMode = Line2D.LineJointMode.Round,
+			WidthCurve = MakeTrailWidthCurve(),
+			Gradient = twinFlames
+				? new Gradient
+				{
+					Offsets = [0f, 0.32f, 0.76f, 1f],
+					Colors =
+					[
+						new Color(1f, 0.92f, 0.28f, 0.98f),
+						new Color(0.98f, 0.66f, 0.08f, 0.88f),
+						new Color(0.14f, 0.5f, 1f, 0.4f),
+						new Color(0f, 0.05f, 0.2f, 0f)
+					]
+				}
+				: new Gradient
+				{
+					Offsets = [0f, 0.35f, 0.78f, 1f],
+					Colors =
+					[
+						new Color(1f, 0.08f, 0.025f, 0.95f),
+						new Color(0.72f, 0.015f, 0.018f, 0.75f),
+						new Color(0.12f, 0.002f, 0.006f, 0.32f),
+						new Color(0f, 0f, 0f, 0f)
+					]
+				},
+			Material = new CanvasItemMaterial { BlendMode = CanvasItemMaterial.BlendModeEnum.Add }
+		};
+		parent.AddChildSafely(outerTrail);
+		PlaceAboveCreatures(parent, outerTrail);
+		parent.AddChildSafely(innerTrail);
+		PlaceAboveCreatures(parent, innerTrail);
+
+		float direction = missileIndex % 2 == 0 ? -1f : 1f;
+		float arcHeight = Mathf.Clamp((to - from).Length() * (0.16f + missileIndex * 0.025f), 70f, 180f);
+		Vector2 midpoint = (from + to) * 0.5f;
+		Vector2 control = midpoint + new Vector2(0f, direction * arcHeight);
+		float duration = MagicMissileBaseFlightSeconds + missileIndex * MagicMissileFlightStepSeconds;
+
+		Tween tween = head.CreateTween();
+		if (launchDelaySeconds > 0f)
+		{
+			tween.TweenInterval(launchDelaySeconds);
+		}
+		tween.TweenMethod(Callable.From((float t) =>
+		{
+			if (!GodotObject.IsInstanceValid(head))
+			{
+				return;
+			}
+
+			Vector2 position = Bezier(from, control, to, t);
+			head.GlobalPosition = position;
+			AppendTrailPoint(outerTrail, position);
+			AppendTrailPoint(innerTrail, position);
+		}), 0f, 1f, duration)
+			.SetEase(Tween.EaseType.In)
+			.SetTrans(Tween.TransitionType.Cubic);
+		tween.Chain().TweenCallback(Callable.From(() =>
+		{
+			if (GodotObject.IsInstanceValid(parent))
+			{
+				Color flashColor = twinFlames ? new Color(1f, 0.84f, 0.18f) : new Color(1f, 0.06f, 0.025f);
+				Color ringColor = twinFlames ? new Color(0.06f, 0.42f, 1f) : new Color(0.16f, 0.002f, 0.008f);
+				SpawnFlash(parent, to, diameter * 2.4f, flashColor, 0.22f, 0.8f, aboveCreaturesOnly: true);
+				SpawnRing(parent, to, diameter * 0.45f, diameter * 2.1f, 0.26f, 0.85f, ringColor, aboveCreaturesOnly: true);
+			}
+
+			arrival.TrySetResult(true);
+			FreeNode(head);
+			FadeAndFreeTrail(outerTrail, 0.2f);
+			FadeAndFreeTrail(innerTrail, 0.18f);
+		}));
+
+		return arrival.Task;
+	}
+
+	private static void AppendTrailPoint(Line2D trail, Vector2 globalPosition)
+	{
+		if (!GodotObject.IsInstanceValid(trail))
+		{
+			return;
+		}
+
+		trail.AddPoint(trail.ToLocal(globalPosition), 0);
+		if (trail.GetPointCount() > 18)
+		{
+			trail.RemovePoint(trail.GetPointCount() - 1);
+		}
+	}
+
+	private static void FadeAndFreeTrail(Line2D trail, float duration)
+	{
+		if (!GodotObject.IsInstanceValid(trail))
+		{
+			return;
+		}
+
+		Tween fade = trail.CreateTween();
+		fade.TweenProperty(trail, "modulate:a", 0f, duration).SetEase(Tween.EaseType.In);
+		fade.TweenCallback(Callable.From(() => FreeNode(trail)));
 	}
 
 	/// <summary>

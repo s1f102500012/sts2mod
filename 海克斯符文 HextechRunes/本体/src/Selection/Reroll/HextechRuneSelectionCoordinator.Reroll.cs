@@ -85,6 +85,7 @@ internal static partial class HextechRuneSelectionCoordinator
 		Player player,
 		IReadOnlyList<RelicModel> currentOptions,
 		int slotIndex,
+		int selectionStageIndex,
 		int rerollOrdinal,
 		HashSet<ModelId> seenOptionIds,
 		HextechRarityTier? rarityOverride = null)
@@ -93,6 +94,7 @@ internal static partial class HextechRuneSelectionCoordinator
 			player,
 			currentOptions,
 			slotIndex,
+			selectionStageIndex,
 			rerollOrdinal,
 			seenOptionIds,
 			modifier.IsEndlessLoopActive,
@@ -113,6 +115,7 @@ internal static partial class HextechRuneSelectionCoordinator
 		Player player,
 		IReadOnlyList<RelicModel> currentOptions,
 		int slotIndex,
+		int selectionStageIndex,
 		int rerollOrdinal,
 		HashSet<ModelId> seenOptionIds,
 		bool useEndlessTagWindow,
@@ -156,7 +159,7 @@ internal static partial class HextechRuneSelectionCoordinator
 			return currentOptions;
 		}
 
-		int index = GetMultiplayerRerollIndex(player, pool, rarity, slotIndex, rerollOrdinal, useEndlessTagWindow);
+		int index = GetMultiplayerRerollIndex(player, pool, rarity, slotIndex, selectionStageIndex, rerollOrdinal, useEndlessTagWindow);
 		List<RelicModel> updated = currentOptions.ToList();
 		updated[slotIndex] = CreateSelectableRuneOption(player, pool[index]);
 		return updated;
@@ -193,6 +196,7 @@ internal static partial class HextechRuneSelectionCoordinator
 		IReadOnlyList<RelicModel> pool,
 		HextechRarityTier rarity,
 		int slotIndex,
+		int selectionStageIndex,
 		int rerollOrdinal,
 		bool useEndlessTagWindow)
 	{
@@ -203,7 +207,7 @@ internal static partial class HextechRuneSelectionCoordinator
 		[
 			runState.Rng.StringSeed,
 			"|act:",
-			runState.CurrentActIndex.ToString(),
+			selectionStageIndex.ToString(),
 			"|player:",
 			HextechStableRandom.PlayerKey(player),
 			"|rarity:",

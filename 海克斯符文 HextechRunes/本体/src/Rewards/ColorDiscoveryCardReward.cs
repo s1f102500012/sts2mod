@@ -4,8 +4,7 @@ namespace HextechRunes;
 
 internal sealed class ColorDiscoveryCardReward : CardReward
 {
-	private static readonly FieldInfo CardRewardCardsField = RequireField(typeof(CardReward), "_cards");
-	private static readonly FieldInfo SpecialCardRewardCardField = RequireField(typeof(SpecialCardReward), "_card");
+	private static readonly FieldInfo? SpecialCardRewardCardField = TryGetField(typeof(SpecialCardReward), "_card");
 
 	private readonly ModelId _cardId;
 	private readonly CardCreationSource _source;
@@ -45,22 +44,32 @@ internal sealed class ColorDiscoveryCardReward : CardReward
 		return new ColorDiscoveryCardReward(save.PredeterminedModelId, player, source, rarityOdds);
 	}
 
-	public static ColorDiscoveryCardReward FromSavedSpecialCardReward(SerializableReward save, Reward restoredReward, Player player)
+	internal static bool TryFromSavedSpecialCardReward(
+		SerializableReward save,
+		Reward? restoredReward,
+		Player player,
+		out ColorDiscoveryCardReward? reward,
+		bool logFailure = true)
 	{
-		if (save.SpecialCard == null)
-		{
-			throw new InvalidOperationException("Color Discovery card reward is missing its serialized card.");
-		}
-
-		CardModel? card = SpecialCardRewardCardField.GetValue(restoredReward) as CardModel;
+		reward = null;
+		CardModel? card = TryGetRestoredSpecialCard(restoredReward, SpecialCardRewardCardField);
 		if (card == null)
 		{
-			card = CardModel.FromSerializable(save.SpecialCard);
-			player.RunState.AddCard(card, player);
+			if (logFailure
+				&& restoredReward != null
+				&& HextechRunLogBudget.TryConsume("rewards.color-discovery-special-card-restore", 1))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][Rewards] Color Discovery reward kept as the original SpecialCardReward because its restored card could not be read; "
+					+ $"rewardType={restoredReward.GetType().FullName} fieldAvailable={SpecialCardRewardCardField != null}.");
+			}
+
+			return false;
 		}
 
 		ModelId cardId = card.CanonicalInstance?.Id ?? card.Id;
-		return new ColorDiscoveryCardReward(card, cardId, player, save.Source, save.RarityOdds);
+		reward = new ColorDiscoveryCardReward(card, cardId, player, save.Source, save.RarityOdds);
+		return true;
 	}
 
 	public override SerializableReward ToSerializable()
@@ -103,11 +112,35 @@ internal sealed class ColorDiscoveryCardReward : CardReward
 
 	private CardModel? GetCurrentRewardCard()
 	{
-		if (CardRewardCardsField.GetValue(this) is not IEnumerable<CardCreationResult> cards)
+		return GetFirstOfferedCard(Cards);
+	}
+
+	internal static CardModel? GetFirstOfferedCard(IEnumerable<CardModel> cards)
+	{
+		return cards.FirstOrDefault();
+	}
+
+	internal static CardModel? TryGetRestoredSpecialCard(object? restoredReward, FieldInfo? cardField)
+	{
+		if (restoredReward == null || cardField == null)
 		{
 			return null;
 		}
 
-		return cards.FirstOrDefault()?.Card;
+		try
+		{
+			return cardField.GetValue(restoredReward) as CardModel;
+		}
+		catch (Exception ex)
+		{
+			if (HextechRunLogBudget.TryConsume("rewards.color-discovery-special-card-field-read", 1))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][Rewards] SpecialCardReward card field read failed; keeping the original reward: "
+					+ $"rewardType={restoredReward.GetType().FullName} error={ex.GetType().Name}: {ex.Message}");
+			}
+
+			return null;
+		}
 	}
 }

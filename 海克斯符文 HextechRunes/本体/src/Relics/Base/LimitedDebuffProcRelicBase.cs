@@ -96,6 +96,6 @@ public abstract class LimitedDebuffProcRelicBase : HextechRelicBase
 
 	private string GetProcKey()
 	{
-		return GetType().Name;
+		return GetStableTurnProcKey();
 	}
 }

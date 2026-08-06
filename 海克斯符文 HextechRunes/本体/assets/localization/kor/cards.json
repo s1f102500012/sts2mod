@@ -1,7 +1,4 @@
 {
-  "ELICIT_CARD.title": "이끌어내기",
-  "ELICIT_CARD.description": "모든 구체를 발현합니다.",
-  "ELICIT_CARD.flavor": "모든 코일이 한 번에 방전되게 하십시오.",
   "TRICK_MAGIC_CARD.title": "마술 트릭",
   "TRICK_MAGIC_CARD.description": "카드를 [blue]{Cards}[/blue]장 뽑습니다. [gold]버퍼[/gold]을 [blue]{BufferPower}[/blue] 얻습니다. 다음에 플레이하는 공격 카드가 [blue]{Replays}[/blue]번 반복됩니다.",
   "TRICK_MAGIC_CARD.flavor": "관객은 리본을 봅니다. 적은 계산서를 봅니다.",
@@ -29,9 +26,6 @@
   "CLOUD_DRAGON_SOUL_CARD.title": "바람 드래곤의 영혼",
   "CLOUD_DRAGON_SOUL_CARD.description": "매 턴 카드를 [blue]{Cards}[/blue]장 추가로 뽑습니다.",
   "CLOUD_DRAGON_SOUL_CARD.flavor": "바람이 당신의 손에 선택지를 쥐여줍니다.",
-  "ALL_IN_CARD.title": "올인",
-  "ALL_IN_CARD.description": "{Damage:diff()}의 피해를 줍니다.\n공격이 아닌 모든 카드를 버립니다.",
-  "ALL_IN_CARD.flavor": "테이블 위에는 판돈과 날카로움만이 남습니다.",
   "WHITE_HOLE_CARD.title": "화이트홀",
   "WHITE_HOLE_CARD.description": "이 카드를 뽑을 때마다 {Energy:energyIcons()} 을(를) 얻습니다.\n카드를 {Cards}장 뽑습니다.",
   "WHITE_HOLE_CARD.flavor": "이것은 선택을 삼키지 않습니다. 다시 당신의 손에 뱉어냅니다.",

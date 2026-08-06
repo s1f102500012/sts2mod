@@ -87,6 +87,16 @@ internal abstract class HextechEnemyHexEffect
 		return Task.CompletedTask;
 	}
 
+	// 只在首次 BeforeCombatStart 与明确的首领阶段重放中分发；后续普通敌人入场不会进入此钩子。
+	internal virtual Task ApplyOpeningCombatStartToEnemy(
+		HextechEnemyHexContext context,
+		Creature enemy,
+		CombatRoom room,
+		bool replayOneShotPowers)
+	{
+		return Task.CompletedTask;
+	}
+
 	internal virtual Task ApplyCombatStartPlayerDebuffs(HextechEnemyHexContext context, CombatRoom room, IReadOnlyList<Creature> players)
 	{
 		return Task.CompletedTask;
@@ -123,6 +133,11 @@ internal abstract class HextechEnemyHexEffect
 	}
 
 	internal virtual Task AfterCardDrawn(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
+	{
+		return Task.CompletedTask;
+	}
+
+	internal virtual Task AfterBlockGained(HextechEnemyHexContext context, Creature creature, decimal amount, ValueProp props, CardModel? cardSource)
 	{
 		return Task.CompletedTask;
 	}

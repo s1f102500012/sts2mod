@@ -19,11 +19,17 @@ internal static class HextechSavedPropertyBootstrap
 	{
 		ArgumentNullException.ThrowIfNull(type);
 
-#if STS2_109_OR_NEWER
+	#if STS2_109_OR_NEWER
 		if (!IsOfficialCacheInitialized())
 		{
 			return;
 		}
+	#else
+		if (!HextechSavedPropertyNetIdHooks.IsCanonicalized)
+		{
+			return;
+		}
+	#endif
 
 		PropertyInfo[] savedProperties = GetSavedProperties(type);
 		if (savedProperties.Length == 0)
@@ -53,7 +59,6 @@ internal static class HextechSavedPropertyBootstrap
 		{
 			throw CreateLateRegistrationException(type, missingProperties);
 		}
-#endif
 	}
 
 	internal static void InjectModelType(Type type)
@@ -67,11 +72,10 @@ internal static class HextechSavedPropertyBootstrap
 		EnsureModelTypeRegistrationAllowed(type);
 		return;
 #else
+		EnsureModelTypeRegistrationAllowed(type);
 		if (HextechSavedPropertyNetIdHooks.IsCanonicalized)
 		{
-			// 规范化是一次性的(ExecuteEssential 后缀):此后注入的属性名按加载顺序追加、绕过规范排序,
-			// 两端顺序可能错位 → 复刻 1014。二创/外部包必须在游戏启动初始化阶段注册,勿延迟到 run 前。
-			Log.Warn($"[{ModInfo.Id}][Mayhem] SavedProperty 载体 {type.FullName} 在 net-id 规范化之后才注入:其属性按加载顺序追加,联机可能 1014/ModMismatch。请提前到启动初始化阶段注册。");
+			return;
 		}
 
 		SavedPropertiesTypeCache.InjectTypeIntoCache(type);
@@ -91,7 +95,7 @@ internal static class HextechSavedPropertyBootstrap
 		}
 
 		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechMayhemModifier));
-		foreach (Type type in HextechCustomModelRegistry.CustomRarityModifierTypes)
+		foreach (Type type in HextechCustomModelRegistry.AllCustomModifierTypes)
 		{
 			SavedPropertiesTypeCache.InjectTypeIntoCache(type);
 		}
@@ -207,9 +211,9 @@ internal static class HextechSavedPropertyBootstrap
 				&& property.PropertyType == expected.PropertyType));
 	}
 
-#if STS2_109_OR_NEWER
 	private static bool IsOfficialCacheInitialized()
 	{
+	#if STS2_109_OR_NEWER
 		if (OfficialCacheInitializedField?.GetValue(null) is bool initialized)
 		{
 			return initialized;
@@ -217,6 +221,9 @@ internal static class HextechSavedPropertyBootstrap
 
 		throw new InvalidOperationException(
 			$"[{ModInfo.Id}] 无法读取 ModelIdSerializationCache._initialized；为避免污染 SavedProperty net-id 表，已拒绝外部模型注册。");
+	#else
+		return false;
+	#endif
 	}
 
 	private static InvalidOperationException CreateLateRegistrationException(
@@ -230,12 +237,17 @@ internal static class HextechSavedPropertyBootstrap
 				.Select(static property => property.Name)
 				.Distinct(StringComparer.Ordinal)
 				.OrderBy(static name => name, StringComparer.Ordinal));
+		string freezePoint =
+	#if STS2_109_OR_NEWER
+			"ModelIdSerializationCache.Init";
+	#else
+			"SavedProperty net-id 规范化";
+	#endif
 		string message =
-			$"[{ModInfo.Id}] SavedProperty 载体 {type.FullName} 在 ModelIdSerializationCache.Init 之后注册，"
-			+ $"但 per-type cache 缺少属性 [{propertyNames}]。为保持联机 net-id 与官方 Hash 不变，已拒绝延迟注册。";
+			$"[{ModInfo.Id}] SavedProperty 载体 {type.FullName} 在 {freezePoint} 之后注册，"
+			+ $"但 per-type cache 缺少属性 [{propertyNames}]。为保持联机 net-id 布局不变，已拒绝延迟注册。";
 		return new InvalidOperationException(message, innerException);
 	}
-#endif
 
 	// 自检范围 = 本程序集 + 所有已加载且引用了本程序集的包(拓展包/二创包的载体也要能被抓到)。
 	private static IEnumerable<Assembly> GetAssembliesToAudit()

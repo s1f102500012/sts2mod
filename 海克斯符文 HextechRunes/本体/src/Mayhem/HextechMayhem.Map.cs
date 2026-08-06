@@ -12,14 +12,15 @@ internal sealed partial class HextechMayhemModifier
 			return map;
 		}
 
-		return ApplyMapModifiers(map, runState, actIndex);
+		return ApplyMapModifiers(map, runState, GetSelectionIndexForAct(actIndex));
 	}
 
-	internal void ApplyMapModifiersToCurrentAct(string reason)
+	internal void ApplyMapModifiersToCurrentAct(string reason, int? stageIndex = null)
 	{
 		RunState runState = ActiveRunState;
 		ActMap currentMap = runState.Map;
-		ActMap modifiedMap = ApplyMapModifiers(currentMap, runState, runState.CurrentActIndex);
+		int effectiveStageIndex = stageIndex ?? GetCurrentStageIndex();
+		ActMap modifiedMap = ApplyMapModifiers(currentMap, runState, effectiveStageIndex);
 		if (ReferenceEquals(modifiedMap, currentMap))
 		{
 			return;
@@ -35,7 +36,7 @@ internal sealed partial class HextechMayhemModifier
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] Failed to refresh map screen after map modifiers: {ex.Message}");
 		}
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] Applied map modifiers to current act: reason={reason} act={runState.CurrentActIndex} activeHexes={string.Join(",", GetActiveMonsterHexes())}");
+		HextechLog.Info($"[{ModInfo.Id}][Mayhem] Applied map modifiers to current act: reason={reason} act={runState.CurrentActIndex} stage={effectiveStageIndex} activeHexes={string.Join(",", GetActiveMonsterHexes())}");
 	}
 
 	private ActMap ApplyMapModifiers(ActMap map, IRunState runState, int actIndex)

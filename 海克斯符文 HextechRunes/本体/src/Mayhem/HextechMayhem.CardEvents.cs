@@ -43,9 +43,10 @@ internal sealed partial class HextechMayhemModifier
 	{
 		Player? owner = cardPlay.Card.Owner;
 		if (owner != null
+			&& owner.GetRelic<StormUpgradeRune>() != null
 			&& StormUpgradeRune.ShouldTrigger(
 				cardPlay.Card.Type,
-				owner.GetRelic<StormUpgradeRune>() != null)
+				hasUpgradeRune: true)
 			&& owner.Creature.CombatState?.RunState == RunState
 			&& owner.Creature.GetPower<StormPower>() is StormPower stormPower)
 		{

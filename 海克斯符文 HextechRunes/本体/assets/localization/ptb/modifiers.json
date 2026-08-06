@@ -6,5 +6,15 @@
   "HEXTECH_GOLD_RUN.title": "Corrida de Ouro",
   "HEXTECH_GOLD_RUN.description": "Todas as runas Hextech atualizadas nesta jornada são do nível Ouro.",
   "HEXTECH_PRISMATIC_RUN.title": "Corrida Prismática",
-  "HEXTECH_PRISMATIC_RUN.description": "Todas as runas Hextech atualizadas nesta jornada são do nível Prismático."
+  "HEXTECH_PRISMATIC_RUN.description": "Todas as runas Hextech atualizadas nesta jornada são do nível Prismático.",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.title": "Entupir até quebrar",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.description": "Os jogadores usam a configuração Hextech padrão. Os inimigos recebem um conjunto fixo de runas Hextech relacionadas a [red]cartas de Status[/red].",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.title": "Mestre do Contra-ataque",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.description": "Os jogadores usam a configuração Hextech padrão. Os inimigos recebem um conjunto fixo de runas Hextech relacionadas a [red]defesa e contra-ataque[/red].",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.title": "Força bruta",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.description": "Os jogadores usam a configuração Hextech padrão. Os inimigos recebem um conjunto fixo de runas Hextech relacionadas a [red]atributos numéricos[/red].",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.title": "Portal de Oito Centavos",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.description": "Os jogadores usam a configuração Hextech padrão. Os inimigos recebem um conjunto fixo de runas Hextech relacionadas ao [red]Criador de Portais[/red].",
+  "HEXTECH_LISTLESS_CHALLENGE.title": "Sem Forças",
+  "HEXTECH_LISTLESS_CHALLENGE.description": "Os jogadores usam a configuração Hextech padrão. Os inimigos recebem um conjunto fixo de runas Hextech relacionadas à [red]redução de atributos[/red]."
 }

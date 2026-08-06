@@ -6,5 +6,15 @@
   "HEXTECH_GOLD_RUN.title": "Gold Run",
   "HEXTECH_GOLD_RUN.description": "All Hextech runes refreshed this run are Gold tier.",
   "HEXTECH_PRISMATIC_RUN.title": "Prismatic Run",
-  "HEXTECH_PRISMATIC_RUN.description": "All Hextech runes refreshed this run are Prismatic tier."
+  "HEXTECH_PRISMATIC_RUN.description": "All Hextech runes refreshed this run are Prismatic tier.",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.title": "Stuffed to Ruin",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.description": "Players use the default Hextech configuration. Enemies gain a fixed set of [red]Status card[/red]-related Hextech runes.",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.title": "Counterattack Master",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.description": "Players use the default Hextech configuration. Enemies gain a fixed set of [red]defensive counterattack[/red]-related Hextech runes.",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.title": "Brute Force",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.description": "Players use the default Hextech configuration. Enemies gain a fixed set of [red]raw stat[/red]-related Hextech runes.",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.title": "Eight-Penny Gate",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.description": "Players use the default Hextech configuration. Enemies gain a fixed set of [red]Doormaker[/red]-related Hextech runes.",
+  "HEXTECH_LISTLESS_CHALLENGE.title": "Listless",
+  "HEXTECH_LISTLESS_CHALLENGE.description": "Players use the default Hextech configuration. Enemies gain a fixed set of [red]stat reduction[/red]-related Hextech runes."
 }

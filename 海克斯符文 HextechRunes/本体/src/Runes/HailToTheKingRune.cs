@@ -1,9 +1,7 @@
 namespace HextechRunes;
 
-public sealed class HailToTheKingRune : HextechRelicBase, IHextechSharedCombatVictoryRune
+public sealed class HailToTheKingRune : InitialForgeGrantRune, IHextechSharedCombatVictoryRune
 {
-	public override bool HasUponPickupEffect => true;
-
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
 		new DynamicVar("InitialForgeCount", 2m),
@@ -11,16 +9,7 @@ public sealed class HailToTheKingRune : HextechRelicBase, IHextechSharedCombatVi
 		new DynamicVar("BossForgeCount", 1m)
 	];
 
-	public override async Task AfterObtained()
-	{
-		if (Owner == null)
-		{
-			return;
-		}
-
-		Flash();
-		await HextechForgeGrantHelper.ObtainRandomForges(Owner, DynamicVars["InitialForgeCount"].IntValue);
-	}
+	protected override int InitialForgeCount => DynamicVars["InitialForgeCount"].IntValue;
 
 	public override Task AfterCombatVictory(CombatRoom room)
 	{

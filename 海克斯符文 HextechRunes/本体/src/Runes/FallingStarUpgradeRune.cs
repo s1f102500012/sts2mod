@@ -2,6 +2,8 @@ namespace HextechRunes;
 
 public sealed class FallingStarUpgradeRune : CardUpgradeRuneBase<FallingStar>
 {
+	internal override bool GrantsCardOnPickup => false;
+
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
 		new DynamicVar("StunTurns", 1m)
@@ -13,9 +15,9 @@ public sealed class FallingStarUpgradeRune : CardUpgradeRuneBase<FallingStar>
 		HoverTipFactory.FromCard<MeteorShower>()
 	];
 
-	protected override bool DeckContainsRequiredCard(Player player)
+	internal override bool MeetsCardAvailabilityRequirement(IEnumerable<CardModel> deckCards)
 	{
-		return DeckContains<FallingStar>(player) || DeckContains<MeteorShower>(player);
+		return deckCards.Any(static card => card is FallingStar or MeteorShower);
 	}
 
 	protected override bool IsAvailableForCharacter(Player player)

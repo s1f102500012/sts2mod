@@ -4,12 +4,13 @@ namespace HextechRunes;
 
 internal sealed class HextechMayhemActState
 {
-	private const int ActCountValue = 3;
+	private const int DefaultActCount = 3;
 	private int[] _rarityByAct = NewUnknownArray();
 	private List<MonsterHexKind>[] _monsterHexesByAct = NewMonsterHexLists();
 	private int[] _resolvedActs = NewResolvedArray();
 	private HashSet<int> _mapLengthReducedActs = new();
 	private List<MonsterHexKind> _carriedMonsterHexes = new();
+	private Dictionary<string, int> _extraStageIndexes = new(StringComparer.Ordinal);
 
 	public int ActCount => _resolvedActs.Length;
 
@@ -30,6 +31,7 @@ internal sealed class HextechMayhemActState
 		set
 		{
 			_rarityByAct = NormalizeUnknownArray(value);
+			EnsureCapacity(_rarityByAct.Length);
 			MarkChanged();
 		}
 	}
@@ -72,6 +74,7 @@ internal sealed class HextechMayhemActState
 		set
 		{
 			_resolvedActs = NormalizeResolvedArray(value);
+			EnsureCapacity(_resolvedActs.Length);
 			MarkChanged();
 		}
 	}
@@ -86,15 +89,25 @@ internal sealed class HextechMayhemActState
 		}
 	}
 
+	public string SavedExtraStageIndexesJson
+	{
+		get => SerializeExtraStageIndexes();
+		set
+		{
+			RestoreExtraStageIndexes(value);
+			MarkChanged();
+		}
+	}
+
 	public bool IsResolved(int actIndex)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = ToExistingActSlotOrInvalid(actIndex);
 		return slot >= 0 && _resolvedActs[slot] > 0;
 	}
 
 	public void SetResolved(int actIndex, bool resolved)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = EnsureActSlot(actIndex);
 		if (slot >= 0)
 		{
 			_resolvedActs[slot] = resolved ? 1 : 0;
@@ -104,7 +117,7 @@ internal sealed class HextechMayhemActState
 
 	public bool TryMarkResolved(int actIndex)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = EnsureActSlot(actIndex);
 		if (slot < 0 || _resolvedActs[slot] > 0)
 		{
 			return false;
@@ -117,18 +130,20 @@ internal sealed class HextechMayhemActState
 
 	public bool IsMapLengthReduced(int actIndex)
 	{
-		return _mapLengthReducedActs.Contains(ToActSlot(actIndex));
+		return actIndex >= 0 && _mapLengthReducedActs.Contains(actIndex);
 	}
 
 	public void MarkMapLengthReduced(int actIndex)
 	{
-		_mapLengthReducedActs.Add(ToActSlot(actIndex));
-		MarkChanged();
+		if (actIndex >= 0 && _mapLengthReducedActs.Add(actIndex))
+		{
+			MarkChanged();
+		}
 	}
 
 	public HextechRarityTier? GetRarity(int actIndex)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = ToExistingActSlotOrInvalid(actIndex);
 		if (slot < 0 || _rarityByAct[slot] < 0)
 		{
 			return null;
@@ -139,7 +154,7 @@ internal sealed class HextechMayhemActState
 
 	public void SetRarity(int actIndex, HextechRarityTier rarity)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = EnsureActSlot(actIndex);
 		if (slot >= 0)
 		{
 			_rarityByAct[slot] = (int)rarity;
@@ -149,7 +164,7 @@ internal sealed class HextechMayhemActState
 
 	public bool TrySetRarityIfMissing(int actIndex, HextechRarityTier rarity)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = EnsureActSlot(actIndex);
 		if (slot < 0 || _rarityByAct[slot] >= 0)
 		{
 			return false;
@@ -168,7 +183,7 @@ internal sealed class HextechMayhemActState
 
 	public IReadOnlyList<MonsterHexKind> GetMonsterHexes(int actIndex)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = ToExistingActSlotOrInvalid(actIndex);
 		return slot >= 0 ? _monsterHexesByAct[slot].ToArray() : [];
 	}
 
@@ -179,7 +194,7 @@ internal sealed class HextechMayhemActState
 
 	public void SetMonsterHexes(int actIndex, IEnumerable<MonsterHexKind> hexes)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = EnsureActSlot(actIndex);
 		if (slot >= 0)
 		{
 			_monsterHexesByAct[slot] = NormalizeMonsterHexList(hexes.Select(static hex => (int)hex));
@@ -189,7 +204,7 @@ internal sealed class HextechMayhemActState
 
 	public void ClearMonsterHex(int actIndex)
 	{
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = ToExistingActSlotOrInvalid(actIndex);
 		if (slot >= 0)
 		{
 			_monsterHexesByAct[slot].Clear();
@@ -231,7 +246,7 @@ internal sealed class HextechMayhemActState
 		HashSet<MonsterHexKind> seen = new();
 		AddUnique(result, seen, _carriedMonsterHexes);
 
-		int latestSlot = LatestActiveSlot(ToActSlot(currentActIndex), shouldRecoverMonsterHex);
+		int latestSlot = LatestActiveSlot(currentActIndex, shouldRecoverMonsterHex);
 		if (latestSlot >= 0)
 		{
 			AddUnique(result, seen, _monsterHexesByAct[latestSlot]);
@@ -246,7 +261,7 @@ internal sealed class HextechMayhemActState
 		HashSet<MonsterHexKind> seen = new();
 		AddUnique(result, seen, _carriedMonsterHexes);
 
-		int previousSlot = Math.Min(ToActSlot(actIndex) - 1, ActCountValue - 1);
+		int previousSlot = Math.Min(actIndex - 1, _resolvedActs.Length - 1);
 		for (int slot = previousSlot; slot >= 0; slot--)
 		{
 			if (_resolvedActs[slot] <= 0)
@@ -274,9 +289,72 @@ internal sealed class HextechMayhemActState
 		return result;
 	}
 
+	public IReadOnlyList<IReadOnlyList<MonsterHexKind>> GetMonsterHexRows()
+	{
+		List<IReadOnlyList<MonsterHexKind>> rows = new();
+		HashSet<MonsterHexKind> seen = new();
+		if (_carriedMonsterHexes.Count > 0)
+		{
+			List<MonsterHexKind> carried = new();
+			AddUnique(carried, seen, _carriedMonsterHexes);
+			if (carried.Count > 0)
+			{
+				rows.Add(carried);
+			}
+		}
+
+		for (int stageIndex = 0; stageIndex < _monsterHexesByAct.Length; stageIndex++)
+		{
+			if (_resolvedActs[stageIndex] <= 0 && _monsterHexesByAct[stageIndex].Count == 0)
+			{
+				continue;
+			}
+
+			List<MonsterHexKind> delta = _monsterHexesByAct[stageIndex]
+				.Where(hex => !seen.Contains(hex))
+				.ToList();
+			if (delta.Count > 0)
+			{
+				rows.Add(delta);
+			}
+
+			seen.Clear();
+			foreach (MonsterHexKind hex in _carriedMonsterHexes)
+			{
+				seen.Add(hex);
+			}
+			foreach (MonsterHexKind hex in _monsterHexesByAct[stageIndex])
+			{
+				seen.Add(hex);
+			}
+		}
+
+		return rows;
+	}
+
+	public int GetOrCreateExtraStageIndex(string stageKey, int minimumIndex)
+	{
+		if (string.IsNullOrWhiteSpace(stageKey))
+		{
+			throw new ArgumentException("Extra stage key cannot be empty.", nameof(stageKey));
+		}
+
+		if (_extraStageIndexes.TryGetValue(stageKey, out int existingIndex))
+		{
+			EnsureActSlot(existingIndex);
+			return existingIndex;
+		}
+
+		int stageIndex = Math.Max(Math.Max(DefaultActCount, minimumIndex), _resolvedActs.Length);
+		EnsureActSlot(stageIndex);
+		_extraStageIndexes[stageKey] = stageIndex;
+		MarkChanged();
+		return stageIndex;
+	}
+
 	public int LastActIndexFor(int maxActIndex)
 	{
-		return Math.Min(maxActIndex, _resolvedActs.Length - 1);
+		return maxActIndex;
 	}
 
 	public void Reset()
@@ -286,23 +364,19 @@ internal sealed class HextechMayhemActState
 		_resolvedActs = NewResolvedArray();
 		_mapLengthReducedActs.Clear();
 		_carriedMonsterHexes.Clear();
+		_extraStageIndexes.Clear();
 		MarkChanged();
 	}
 
 	public void ResetForEndlessLoop()
 	{
-		CarryActiveMonsterHexes();
-		_rarityByAct = NewUnknownArray();
-		_monsterHexesByAct = NewMonsterHexLists();
-		_resolvedActs = NewResolvedArray();
-		_mapLengthReducedActs.Clear();
-		MarkChanged();
+		// 无尽模式继续沿用单调递增的阶段序号，保留每次获得敌方海克斯的分组。
 	}
 
 	public void DebugSetOnlyMonsterHex(int actIndex, MonsterHexKind hex, HextechRarityTier rarity)
 	{
 		Reset();
-		int slot = ToActSlotOrInvalid(actIndex);
+		int slot = EnsureActSlot(actIndex);
 		if (slot >= 0)
 		{
 			_rarityByAct[slot] = (int)rarity;
@@ -326,10 +400,10 @@ internal sealed class HextechMayhemActState
 
 		List<MonsterHexKind> cumulative = new();
 		HashSet<MonsterHexKind> seen = new();
-		for (int actIndex = 0; actIndex < Math.Min(ActCountValue, value.Length); actIndex++)
+		EnsureCapacity(value.Length);
+		for (int actIndex = 0; actIndex < value.Length; actIndex++)
 		{
-			// 旧版"改名敌方海克斯"的退役枚举值先 remap 到新身份，再走 IsDefined 防御。
-			int rawHex = MonsterHexKindMigration.RemapRawValue(value[actIndex]);
+			int rawHex = value[actIndex];
 			if (Enum.IsDefined(typeof(MonsterHexKind), rawHex))
 			{
 				MonsterHexKind hex = (MonsterHexKind)rawHex;
@@ -368,13 +442,17 @@ internal sealed class HextechMayhemActState
 				return;
 			}
 
-			List<MonsterHexKind>[] normalized = NewMonsterHexLists();
-			for (int actIndex = 0; actIndex < Math.Min(ActCountValue, raw.Length); actIndex++)
+			int normalizedLength = Math.Max(
+				Math.Max(DefaultActCount, raw.Length),
+				Math.Max(_rarityByAct.Length, _resolvedActs.Length));
+			List<MonsterHexKind>[] normalized = NewMonsterHexLists(normalizedLength);
+			for (int actIndex = 0; actIndex < raw.Length; actIndex++)
 			{
 				normalized[actIndex] = NormalizeMonsterHexList(raw[actIndex]);
 			}
 
 			_monsterHexesByAct = normalized;
+			EnsureCapacity(normalizedLength);
 		}
 		catch (Exception ex)
 		{
@@ -386,31 +464,50 @@ internal sealed class HextechMayhemActState
 		}
 	}
 
-	private void CarryActiveMonsterHexes()
+	private string SerializeExtraStageIndexes()
 	{
-		int latestResolvedSlot = -1;
-		for (int slot = 0; slot < _resolvedActs.Length; slot++)
+		return _extraStageIndexes.Count == 0
+			? ""
+			: JsonSerializer.Serialize(new SortedDictionary<string, int>(_extraStageIndexes, StringComparer.Ordinal));
+	}
+
+	private void RestoreExtraStageIndexes(string? json)
+	{
+		_extraStageIndexes.Clear();
+		if (string.IsNullOrWhiteSpace(json))
 		{
-			if (_resolvedActs[slot] > 0)
+			return;
+		}
+
+		try
+		{
+			Dictionary<string, int>? restored = JsonSerializer.Deserialize<Dictionary<string, int>>(json);
+			if (restored == null)
 			{
-				latestResolvedSlot = slot;
+				return;
+			}
+
+			foreach ((string key, int stageIndex) in restored)
+			{
+				if (string.IsNullOrWhiteSpace(key) || stageIndex < DefaultActCount)
+				{
+					continue;
+				}
+
+				EnsureActSlot(stageIndex);
+				_extraStageIndexes[key] = stageIndex;
 			}
 		}
-
-		List<MonsterHexKind> carried = new();
-		HashSet<MonsterHexKind> seen = new();
-		AddUnique(carried, seen, _carriedMonsterHexes);
-		if (latestResolvedSlot >= 0)
+		catch (Exception ex)
 		{
-			AddUnique(carried, seen, _monsterHexesByAct[latestResolvedSlot]);
+			_extraStageIndexes.Clear();
+			Log.Warn($"[{ModInfo.Id}][Mayhem] Extra stage index restore failed; mapping cleared: {ex.Message}");
 		}
-
-		_carriedMonsterHexes = carried;
 	}
 
 	private int LatestActiveSlot(int maxSlot, Func<int, bool> shouldRecoverMonsterHex)
 	{
-		for (int slot = Math.Min(maxSlot, ActCountValue - 1); slot >= 0; slot--)
+		for (int slot = Math.Min(maxSlot, _resolvedActs.Length - 1); slot >= 0; slot--)
 		{
 			if (_resolvedActs[slot] > 0 || shouldRecoverMonsterHex(slot))
 			{
@@ -432,14 +529,48 @@ internal sealed class HextechMayhemActState
 		}
 	}
 
-	private static int ToActSlot(int actIndex)
+	private int EnsureActSlot(int actIndex)
 	{
-		return Math.Clamp(actIndex, 0, ActCountValue - 1);
+		if (actIndex < 0)
+		{
+			return -1;
+		}
+
+		EnsureCapacity(actIndex + 1);
+		return actIndex;
 	}
 
-	private static int ToActSlotOrInvalid(int actIndex)
+	private int ToExistingActSlotOrInvalid(int actIndex)
 	{
-		return actIndex < 0 ? -1 : ToActSlot(actIndex);
+		return actIndex >= 0 && actIndex < _resolvedActs.Length ? actIndex : -1;
+	}
+
+	private void EnsureCapacity(int requiredLength)
+	{
+		int length = Math.Max(
+			Math.Max(DefaultActCount, requiredLength),
+			Math.Max(_rarityByAct.Length, Math.Max(_resolvedActs.Length, _monsterHexesByAct.Length)));
+		if (_rarityByAct.Length < length)
+		{
+			int oldRarityLength = _rarityByAct.Length;
+			Array.Resize(ref _rarityByAct, length);
+			Array.Fill(_rarityByAct, -1, oldRarityLength, length - oldRarityLength);
+		}
+
+		if (_resolvedActs.Length < length)
+		{
+			Array.Resize(ref _resolvedActs, length);
+		}
+
+		if (_monsterHexesByAct.Length < length)
+		{
+			int oldMonsterLength = _monsterHexesByAct.Length;
+			Array.Resize(ref _monsterHexesByAct, length);
+			for (int i = oldMonsterLength; i < length; i++)
+			{
+				_monsterHexesByAct[i] = [];
+			}
+		}
 	}
 
 	private static int[] NewUnknownArray()
@@ -452,20 +583,20 @@ internal sealed class HextechMayhemActState
 		return [ 0, 0, 0 ];
 	}
 
-	private static List<MonsterHexKind>[] NewMonsterHexLists()
+	private static List<MonsterHexKind>[] NewMonsterHexLists(int count = DefaultActCount)
 	{
-		return [ [], [], [] ];
+		return Enumerable.Range(0, count).Select(static _ => new List<MonsterHexKind>()).ToArray();
 	}
 
 	private static int[] NormalizeUnknownArray(int[]? value)
 	{
-		int[] normalized = NewUnknownArray();
+		int[] normalized = Enumerable.Repeat(-1, Math.Max(DefaultActCount, value?.Length ?? 0)).ToArray();
 		if (value == null)
 		{
 			return normalized;
 		}
 
-		for (int i = 0; i < Math.Min(normalized.Length, value.Length); i++)
+		for (int i = 0; i < value.Length; i++)
 		{
 			normalized[i] = value[i];
 		}
@@ -475,13 +606,13 @@ internal sealed class HextechMayhemActState
 
 	private static int[] NormalizeResolvedArray(int[]? value)
 	{
-		int[] normalized = NewResolvedArray();
+		int[] normalized = new int[Math.Max(DefaultActCount, value?.Length ?? 0)];
 		if (value == null)
 		{
 			return normalized;
 		}
 
-		for (int i = 0; i < Math.Min(normalized.Length, value.Length); i++)
+		for (int i = 0; i < value.Length; i++)
 		{
 			normalized[i] = value[i] > 0 ? 1 : 0;
 		}
@@ -500,13 +631,12 @@ internal sealed class HextechMayhemActState
 
 		foreach (int rawHex in value)
 		{
-			int remappedHex = MonsterHexKindMigration.RemapRawValue(rawHex);
-			if (!Enum.IsDefined(typeof(MonsterHexKind), remappedHex))
+			if (!Enum.IsDefined(typeof(MonsterHexKind), rawHex))
 			{
 				continue;
 			}
 
-			MonsterHexKind hex = (MonsterHexKind)remappedHex;
+			MonsterHexKind hex = (MonsterHexKind)rawHex;
 			if (seen.Add(hex))
 			{
 				normalized.Add(hex);
@@ -526,7 +656,7 @@ internal sealed class HextechMayhemActState
 
 		foreach (int actIndex in value)
 		{
-			if (actIndex >= 0 && actIndex < ActCountValue)
+			if (actIndex >= 0)
 			{
 				normalized.Add(actIndex);
 			}

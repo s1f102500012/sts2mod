@@ -2,7 +2,15 @@ namespace HextechRunes;
 
 public sealed class CollectorRune : HextechRelicBase
 {
+	internal const decimal ExecutePercent = 10m;
+	internal const int CountPerExecute = 20;
+
+	private const string ExecutePercentVar = "ExecutePercent";
+	private const string CountPerExecuteVar = "CountPerExecute";
+
+	private readonly HashSet<Creature> _creditedExecutions = new(ReferenceEqualityComparer.Instance);
 	private int _countThisCombat;
+	private bool _executing;
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int SavedCountThisCombat
@@ -21,15 +29,50 @@ public sealed class CollectorRune : HextechRelicBase
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new DynamicVar("CountPerDeath", 10m),
-		new DynamicVar("DamageMultiplier", 1.1m)
+		new DynamicVar(ExecutePercentVar, ExecutePercent),
+		new DynamicVar(CountPerExecuteVar, CountPerExecute)
 	];
 
-	public override decimal ModifyDamageMultiplicativeCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
+	public override async Task AfterDamageGiven(
+		PlayerChoiceContext choiceContext,
+		Creature? dealer,
+		DamageResult result,
+		ValueProp props,
+		Creature target,
+		CardModel? cardSource)
 	{
-		return IsDamageFromOwnerToEnemyOrPreview(target, dealer, cardSource)
-			? DynamicVars["DamageMultiplier"].BaseValue
-			: 1m;
+		if (_executing
+			|| Owner == null
+			|| Owner.Creature.IsDead
+			|| target.Side != CombatSide.Enemy
+			|| result.UnblockedDamage <= 0m
+			|| !IsDamageFromOwner(dealer, cardSource))
+		{
+			return;
+		}
+
+		if (result.WasTargetKilled)
+		{
+			RecordExecution(target);
+			return;
+		}
+
+		if (!target.IsAlive
+			|| !IsBelowExecuteThreshold(target.CurrentHp, target.MaxHp, DynamicVars[ExecutePercentVar].BaseValue))
+		{
+			return;
+		}
+
+		_executing = true;
+		try
+		{
+			await CreatureCmd.Kill(target);
+			RecordExecution(target);
+		}
+		finally
+		{
+			_executing = false;
+		}
 	}
 
 	public override Task BeforeCombatStart()
@@ -49,26 +92,32 @@ public sealed class CollectorRune : HextechRelicBase
 		return Task.CompletedTask;
 	}
 
-	public override Task AfterDeath(PlayerChoiceContext choiceContext, Creature target, bool wasRemovalPrevented, float deathAnimLength)
+	internal void RecordExecution(Creature target)
 	{
-		if (wasRemovalPrevented
-			|| Owner == null
-			|| Owner.Creature.IsDead
+		if (Owner == null
 			|| target.Side == Owner.Creature.Side
-			|| !HextechMonsterInteractionPolicy.IsTrueCombatDeath(target))
+			|| !HextechMonsterInteractionPolicy.IsTrueCombatDeath(target)
+			|| !_creditedExecutions.Add(target))
 		{
-			return Task.CompletedTask;
+			return;
 		}
 
-		_countThisCombat += DynamicVars["CountPerDeath"].IntValue;
+		_countThisCombat += DynamicVars[CountPerExecuteVar].IntValue;
 		InvokeDisplayAmountChanged();
 		Flash();
-		return Task.CompletedTask;
+	}
+
+	internal static bool IsBelowExecuteThreshold(decimal currentHp, decimal maxHp, decimal executePercent)
+	{
+		return maxHp > 0m
+			&& executePercent > 0m
+			&& currentHp < maxHp * executePercent / 100m;
 	}
 
 	private void ResetCount()
 	{
 		_countThisCombat = 0;
+		_creditedExecutions.Clear();
 		InvokeDisplayAmountChanged();
 	}
 }

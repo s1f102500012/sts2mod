@@ -1,67 +1,9 @@
-using MegaCrit.Sts2.Core.Hooks;
 using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
 
 internal static partial class HextechEnemyPowerScalingHooks
 {
-	private static MethodInfo? TryResolveModifyPowerAmountGivenTarget()
-	{
-#if STS2_107_OR_NEWER
-		return TryGetMethod(
-			typeof(Hook),
-			nameof(Hook.ModifyPowerAmountGiven),
-			BindingFlags.Public | BindingFlags.Static,
-			warnIfMissing: false,
-			typeof(ICombatState),
-			typeof(PowerModel),
-			typeof(Creature),
-			typeof(decimal),
-			typeof(Creature),
-			typeof(CardModel),
-			typeof(IEnumerable<AbstractModel>).MakeByRefType());
-#else
-		MethodInfo? reflectedMethod = TryGetMethod(
-			typeof(MultiplayerScalingModel),
-			nameof(MultiplayerScalingModel.ModifyPowerAmountGiven),
-			BindingFlags.Public | BindingFlags.Instance,
-			warnIfMissing: false,
-			typeof(PowerModel),
-			typeof(Creature),
-			typeof(decimal),
-			typeof(Creature),
-			typeof(CardModel));
-		if (reflectedMethod == null)
-		{
-			return null;
-		}
-
-		if (reflectedMethod.DeclaringType == typeof(MultiplayerScalingModel)
-			&& reflectedMethod.GetMethodBody() != null)
-		{
-			return reflectedMethod;
-		}
-
-		MethodInfo baseDefinition = reflectedMethod.GetBaseDefinition();
-		if (baseDefinition.GetMethodBody() != null)
-		{
-			return baseDefinition;
-		}
-
-		Type declaringType = reflectedMethod.DeclaringType ?? typeof(AbstractModel);
-		return TryGetMethod(
-			declaringType,
-			nameof(AbstractModel.ModifyPowerAmountGiven),
-			BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly,
-			warnIfMissing: false,
-			typeof(PowerModel),
-			typeof(Creature),
-			typeof(decimal),
-			typeof(Creature),
-			typeof(CardModel));
-#endif
-	}
-
 #if STS2_105_OR_NEWER
 	private static IEnumerable<MethodInfo> ResolveGetScaledAmountForMultiplayerTargets()
 	{

@@ -17,15 +17,24 @@ internal static partial class HextechCombatHooks
 	private const string IllusionReviveMoveId = "REVIVE_MOVE";
 	private const string TheInsatiableOpeningMoveId = "LIQUIFY_GROUND_MOVE";
 
-	private static readonly FieldInfo MoveStateIntentsField =
-		RequireField(typeof(MoveState), "<Intents>k__BackingField");
-	private static readonly FieldInfo MonsterIsPerformingMoveField =
-		RequireField(typeof(MonsterModel), "_isPerformingMove");
-	private static readonly FieldInfo KnowledgeDemonCurseCounterField =
-		RequireField(typeof(KnowledgeDemon), "_curseOfKnowledgeCounter");
+	private static readonly FieldInfo? MoveStateIntentsField =
+		TryGetField(typeof(MoveState), "<Intents>k__BackingField");
+	private static readonly FieldInfo? MonsterIsPerformingMoveField =
+		TryGetField(typeof(MonsterModel), "_isPerformingMove");
+	private static readonly FieldInfo? KnowledgeDemonCurseCounterField =
+		TryGetField(typeof(KnowledgeDemon), "_curseOfKnowledgeCounter");
 
 	private static void InstallJeweledGauntletHooks(Harmony harmony)
 	{
+		if (!HasJeweledGauntletPrivateFieldContracts(
+			MoveStateIntentsField,
+			MonsterIsPerformingMoveField,
+			KnowledgeDemonCurseCounterField))
+		{
+			Log.Warn($"[{ModInfo.Id}][Mayhem] 珠光护手 hook 已禁用:所需私有字段缺失或签名变化。");
+			return;
+		}
+
 		try
 		{
 			harmony.Patch(
@@ -92,7 +101,7 @@ internal static partial class HextechCombatHooks
 		}
 
 		await Cmd.CustomScaledWait(0.1f, 0.2f);
-		MonsterIsPerformingMoveField.SetValue(monster, true);
+		MonsterIsPerformingMoveField!.SetValue(monster, true);
 		IReadOnlyList<Creature> targets = combatState!.PlayerCreatures.ToArray();
 		try
 		{
@@ -148,7 +157,7 @@ internal static partial class HextechCombatHooks
 
 			IReadOnlyList<AbstractIntent> originalIntents = move.Intents;
 			IReadOnlyList<AbstractIntent> displayedIntents = DuplicateJeweledGauntletIntentGroup(originalIntents);
-			MoveStateIntentsField.SetValue(move, displayedIntents);
+			MoveStateIntentsField!.SetValue(move, displayedIntents);
 			__state = new JeweledGauntletIntentPatchState(move, originalIntents, displayedIntents);
 		}
 		catch (Exception ex)
@@ -180,7 +189,7 @@ internal static partial class HextechCombatHooks
 		try
 		{
 			// 只撤销自己临时安装的列表；若别的逻辑在 UpdateIntent 期间确实改了行动，则不覆盖它。
-			if (ReferenceEquals(MoveStateIntentsField.GetValue(state.Move), state.DisplayedIntents))
+			if (ReferenceEquals(MoveStateIntentsField!.GetValue(state.Move), state.DisplayedIntents))
 			{
 				MoveStateIntentsField.SetValue(state.Move, state.OriginalIntents);
 			}
@@ -247,8 +256,18 @@ internal static partial class HextechCombatHooks
 			return false;
 		}
 
-		int curseCounter = (int)(KnowledgeDemonCurseCounterField.GetValue(monster) ?? 0);
+		int curseCounter = (int)(KnowledgeDemonCurseCounterField!.GetValue(monster) ?? 0);
 		return WouldRepeatFinalKnowledgeDemonCurse(move.Id, curseCounter);
+	}
+
+	internal static bool HasJeweledGauntletPrivateFieldContracts(
+		FieldInfo? moveStateIntentsField,
+		FieldInfo? monsterIsPerformingMoveField,
+		FieldInfo? knowledgeDemonCurseCounterField)
+	{
+		return moveStateIntentsField?.FieldType == typeof(IReadOnlyList<AbstractIntent>)
+			&& monsterIsPerformingMoveField?.FieldType == typeof(bool)
+			&& knowledgeDemonCurseCounterField?.FieldType == typeof(int);
 	}
 
 	internal static bool WouldRepeatFinalKnowledgeDemonCurse(string moveId, int curseCounter)

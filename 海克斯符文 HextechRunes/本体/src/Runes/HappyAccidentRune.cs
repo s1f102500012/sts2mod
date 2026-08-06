@@ -6,13 +6,7 @@ public sealed class HappyAccidentRune : HextechRelicBase
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new DynamicVar("OrbCount", 1m),
-		new PowerVar<FocusPower>(1m)
-	];
-
-	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
-	[
-		HoverTipFactory.FromPower<FocusPower>()
+		new DynamicVar("OrbCount", 1m)
 	];
 
 	public override bool IsAvailableForPlayer(Player player)
@@ -20,39 +14,44 @@ public sealed class HappyAccidentRune : HextechRelicBase
 		return IsDefectPlayer(player);
 	}
 
-#if STS2_104_OR_NEWER
-	public override async Task AfterCardGeneratedForCombat(CardModel card, Player? creator)
-#else
-	public override async Task AfterCardGeneratedForCombat(CardModel card, bool addedByPlayer)
-#endif
+	public override async Task AfterPlayerTurnStart(PlayerChoiceContext choiceContext, Player player)
 	{
-#if STS2_104_OR_NEWER
-		bool addedByPlayer = creator == Owner;
-#endif
-		if (!addedByPlayer
-			|| card.Owner != Owner
+		if (player != Owner
 			|| Owner == null
 			|| Owner.Creature.IsDead
-			|| Owner.Creature.CombatState == null
-			|| card.Type != CardType.Status)
+			|| Owner.Creature.CombatState == null)
+		{
+			return;
+		}
+
+		int statusCount = CountStatusCards(Owner.PlayerCombatState?.ExhaustPile.Cards ?? []);
+		int orbCount = ResolveOrbCount(statusCount, DynamicVars["OrbCount"].IntValue);
+		if (orbCount <= 0)
 		{
 			return;
 		}
 
 		Flash();
-		PlayerChoiceContext choiceContext = new BlockingPlayerChoiceContext();
-		for (int i = 0; i < DynamicVars["OrbCount"].IntValue; i++)
+		for (int i = 0; i < orbCount; i++)
 		{
 			int orbOrdinal = ConsumeCombatProcOrdinal(nameof(HappyAccidentRune), ref _statusOrbsThisCombat);
 			OrbModel orb = HextechStableRandom.CreateOrb(
 				(RunState)Owner.RunState,
 				Owner,
-				"happy-accident-status-orb",
+				"happy-accident-exhaust-status-orb",
 				orbOrdinal,
 				Owner.Creature.CombatState.RoundNumber);
 			await OrbCmd.Channel(choiceContext, orb, Owner);
 		}
+	}
 
-		await PowerCmd.Apply<FocusPower>(Owner.Creature, DynamicVars["FocusPower"].BaseValue, Owner.Creature, card);
+	internal static int CountStatusCards(IEnumerable<CardModel> cards)
+	{
+		return cards.Count(static card => card.Type == CardType.Status);
+	}
+
+	internal static int ResolveOrbCount(int statusCount, int orbsPerStatus)
+	{
+		return Math.Max(0, statusCount) * Math.Max(0, orbsPerStatus);
 	}
 }

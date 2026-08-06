@@ -6,5 +6,15 @@
   "HEXTECH_GOLD_RUN.title": "Partida de Oro",
   "HEXTECH_GOLD_RUN.description": "Todas las runas Hextech renovadas en esta partida son de nivel Oro.",
   "HEXTECH_PRISMATIC_RUN.title": "Partida prismática",
-  "HEXTECH_PRISMATIC_RUN.description": "Todas las runas Hextech renovadas en esta partida son de nivel Prismático."
+  "HEXTECH_PRISMATIC_RUN.description": "Todas las runas Hextech renovadas en esta partida son de nivel Prismático.",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.title": "Atiborrado hasta reventar",
+  "HEXTECH_STUFFED_TO_RUIN_CHALLENGE.description": "Los jugadores usan la configuración Hextech predeterminada. Los enemigos obtienen un conjunto fijo de runas Hextech relacionadas con [red]cartas de Estado[/red].",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.title": "Maestro del contraataque",
+  "HEXTECH_DEFENSE_COUNTER_MASTER_CHALLENGE.description": "Los jugadores usan la configuración Hextech predeterminada. Los enemigos obtienen un conjunto fijo de runas Hextech relacionadas con [red]defensa y contraataque[/red].",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.title": "Fuerza bruta",
+  "HEXTECH_BRUTE_FORCE_CHALLENGE.description": "Los jugadores usan la configuración Hextech predeterminada. Los enemigos obtienen un conjunto fijo de runas Hextech relacionadas con [red]atributos numéricos[/red].",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.title": "Puerta de ocho centavos",
+  "HEXTECH_EIGHT_PENNY_GATE_CHALLENGE.description": "Los jugadores usan la configuración Hextech predeterminada. Los enemigos obtienen un conjunto fijo de runas Hextech relacionadas con el [red]Creador de Puertas[/red].",
+  "HEXTECH_LISTLESS_CHALLENGE.title": "Sin fuerzas",
+  "HEXTECH_LISTLESS_CHALLENGE.description": "Los jugadores usan la configuración Hextech predeterminada. Los enemigos obtienen un conjunto fijo de runas Hextech relacionadas con la [red]reducción de atributos[/red]."
 }

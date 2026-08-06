@@ -77,14 +77,72 @@ internal sealed class HextechForgeChoiceReward : Reward
 		}
 	}
 
-	internal static HextechForgeChoiceReward FromSavedReward(SerializableReward save, Player player)
+	internal static bool TryFromSavedReward(
+		SerializableReward save,
+		Player player,
+		out HextechForgeChoiceReward? reward)
 	{
-		List<RelicModel> options = save.CardPoolIds
-			.Select(id => ModelDb.GetById<RelicModel>(id).ToMutable())
-			.Where(HextechCatalog.IsHextechForgeRelic)
-			.Take(Math.Max(0, save.OptionCount))
-			.ToList();
-		return new HextechForgeChoiceReward(options, player);
+		reward = null;
+		int requestedCount = Math.Clamp(save.OptionCount, 0, HextechStableModelIdListCodec.MaxCount);
+		if (requestedCount == 0)
+		{
+			LogForgeRestoreSkip(ModelId.none, $"invalid option count {save.OptionCount}");
+			return false;
+		}
+
+		List<RelicModel> options = new(requestedCount);
+		int scanned = 0;
+		foreach (ModelId id in save.CardPoolIds)
+		{
+			if (scanned++ >= HextechStableModelIdListCodec.MaxCount)
+			{
+				LogForgeRestoreSkip(id, "saved option list exceeds the supported limit");
+				break;
+			}
+
+			try
+			{
+				AbstractModel? model = ModelDb.GetByIdOrNull<AbstractModel>(id);
+				if (model is not RelicModel relic)
+				{
+					LogForgeRestoreSkip(id, model == null ? "model is not registered" : $"model type is {model.GetType().FullName}");
+					continue;
+				}
+
+				if (!HextechCatalog.IsHextechForgeRelic(relic))
+				{
+					LogForgeRestoreSkip(id, "model is no longer registered as a Hextech forge");
+					continue;
+				}
+
+				options.Add(relic);
+				if (options.Count >= requestedCount)
+				{
+					break;
+				}
+			}
+			catch (Exception ex)
+			{
+				LogForgeRestoreSkip(id, $"{ex.GetType().Name}: {ex.Message}");
+			}
+		}
+
+		if (options.Count == 0)
+		{
+			LogForgeRestoreSkip(ModelId.none, "no valid saved forge options remain");
+			return false;
+		}
+
+		try
+		{
+			reward = new HextechForgeChoiceReward(options, player);
+			return true;
+		}
+		catch (Exception ex)
+		{
+			LogForgeRestoreSkip(ModelId.none, $"failed to materialize restored options: {ex.GetType().Name}: {ex.Message}");
+			return false;
+		}
 	}
 
 	private static RelicModel CreateMutableOption(RelicModel relic)
@@ -99,5 +157,13 @@ internal sealed class HextechForgeChoiceReward : Reward
 		return firstOption != null && HextechCatalog.TryGetForgeRarity(firstOption, out HextechRarityTier rarity)
 			? HextechAssets.GetForgeIconPath(rarity)
 			: ImageHelper.GetImagePath("ui/reward_screen/reward_icon_relic.png");
+	}
+
+	private static void LogForgeRestoreSkip(ModelId id, string reason)
+	{
+		if (HextechRunLogBudget.TryConsume("rewards.forge-choice-restore-skip", 12))
+		{
+			Log.Warn($"[{ModInfo.Id}][ForgeChoiceReward] Saved forge option skipped: id={id} reason={reason}.");
+		}
 	}
 }

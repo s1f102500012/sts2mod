@@ -8,9 +8,9 @@ internal sealed record HextechRunConfigurationSnapshot(
 	HashSet<string> DisabledPlayerRuneIds,
 	HashSet<string> DisabledMonsterHexIds,
 	HashSet<string> DisabledForgeIds,
-	HextechRarityWeights FirstActRuneRarityWeights,
-	HextechRarityWeights NormalRuneRarityWeights,
-	HextechRarityWeights SecondActAfterSilverRuneRarityWeights,
+	HextechRarityWeights[] RuneRarityWeightsByAct,
+	bool PreventConsecutiveSilverRunes,
+	int GoldenRerollChancePercent,
 	HextechForgeRarityWeights ForgeRarityWeights,
 	int RandomForgeShopPrice,
 	bool RandomForgeDirectGrant,
@@ -22,9 +22,15 @@ internal sealed record HextechRunConfigurationSnapshot(
 		{
 			PlayerHexCountsByAct = PlayerHexCountsByAct.ToArray(),
 			EnemyHexCountsByAct = EnemyHexCountsByAct.ToArray(),
+			RuneRarityWeightsByAct = RuneRarityWeightsByAct.ToArray(),
 			DisabledPlayerRuneIds = DisabledPlayerRuneIds.ToHashSet(StringComparer.Ordinal),
 			DisabledMonsterHexIds = DisabledMonsterHexIds.ToHashSet(StringComparer.Ordinal),
 			DisabledForgeIds = DisabledForgeIds.ToHashSet(StringComparer.Ordinal)
 		};
+	}
+
+	public HextechRarityWeights GetRuneRarityWeightsForAct(int actIndex)
+	{
+		return RuneRarityWeightsByAct[Math.Clamp(actIndex, 0, RuneRarityWeightsByAct.Length - 1)];
 	}
 }

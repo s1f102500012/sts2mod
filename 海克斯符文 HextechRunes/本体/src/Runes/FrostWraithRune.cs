@@ -2,29 +2,27 @@ namespace HextechRunes;
 
 public sealed class FrostWraithRune : HextechRelicBase
 {
+	internal const int TurnsNeeded = 2;
+	internal const int TemporarySlowAmount = 50;
+
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
-		new DynamicVar("TurnsNeeded", 3m),
-		new PowerVar<SlowPower>(1m)
+		new DynamicVar("TurnsNeeded", TurnsNeeded),
+		new PowerVar<HextechPlayerSlowPower>("SlowPower", TemporarySlowAmount)
 	];
 
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
 	[
-		HoverTipFactory.FromPower<SlowPower>()
+		HoverTipFactory.FromPower<HextechPlayerSlowPower>()
 	];
 
 	// 额外回合不推进 RoundNumber 且回合开始 hook 会重入,周期触发按 RoundNumber 防重。
 	private int _lastProcRound = -1;
 
-	public override async Task BeforeCombatStart()
+	public override Task BeforeCombatStart()
 	{
 		_lastProcRound = -1;
-		if (Owner == null || Owner.Creature.IsDead || Owner.Creature.CombatState is not HextechCombatState combatState)
-		{
-			return;
-		}
-
-		await ApplySlow(combatState);
+		return Task.CompletedTask;
 	}
 
 	public override async Task AfterPlayerTurnStart(PlayerChoiceContext choiceContext, Player player)
@@ -32,8 +30,7 @@ public sealed class FrostWraithRune : HextechRelicBase
 		if (player != Owner
 			|| Owner.Creature.IsDead
 			|| player.Creature.CombatState is not HextechCombatState combatState
-			|| combatState.RoundNumber <= 1
-			|| (combatState.RoundNumber - 1) % DynamicVars["TurnsNeeded"].IntValue != 0
+			|| !ShouldTriggerForRound(combatState.RoundNumber, DynamicVars["TurnsNeeded"].IntValue)
 			|| _lastProcRound == combatState.RoundNumber)
 		{
 			return;
@@ -41,6 +38,13 @@ public sealed class FrostWraithRune : HextechRelicBase
 
 		_lastProcRound = combatState.RoundNumber;
 		await ApplySlow(combatState);
+	}
+
+	internal static bool ShouldTriggerForRound(int roundNumber, int turnsNeeded)
+	{
+		return roundNumber > 1
+			&& turnsNeeded > 0
+			&& (roundNumber - 1) % turnsNeeded == 0;
 	}
 
 	private async Task ApplySlow(HextechCombatState combatState)

@@ -34,7 +34,7 @@ internal static class HextechInspectHooks
 
 	private static bool _inspectScreenHooksInstalled;
 
-	private readonly record struct InspectOpenState(IReadOnlyList<RelicModel> CorrectedRelics, int CorrectedIndex);
+	private readonly record struct InspectOpenState(RelicModel? RequestedRelic);
 
 	public static void Install(Harmony harmony)
 	{
@@ -54,7 +54,9 @@ internal static class HextechInspectHooks
 			InspectRelicScreenOpenMethod,
 			"NInspectRelicScreen.Open",
 			prefix: nameof(InspectRelicScreenOpenPrefix),
-			postfix: nameof(InspectRelicScreenOpenPostfix));
+			postfix: nameof(InspectRelicScreenOpenPostfix),
+			prefixPriority: Priority.Last,
+			postfixPriority: Priority.Last);
 		TryPatch(
 			harmony,
 			InspectRelicScreenUpdateRelicDisplayMethod,
@@ -78,36 +80,66 @@ internal static class HextechInspectHooks
 	private static void InspectRelicScreenOpenPrefix(ref IReadOnlyList<RelicModel> relics, ref RelicModel relic, out InspectOpenState __state)
 	{
 		__state = default;
-		if (!_inspectScreenHooksInstalled)
+		if (!_inspectScreenHooksInstalled || !ShouldHandleInspectRequest(relic))
 		{
 			return;
 		}
 
-		List<RelicModel> correctedRelics = relics.ToList();
 		RelicModel requestedRelic = relic;
-		int correctedIndex = correctedRelics.FindIndex(candidate => ReferenceEquals(candidate, requestedRelic) || candidate.Id == requestedRelic.Id);
-		if (correctedIndex < 0)
-		{
-			correctedRelics.Add(relic);
-			correctedIndex = correctedRelics.Count - 1;
-		}
-
+		IReadOnlyList<RelicModel> correctedRelics = MergeRequestedInspectRelic(relics, requestedRelic, out int correctedIndex);
 		relics = correctedRelics;
 		relic = correctedRelics[correctedIndex];
-		__state = new InspectOpenState(correctedRelics, correctedIndex);
+		__state = new InspectOpenState(requestedRelic);
 	}
 
 	private static void InspectRelicScreenOpenPostfix(NInspectRelicScreen __instance, InspectOpenState __state)
 	{
-		if (!_inspectScreenHooksInstalled || __state.CorrectedRelics == null)
+		if (!_inspectScreenHooksInstalled
+			|| __state.RequestedRelic == null
+			|| InspectRelicScreenRelicsField?.GetValue(__instance) is not IReadOnlyList<RelicModel> finalRelics)
 		{
 			return;
 		}
 
-		EnsureInspectRelicsUnlocked(__instance, __state.CorrectedRelics);
-		InspectRelicScreenRelicsField?.SetValue(__instance, __state.CorrectedRelics);
-		InspectRelicScreenSetRelicMethod?.Invoke(__instance, [__state.CorrectedIndex]);
+		IReadOnlyList<RelicModel> mergedRelics = MergeRequestedInspectRelic(
+			finalRelics,
+			__state.RequestedRelic,
+			out int requestedIndex);
+		EnsureInspectRelicsUnlocked(__instance, mergedRelics);
+		if (!ReferenceEquals(mergedRelics, finalRelics))
+		{
+			InspectRelicScreenRelicsField.SetValue(__instance, mergedRelics);
+		}
+
+		InspectRelicScreenSetRelicMethod?.Invoke(__instance, [requestedIndex]);
 		InspectRelicScreenUpdateRelicDisplayMethod?.Invoke(__instance, null);
+	}
+
+	internal static bool ShouldHandleInspectRequest(RelicModel relic)
+	{
+		return HextechCatalog.IsHextechCustomRelic(relic);
+	}
+
+	internal static IReadOnlyList<RelicModel> MergeRequestedInspectRelic(
+		IReadOnlyList<RelicModel> relics,
+		RelicModel requestedRelic,
+		out int requestedIndex)
+	{
+		for (int index = 0; index < relics.Count; index++)
+		{
+			RelicModel candidate = relics[index];
+			if (candidate != null
+				&& (ReferenceEquals(candidate, requestedRelic) || candidate.Id == requestedRelic.Id))
+			{
+				requestedIndex = index;
+				return relics;
+			}
+		}
+
+		List<RelicModel> merged = relics.ToList();
+		merged.Add(requestedRelic);
+		requestedIndex = merged.Count - 1;
+		return merged;
 	}
 
 	private static bool InspectRelicScreenUpdateRelicDisplayPrefix(NInspectRelicScreen __instance)
@@ -232,7 +264,14 @@ internal static class HextechInspectHooks
 		}
 	}
 
-	private static void TryPatch(Harmony harmony, MethodBase? target, string label, string? prefix = null, string? postfix = null)
+	private static void TryPatch(
+		Harmony harmony,
+		MethodBase? target,
+		string label,
+		string? prefix = null,
+		string? postfix = null,
+		int? prefixPriority = null,
+		int? postfixPriority = null)
 	{
 		if (target == null)
 		{
@@ -242,7 +281,10 @@ internal static class HextechInspectHooks
 
 		try
 		{
-			harmony.Patch(target, GetHarmonyMethod(prefix), GetHarmonyMethod(postfix));
+			harmony.Patch(
+				target,
+				GetHarmonyMethod(prefix, prefixPriority),
+				GetHarmonyMethod(postfix, postfixPriority));
 		}
 		catch (Exception ex)
 		{
@@ -250,14 +292,20 @@ internal static class HextechInspectHooks
 		}
 	}
 
-	private static HarmonyMethod? GetHarmonyMethod(string? methodName)
+	private static HarmonyMethod? GetHarmonyMethod(string? methodName, int? priority = null)
 	{
 		if (methodName == null)
 		{
 			return null;
 		}
 
-		return new HarmonyMethod(typeof(HextechInspectHooks), methodName);
+		var harmonyMethod = new HarmonyMethod(typeof(HextechInspectHooks), methodName);
+		if (priority.HasValue)
+		{
+			harmonyMethod.priority = priority.Value;
+		}
+
+		return harmonyMethod;
 	}
 
 }

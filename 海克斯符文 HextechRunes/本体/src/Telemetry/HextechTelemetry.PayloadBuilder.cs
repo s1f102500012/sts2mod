@@ -78,7 +78,7 @@ internal static partial class HextechTelemetry
 			return payloads;
 		}
 
-		for (int actIndex = 0; actIndex < 3; actIndex++)
+		for (int actIndex = 0; actIndex < modifier.StageCount; actIndex++)
 		{
 			HextechRarityTier? rarity = modifier.GetRarityForAct(actIndex);
 			if (!rarity.HasValue)

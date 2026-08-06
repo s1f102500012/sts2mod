@@ -8,7 +8,12 @@ public sealed class DefendUpgradeRune : HextechRelicBase
 {
 	public override bool IsAvailableForPlayer(Player player)
 	{
-		return player.Deck.Cards.Any(IsBasicDefend);
+		return HasBasicDefend(player.Deck.Cards);
+	}
+
+	internal static bool HasBasicDefend(IEnumerable<CardModel> deckCards)
+	{
+		return deckCards.Any(IsBasicDefend);
 	}
 
 	internal static bool IsBasicDefend(CardModel card)

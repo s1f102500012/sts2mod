@@ -1,7 +1,4 @@
 {
-  "ELICIT_CARD.title": "Eliciar",
-  "ELICIT_CARD.description": "Evoque todos os seus Orbes.",
-  "ELICIT_CARD.flavor": "Deixe cada bobina descarregar de uma vez.",
   "TRICK_MAGIC_CARD.title": "Magia de Truque",
   "TRICK_MAGIC_CARD.description": "Compre [blue]{Cards}[/blue] cartas. Ganhe [blue]{BufferPower}[/blue] de [gold]Prevenção[/gold]. O próximo Ataque que você jogar é repetido [blue]{Replays}[/blue] vez(es).",
   "TRICK_MAGIC_CARD.flavor": "O público vê fitas. O inimigo vê a conta.",
@@ -29,9 +26,6 @@
   "CLOUD_DRAGON_SOUL_CARD.title": "Alma do Dragão das Nuvens",
   "CLOUD_DRAGON_SOUL_CARD.description": "Compra [blue]{Cards}[/blue] cartas extras a cada turno.",
   "CLOUD_DRAGON_SOUL_CARD.flavor": "O vento coloca escolhas na sua mão.",
-  "ALL_IN_CARD.title": "Tudo ou Nada",
-  "ALL_IN_CARD.description": "Cause {Damage:diff()} de dano.\nDescarte todas as cartas que não sejam de Ataque.",
-  "ALL_IN_CARD.flavor": "Apenas a aposta e a lâmina permanecem na mesa.",
   "WHITE_HOLE_CARD.title": "Buraco Branco",
   "WHITE_HOLE_CARD.description": "Sempre que você comprar esta carta, ganhe {Energy:energyIcons()}.\nCompra {Cards} cartas.",
   "WHITE_HOLE_CARD.flavor": "Ele não engole escolhas. Ele as cospe de volta na sua mão.",

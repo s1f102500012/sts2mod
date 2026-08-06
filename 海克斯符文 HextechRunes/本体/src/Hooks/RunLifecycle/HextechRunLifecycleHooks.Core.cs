@@ -83,8 +83,23 @@ internal static partial class HextechRunLifecycleHooks
 
 	private static bool ShouldDeferActSelectionUntilAfterCurrentEvent(RunState runState)
 	{
-		return runState.CurrentActIndex is >= 0 and <= 2
+		return runState.CurrentActIndex >= 0
 			&& runState.CurrentRoom is EventRoom { CanonicalEvent: AncientEventModel };
+	}
+
+	private static int ResolveCurrentStageIndex(
+		RunState runState,
+		HextechMayhemModifier modifier,
+		out string? extraStageId)
+	{
+		extraStageId = HextechRunesInterop.GetCurrentExtraActId(runState);
+		if (!string.IsNullOrWhiteSpace(extraStageId))
+		{
+			return modifier.ActivateExtraStage(extraStageId);
+		}
+
+		modifier.ClearActiveExtraStage();
+		return modifier.GetCurrentActSelectionIndex();
 	}
 
 	private static string DescribeCurrentEventState(RunState runState)

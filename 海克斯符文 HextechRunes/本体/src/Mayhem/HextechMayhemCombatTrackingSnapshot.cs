@@ -3,7 +3,6 @@ namespace HextechRunes;
 internal sealed class CombatTrackingSnapshot
 {
 	public Dictionary<uint, int> SlapProcsThisTurn { get; set; } = new();
-	public Dictionary<uint, int> CorrosionProcsThisTurn { get; set; } = new();
 	public Dictionary<uint, int> TormentorProcsThisTurn { get; set; } = new();
 	public Dictionary<uint, int> CourageProcsThisTurn { get; set; } = new();
 	public Dictionary<uint, int> BloodPactProcsThisTurn { get; set; } = new();
@@ -34,6 +33,9 @@ internal sealed class CombatTrackingSnapshot
 	public List<uint> MadScientistApplied { get; set; } = [];
 	public List<uint> UnmovableMountainApplied { get; set; } = [];
 	public List<uint> GoldenSpatulaApplied { get; set; } = [];
+	public List<uint> StatsApplied { get; set; } = [];
+	public List<uint> StatsOnStatsApplied { get; set; } = [];
+	public List<uint> StatsOnStatsOnStatsApplied { get; set; } = [];
 	public List<uint> DoormakerRealStartApplied { get; set; } = [];
 	public Dictionary<uint, int> TestSubjectPhaseStartApplied { get; set; } = new();
 	public Dictionary<uint, int> MonsterMaxHpCoefficientBase { get; set; } = new();

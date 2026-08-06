@@ -34,6 +34,7 @@ internal static partial class HextechPlayerRuneHooks
 		TryInstallRuneHook<MadScientistRune>("mad scientist orb slots", () => InstallMadScientistHooks(harmony));
 		TryInstallCombatHookGroup("orb layout soft cap", () => InstallOrbLayoutSoftCapHooks(harmony));
 		TryInstallRuneHook<ElectrodynamicsRune>("electrodynamics lightning", () => InstallElectrodynamicsLightningHook(harmony));
+		TryInstallRuneHook<DrawYourSwordRune>("draw your sword evoke replacement", () => InstallDrawYourSwordHooks(harmony));
 	}
 
 	private static void InstallUpgradeRuneHooks(Harmony harmony)

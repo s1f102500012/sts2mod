@@ -32,6 +32,7 @@ public static class ModEntry
 			HextechModelBootstrap.Install();
 			HextechRuneConfiguration.Initialize();
 			HextechTelemetry.Initialize();
+			HextechIntegratedStrategyEventsCompat.Install();
 			Harmony harmony = _harmony ??= new Harmony(HarmonyId);
 			TryInstallOptionalHookGroup("model id serialization warning compatibility", () => HextechModelIdSerializationWarningHooks.Install(harmony));
 			HextechMultiplayerCompatibilityHooks.Install(harmony);
@@ -39,7 +40,7 @@ public static class ModEntry
 			HextechMobileModelRegistrationHooks.Install(harmony);
 			HextechThoughtOverwriteKeywordPersistenceHooks.Install(harmony);
 			HextechSelfUpgradeCardStore.Install(harmony);
-			HextechCustomRunModifierHooks.Install(harmony);
+			TryInstallOptionalHookGroup("preset challenge custom-run option", () => HextechPresetChallengeHooks.Install(harmony));
 			HextechRunLifecycleHooks.Install(harmony);
 			HextechCombatHooks.Install(harmony);
 			HextechEnemyPowerScalingHooks.Install(harmony);

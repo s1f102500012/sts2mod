@@ -29,10 +29,21 @@ internal static class HextechMonsterInteractionPolicy
 
 	public static bool ShouldIgnoreMonsterSelfBuff(PowerModel power)
 	{
-		return IsStructuralMonsterBuff(power);
+		return IsStructuralMonsterBuff(power)
+			|| IsEnemyHostedPlayerRelationBuff(power)
+			|| IsRemovableMonsterMechanismBuff(power);
 	}
 
-	// 结构性怪物 buff = 剥除会让遭遇脚本/回合流转/位置关系断裂的机制 power。
+	public static bool ShouldPreserveFromBuffRemoval(PowerModel power)
+	{
+		return IsStructuralMonsterBuff(power)
+			|| IsEnemyHostedPlayerRelationBuff(power)
+			// 这两个 power 保存被偷金币/卡牌，并在怪物死亡时负责归还；提前剥除会永久丢失战利品。
+			|| power is HeistPower or SwipePower;
+	}
+
+	// 结构性怪物 buff = 正常挂在敌方身上，且剥除会让遭遇脚本、战斗结束或死亡流程断裂的 power。
+	// 玩家牌、玩家协作、Osty 和怪物施加给玩家的 power 不属于敌方剥除策略，不能为图省事混进此处。
 	// 曾把全部"动画/形态状态机"类也列入(防幽灵鳗 SkittishPower 卡死),现已逐个核验收窄:
 	//  - Skittish 的卡死根因是 Block 出场动画悬空,已由 RemoveMonsterBuffSafely 补出场后安全剥除;
 	//  - Smoggy/Burrowed/Hibernate/CurlUp/HardenedShell/SentryMode/Shadowmeld/Shroud/Sneaky/
@@ -42,46 +53,34 @@ internal static class HextechMonsterInteractionPolicy
 	// 数值成长类(力量/CreativeAi 等)不在此列,允许正常剥除。
 	public static bool IsStructuralMonsterBuff(PowerModel power)
 	{
-		return power is SandpitPower
-			or ReattachPower
-			or AdaptablePower
+		return power is AdaptablePower
 			// 怪物唤醒脚本耦合
 			or AsleepPower
 			or SlumberPower
-#if STS2_108_OR_NEWER
-			// 0.108 新增类型
-			or SoulboundPower
-#endif
-			// 遭遇脚本/演出/时限
+			// 沙坑同时管理沙虫倒计时、玩家站位与倒计时结束处决，复制或提前剥除都会破坏遭遇流程。
+			or SandpitPower
+			// 遭遇脚本/时限
 			or BattlewornDummyTimeLimitPower
-			or MonologuePower
-			or HatchPower
-			or CountdownPower
-			or TheSealedThronePower
-			or WitheringPresencePower
-			or PillarOfCreationPower
-			or ChildOfTheStarsPower
-			or PaleBlueDotPower
-			or TheHuntPower
-			or DemesnePower
-			or NemesisPower
-			or HardToKillPower
-			// 位置/关系
-			or BackAttackLeftPower
-			or BackAttackRightPower
-			or UnmovablePower
-			or OrbitPower
+			// 战斗结束/死亡流程
 			or MinionPower
-			or GuardedPower
-			or InterceptPower
-			or DieForYouPower
+			or InfestedPower;
+	}
+
+	// BackAttack 标记正常挂在敌人身上，但保存的是玩家 Surrounded 的朝向关系。
+	// 剥除不会伤害敌人，反而会让玩家的背刺加成丢失，因此按玩家关系状态保护。
+	private static bool IsEnemyHostedPlayerRelationBuff(PowerModel power)
+	{
+		return power is BackAttackLeftPower or BackAttackRightPower;
+	}
+
+	private static bool IsRemovableMonsterMechanismBuff(PowerModel power)
+	{
+		return power is HatchPower
+			or ReattachPower
+			or HardToKillPower
+			or WitheringPresencePower
+			or NemesisPower
 			or IllusionPower
-			or InfestedPower
-			or FastenPower
-			or HauntPower
-			// 意图预告
-			or SummonNextTurnPower
-			or StarNextTurnPower
 			or SteamEruptionPower;
 	}
 
@@ -94,6 +93,8 @@ internal static class HextechMonsterInteractionPolicy
 	public static bool IsMonsterMechanismBuff(PowerModel power)
 	{
 		return IsStructuralMonsterBuff(power)
+			|| IsEnemyHostedPlayerRelationBuff(power)
+			|| IsRemovableMonsterMechanismBuff(power)
 			|| power is SkittishPower
 				or SmoggyPower
 				or BurrowedPower
@@ -116,7 +117,7 @@ internal static class HextechMonsterInteractionPolicy
 				or PersonalHivePower
 				// 机器人「库存」(Stock):囤积-释放机制与敌人行动脚本耦合,薄暮法衣镜像到玩家会卡死(玩家实报)。
 				or StockPower
-				// 敌我共用的缓慢系数按持有者阵营解释方向,从敌方镜像到玩家会把减伤反转为易伤。
+				// 敌我共用的缓慢系数带有正负层数语义,不应作为普通怪物增益镜像到玩家。
 				or HextechPlayerSlowPower;
 	}
 

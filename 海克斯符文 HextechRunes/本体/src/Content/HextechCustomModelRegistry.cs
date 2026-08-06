@@ -4,14 +4,27 @@ internal static class HextechCustomModelRegistry
 {
 	internal static IReadOnlyList<Type> EventRelicTypes { get; } = [];
 
-	// 自定义稀有度 run modifier(白银/黄金/棱彩)。内容清单放注册表层,
-	// 供 Bootstrap 的 SavedProperty 注入与 Hooks 的 UI 追加共同消费(避免 Bootstrap 反向依赖 Hooks)。
+	// 已退役的自定义稀有度 run modifier 只保留模型注册，避免旧局中的 modifier ID 无法解析。
 	internal static IReadOnlyList<Type> CustomRarityModifierTypes { get; } =
 	[
 		typeof(HextechSilverRunModifier),
 		typeof(HextechGoldRunModifier),
 		typeof(HextechPrismaticRunModifier)
 	];
+
+	internal static IReadOnlyList<Type> CustomChallengeModifierTypes { get; } =
+	[
+		typeof(StuffedToRuinChallengeModifier),
+		typeof(DefenseCounterMasterChallengeModifier),
+		typeof(BruteForceChallengeModifier),
+		typeof(EightPennyGateChallengeModifier),
+		typeof(ListlessChallengeModifier)
+	];
+
+	internal static IReadOnlyList<Type> AllCustomModifierTypes { get; } =
+		CustomRarityModifierTypes
+			.Concat(CustomChallengeModifierTypes)
+			.ToArray();
 
 	internal static IReadOnlyList<Type> ShopOnlyRelicTypes { get; } =
 	[
@@ -51,11 +64,9 @@ internal static class HextechCustomModelRegistry
 
 	internal static IReadOnlyList<Type> CustomCardTypes { get; } =
 	[
-		typeof(ElicitCard),
 		typeof(TrickMagicCard),
 		typeof(BladeWaltzCard),
 		typeof(CatalystCard),
-		typeof(AllInCard),
 		typeof(WhiteHoleCard),
 		typeof(SearingAttackCard),
 		typeof(FeelTheBurnCard),

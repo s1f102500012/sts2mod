@@ -1,18 +1,27 @@
+using MegaCrit.Sts2.Core.Helpers;
+
 namespace HextechRunes;
 
 public sealed class LightEmUpRune : HextechRelicBase
 {
-	private const int AttacksPerReplay = 4;
+	internal const int AttacksPerVolley = 4;
+	internal const int MissileCount = 5;
 
 	private int _attacksPlayedThisCombat;
+
+	protected override IEnumerable<DynamicVar> CanonicalVars =>
+	[
+		new DynamicVar("Attacks", AttacksPerVolley),
+		new DynamicVar("Missiles", MissileCount)
+	];
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int SavedAttacksPlayedThisCombat
 	{
-		get => IsNetworkMultiplayer() ? 0 : GetAttacksPlayedThisCombat();
+		get => _attacksPlayedThisCombat;
 		set
 		{
-			_attacksPlayedThisCombat = Math.Max(0, value) % AttacksPerReplay;
+			_attacksPlayedThisCombat = Math.Clamp(value, 0, AttacksPerVolley);
 			InvokeDisplayAmountChanged();
 		}
 	}
@@ -28,7 +37,7 @@ public sealed class LightEmUpRune : HextechRelicBase
 				return 0;
 			}
 
-			return GetAttacksPlayedThisCombat();
+			return _attacksPlayedThisCombat;
 		}
 	}
 
@@ -44,37 +53,90 @@ public sealed class LightEmUpRune : HextechRelicBase
 		return Task.CompletedTask;
 	}
 
-	public override int ModifyCardPlayCount(CardModel card, Creature? target, int playCount)
-	{
-		if (!IsOwnedAttack(card))
-		{
-			return playCount;
-		}
-
-		int nextAttacksPlayed = GetAttacksPlayedBeforeCurrentAttack() + 1;
-		if (nextAttacksPlayed % AttacksPerReplay == 0)
-		{
-			return playCount + 1;
-		}
-
-		return playCount;
-	}
-
-	public override Task AfterCardPlayed(PlayerChoiceContext context, CardPlay cardPlay)
+	public override Task AfterCardPlayed(PlayerChoiceContext choiceContext, CardPlay cardPlay)
 	{
 		if (!IsCountedAttackPlay(cardPlay))
 		{
 			return Task.CompletedTask;
 		}
 
-		if (!ShouldUseNetworkCombatHistory())
+		decimal damage = ResolveMissileDamage(HextechCombatHooks.GetEnergyCostForCurrentCardPlay(cardPlay.Card));
+		_attacksPlayedThisCombat = AdvanceAttackProgress(
+			_attacksPlayedThisCombat,
+			damage,
+			out bool shouldLaunchVolley);
+		InvokeDisplayAmountChanged();
+		if (!shouldLaunchVolley
+			|| Owner == null
+			|| Owner.Creature.IsDead
+			|| Owner.Creature.CombatState is not HextechCombatState combatState)
 		{
-			_attacksPlayedThisCombat = (_attacksPlayedThisCombat + 1) % AttacksPerReplay;
+			return Task.CompletedTask;
 		}
 
-		InvokeDisplayAmountChanged();
-		Flash();
+		List<Creature> targets = ResolveTargets(cardPlay, combatState);
+		if (targets.Count == 0)
+		{
+			return Task.CompletedTask;
+		}
+
+		Flash(targets);
+		Creature source = Owner.Creature;
+		_ = TaskHelper.RunSafely(ResolveVolleyAfterCardSettlesAsync(
+			source,
+			combatState,
+			cardPlay.Card,
+			targets,
+			damage));
 		return Task.CompletedTask;
+	}
+
+	private static async Task ResolveVolleyAfterCardSettlesAsync(
+		Creature source,
+		HextechCombatState combatState,
+		CardModel triggeringCard,
+		IReadOnlyList<Creature> targets,
+		decimal damage)
+	{
+		if (!await HextechCardPlayTiming.WaitForCardPlayFinishedAsync(source, combatState, triggeringCard))
+		{
+			return;
+		}
+
+		Task<bool>[][] arrivalTasks = Enumerable.Range(0, MissileCount)
+			.Select(missileIndex => targets
+				.Select(target => HextechCombatVfx.PlayTwinFlamesMissile(source, target, missileIndex))
+				.ToArray())
+			.ToArray();
+		PlayerChoiceContext damageContext = new BlockingPlayerChoiceContext();
+
+		for (int missileIndex = 0; missileIndex < MissileCount; missileIndex++)
+		{
+			bool[] arrivals = await Task.WhenAll(arrivalTasks[missileIndex]);
+			if (source.IsDead || !ReferenceEquals(source.CombatState, combatState))
+			{
+				return;
+			}
+
+			for (int targetIndex = 0; targetIndex < targets.Count; targetIndex++)
+			{
+				Creature target = targets[targetIndex];
+				if (!arrivals[targetIndex]
+					|| !target.IsAlive
+					|| !ReferenceEquals(target.CombatState, combatState))
+				{
+					continue;
+				}
+
+				await HextechGameApiCompat.Damage(
+					damageContext,
+					target,
+					damage,
+					ValueProp.Unpowered,
+					source,
+					null);
+			}
+		}
 	}
 
 	private void ResetAttacksPlayedThisCombat()
@@ -83,18 +145,33 @@ public sealed class LightEmUpRune : HextechRelicBase
 		InvokeDisplayAmountChanged();
 	}
 
-	private int GetAttacksPlayedThisCombat()
+	internal static int AdvanceAttackProgress(int currentProgress, decimal energyCost, out bool shouldLaunchVolley)
 	{
-		return ShouldUseNetworkCombatHistory()
-			? CountOwnedAttackCardsPlayedFromHistory() % AttacksPerReplay
-			: _attacksPlayedThisCombat;
+		int progress = Math.Clamp(currentProgress, 0, AttacksPerVolley);
+		if (progress < AttacksPerVolley)
+		{
+			progress++;
+		}
+
+		shouldLaunchVolley = progress == AttacksPerVolley && energyCost > 0m;
+		return shouldLaunchVolley ? 0 : progress;
 	}
 
-	private int GetAttacksPlayedBeforeCurrentAttack()
+	internal static decimal ResolveMissileDamage(decimal energyCost)
 	{
-		return ShouldUseNetworkCombatHistory()
-			? CountOwnedAttackCardsPlayedFromHistory()
-			: _attacksPlayedThisCombat;
+		return Math.Max(0m, energyCost);
+	}
+
+	private static List<Creature> ResolveTargets(CardPlay cardPlay, HextechCombatState combatState)
+	{
+		IEnumerable<Creature> targets = cardPlay.Card.TargetType == TargetType.AllEnemies
+			? combatState.HittableEnemies
+			: cardPlay.Target is { Side: CombatSide.Enemy } target
+				? [target]
+				: [];
+		return targets
+			.Where(static target => target.IsAlive && target.Side == CombatSide.Enemy)
+			.ToList();
 	}
 
 	private bool IsCountedAttackPlay(CardPlay cardPlay)

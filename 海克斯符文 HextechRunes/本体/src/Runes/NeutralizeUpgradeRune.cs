@@ -4,6 +4,8 @@ public sealed class NeutralizeUpgradeRune : CardUpgradeRuneBase<Neutralize>
 {
 	private bool _isAutoPlayingDiscardedCard;
 
+	internal override bool GrantsCardOnPickup => false;
+
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
 	[
 		new DynamicVar("Repeats", 2m)
@@ -15,9 +17,9 @@ public sealed class NeutralizeUpgradeRune : CardUpgradeRuneBase<Neutralize>
 		HoverTipFactory.FromCard<Suppress>()
 	];
 
-	protected override bool DeckContainsRequiredCard(Player player)
+	internal override bool MeetsCardAvailabilityRequirement(IEnumerable<CardModel> deckCards)
 	{
-		return DeckContains<Neutralize>(player) || DeckContains<Suppress>(player);
+		return deckCards.Any(static card => card is Neutralize or Suppress);
 	}
 
 	protected override bool IsAvailableForCharacter(Player player)

@@ -46,21 +46,28 @@ internal static class HextechForgeGrantHelper
 {
 	public static async Task ObtainRandomForges(Player player, int count)
 	{
+		_ = await TryObtainRandomForges(player, count);
+	}
+
+	internal static async Task<bool> TryObtainRandomForges(Player player, int count)
+	{
 		for (int i = 0; i < count; i++)
 		{
 			if (!TryCreateStableRandomForgeChoice(player, "obtain-random-forges", i, out List<RelicModel> options))
 			{
-				return;
+				return false;
 			}
 
 			RelicModel? selected = await HextechForgeSelectionCoordinator.SelectForge(player, options, $"obtain-random-forges:{i}");
 			if (selected == null)
 			{
-				return;
+				return false;
 			}
 
 			await ObtainSelectedForge(player, selected, syncObtainedRelic: false);
 		}
+
+		return true;
 	}
 
 	public static async Task ObtainRandomForges(

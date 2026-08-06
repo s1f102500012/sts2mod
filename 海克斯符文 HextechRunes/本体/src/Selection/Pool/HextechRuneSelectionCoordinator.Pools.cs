@@ -21,10 +21,11 @@ internal static partial class HextechRuneSelectionCoordinator
 		Player player,
 		HextechRarityTier rarity,
 		RunState runState,
+		int selectionStageIndex,
 		IReadOnlySet<ModelId>? excludedIds = null,
 		bool useEndlessTagWindow = false)
 	{
-		return HextechRunePoolBuilder.BuildStableSelectableRunesForRarity(player, rarity, runState, excludedIds, useEndlessTagWindow);
+		return HextechRunePoolBuilder.BuildStableSelectableRunesForRarity(player, rarity, runState, selectionStageIndex, excludedIds, useEndlessTagWindow);
 	}
 
 	private static Dictionary<string, int> BuildOwnedRuneTagCounts(Player player, bool useEndlessTagWindow)

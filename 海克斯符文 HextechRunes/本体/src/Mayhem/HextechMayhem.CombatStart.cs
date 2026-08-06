@@ -26,8 +26,22 @@ internal sealed partial class HextechMayhemModifier
 
 		foreach (Creature enemy in enemies)
 		{
-			await ApplyMonsterCombatStartHexesToEnemy(enemy, room);
+			await ApplyInitialMonsterCombatStartHexesToEnemy(enemy, room);
 		}
+	}
+
+	private async Task ApplyInitialMonsterCombatStartHexesToEnemy(
+		Creature enemy,
+		CombatRoom room)
+	{
+		await HextechEnemyHexDispatcher.ForEachActive(
+			this,
+			(effect, context) => effect.ApplyOpeningCombatStartToEnemy(
+				context,
+				enemy,
+				room,
+				replayOneShotPowers: false));
+		await ApplyMonsterCombatStartHexesToEnemy(enemy, room);
 	}
 
 	private async Task ApplyMonsterCombatStartHexesToEnemy(

@@ -2,6 +2,8 @@ namespace HextechRunes;
 
 public sealed class HiddenGemUpgradeRune : CardUpgradeRuneBase<HiddenGem>
 {
+	internal const PileType ReplayTargetPile = PileType.Hand;
+
 	private int _upgradedPlaysThisCombat;
 
 	protected override bool IsAvailableForCharacter(Player player)
@@ -24,11 +26,7 @@ public sealed class HiddenGemUpgradeRune : CardUpgradeRuneBase<HiddenGem>
 			return;
 		}
 
-		List<CardModel> candidates = drawCards
-			.Where(static candidate =>
-				!candidate.Keywords.Contains(CardKeyword.Unplayable)
-				&& candidate.Type is not CardType.Status and not CardType.Curse)
-			.ToList();
+		List<CardModel> candidates = drawCards.Where(IsEligibleReplayTarget).ToList();
 		if (candidates.Count == 0)
 		{
 			return;
@@ -57,6 +55,13 @@ public sealed class HiddenGemUpgradeRune : CardUpgradeRuneBase<HiddenGem>
 			HextechStableRandom.CardPileKey(drawCards));
 		selected.BaseReplayCount += card.DynamicVars["Replay"].IntValue;
 		rune.Flash();
-		CardCmd.Preview(selected);
+		await CardPileCmd.Add(selected, ReplayTargetPile);
+	}
+
+	internal static bool IsEligibleReplayTarget(CardModel candidate)
+	{
+		return !candidate.Keywords.Contains(CardKeyword.Unplayable)
+			&& candidate.Type is not CardType.Status and not CardType.Curse
+			&& candidate.GetEnchantedReplayCount() < 1;
 	}
 }

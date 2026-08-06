@@ -78,6 +78,20 @@ internal sealed partial class HextechMayhemModifier
 	}
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public string SavedExtraStageIndexesJson
+	{
+		get => _actState.SavedExtraStageIndexesJson;
+		set => _actState.SavedExtraStageIndexesJson = value;
+	}
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
+	public int SavedActSelectionIndexOffset
+	{
+		get => _runContext.ActSelectionIndexOffset;
+		set => _runContext.ActSelectionIndexOffset = Math.Max(0, value);
+	}
+
+	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int[] SavedPlayerHexCountsByAct
 	{
 		get => _playerHexCounts.Snapshot;
