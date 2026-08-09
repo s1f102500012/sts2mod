@@ -4,6 +4,7 @@ using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Merchant;
 using MegaCrit.Sts2.Core.Entities.Players;
+using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
@@ -19,8 +20,8 @@ public static class ModEntry
 {
 	private const string HarmonyId = "Natsuki.RewardEnchants";
 	private const decimal EnchantChancePerAct = 0.125m;
-	private const decimal EnchantAmount = 1m;
 	private const string VanillaEnchantmentNamespace = "MegaCrit.Sts2.Core.Models.Enchantments";
+	private const string ShopsRngName = "shops";
 	private static readonly HashSet<Type> ExcludedRewardEnchantmentTypes = new()
 	{
 		typeof(Clone),
@@ -131,9 +132,21 @@ public static class ModEntry
 	{
 		Rng shopsRng = player.PlayerRng.Shops;
 		CardModel currentCard = result.Card;
-		string derivedName = $"RewardEnchants.shop.{shopsRng.Counter}.{currentCard.Id.Entry}.{currentCard.CurrentUpgradeLevel}.{currentCard.Enchantment?.Id.Entry ?? "none"}";
-		Rng localRng = new Rng(shopsRng.Seed, derivedName);
+		Rng localRng = CreateMerchantEnchantmentRng(shopsRng, currentCard, player);
 		return TryApplyRandomEnchantment(result, player, localRng, "merchant");
+	}
+
+	private static Rng CreateMerchantEnchantmentRng(Rng shopsRng, CardModel card, Player player)
+	{
+#if STS2_110_OR_NEWER
+		int counter = shopsRng.ToSerializable().counter;
+		ulong shopSeed = unchecked(player.PlayerRng.Seed + StringHelper.GetDeterministicHashCode(ShopsRngName));
+#else
+		int counter = shopsRng.Counter;
+		uint shopSeed = shopsRng.Seed;
+#endif
+		string derivedName = $"RewardEnchants.shop.{counter}.{card.Id.Entry}.{card.CurrentUpgradeLevel}.{card.Enchantment?.Id.Entry ?? "none"}";
+		return new Rng(shopSeed, derivedName);
 	}
 
 	private static bool TryApplyRandomEnchantment(CardCreationResult result, Player player, Rng rng, string sourceLabel)

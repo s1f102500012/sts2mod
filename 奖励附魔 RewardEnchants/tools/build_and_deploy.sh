@@ -4,44 +4,63 @@ set -euo pipefail
 ROOT="/Users/iniad/sts2-mods/RewardEnchants"
 FILE_STEM="RewardEnchants"
 MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
+VARIANT_MANIFEST="reward-enchants-variants.manifest"
 GAME_APP="/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app"
 GAME_BIN="$GAME_APP/Contents/MacOS/Slay the Spire 2"
 MOD_DIR="$GAME_APP/Contents/MacOS/mods/$FILE_STEM"
-BUILD_OUT="$ROOT/src/bin/Release/net9.0"
 PROJECT_PATH="$ROOT/src/$FILE_STEM.csproj"
+LOADER_PROJECT="$ROOT/loader/$FILE_STEM.Loader.csproj"
+BUILD_ROOT="$ROOT/.build"
+DIST="$ROOT/dist"
+REFS_ROOT="/Users/iniad/sts2-mods/HextechRunes/versioned-dll-backups"
+TARGETS=(0.107.1 0.110.1)
+DEPLOY="${REWARD_ENCHANTS_DEPLOY:-1}"
 
-rm -rf "$ROOT/src/bin" "$ROOT/src/obj" "$ROOT/dist"
+rm -rf "$BUILD_ROOT" "$DIST"
+mkdir -p "$BUILD_ROOT/implementation" "$BUILD_ROOT/loader" "$DIST/lib"
 
-dotnet build "$PROJECT_PATH" -c Release
+for target in "${TARGETS[@]}"; do
+  refs="$REFS_ROOT/$target/game-refs"
+  output="$BUILD_ROOT/implementation/$target"
+  dotnet build "$PROJECT_PATH" \
+    -c Release \
+    -p:RewardEnchantsSts2Target="$target" \
+    -p:GameDataDir="$refs" \
+    -o "$output"
+  mkdir -p "$DIST/lib/$target"
+  cp "$output/$FILE_STEM.dll" "$DIST/lib/$target/$FILE_STEM.dll"
+done
 
-mkdir -p "$ROOT/dist"
-rm -rf "$MOD_DIR"
+dotnet build "$LOADER_PROJECT" \
+  -c Release \
+  -p:GameDataDir="$REFS_ROOT/0.107.1/game-refs" \
+  -o "$BUILD_ROOT/loader"
 
-cp "$MANIFEST_SRC" "$ROOT/dist/$FILE_STEM.json"
+cp "$MANIFEST_SRC" "$DIST/$FILE_STEM.json"
+cp "$BUILD_ROOT/loader/$FILE_STEM.Loader.dll" "$DIST/$FILE_STEM.dll"
 
 "$GAME_BIN" --headless \
   --path "$ROOT/tools" \
   -s res://pack_mod.gd -- \
   "$MANIFEST_SRC" \
-  "$ROOT/dist/$FILE_STEM.pck"
+  "$DIST/$FILE_STEM.pck"
 
-for dll in "$BUILD_OUT"/*.dll; do
-  base_name="$(basename "$dll")"
-  case "$base_name" in
-    sts2.dll|GodotSharp.dll)
-      continue
-      ;;
-  esac
+python3 "$ROOT/tools/multi_version_bundle.py" generate \
+  --dist "$DIST" \
+  --mod-id "$FILE_STEM" \
+  --manifest-name "$VARIANT_MANIFEST" \
+  --target 0.107.1 \
+  --target 0.110.1
 
-  cp "$dll" "$ROOT/dist/$base_name"
-done
+python3 "$ROOT/tools/multi_version_bundle.py" validate \
+  --dist "$DIST" \
+  --mod-id "$FILE_STEM" \
+  --manifest-name "$VARIANT_MANIFEST"
 
-mkdir -p "$MOD_DIR"
-cp "$ROOT/dist/$FILE_STEM.json" "$MOD_DIR/$FILE_STEM.json"
-cp "$ROOT/dist/$FILE_STEM.pck" "$MOD_DIR/$FILE_STEM.pck"
-
-for dll in "$ROOT/dist"/*.dll; do
-  cp "$dll" "$MOD_DIR/$(basename "$dll")"
-done
-
-echo "Deployed to $MOD_DIR"
+if [[ "$DEPLOY" == "1" ]]; then
+  mkdir -p "$MOD_DIR"
+  rsync -a --delete "$DIST/" "$MOD_DIR/"
+  echo "Deployed to $MOD_DIR"
+else
+  echo "Built bundle at $DIST (deployment disabled)"
+fi
