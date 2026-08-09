@@ -3,8 +3,15 @@
   "name": "心之钢",
   "author": "Natsuki",
   "description": "添加共享稀有遗物“心之钢”，为敌人施加庞然吞食并通过攻击汲取最大生命值。",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,
+  "dependencies": [
+    {
+      "id": "STS2-RitsuLib",
+      "min_version": "0.5.10"
+    }
+  ],
   "affects_gameplay": true
 }

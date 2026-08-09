@@ -12,7 +12,11 @@ internal static class ModInfo
 
 	public const string OrnnsForgePortraitPath = "res://Heartsteel/images/events/ornns_forge.png";
 
-	public const string OrnnsForgePortraitRequestPath = "res://images/events/ornns_forge.png";
+	public const string RitsuLibVersion = "0.5.10";
 
-	public const string TargetGameVersion = "0.103.2";
+	public static string TargetGameVersion => typeof(ModInfo).Assembly
+		.GetCustomAttributes(typeof(System.Reflection.AssemblyMetadataAttribute), inherit: false)
+		.Cast<System.Reflection.AssemblyMetadataAttribute>()
+		.FirstOrDefault(static attribute => attribute.Key == "HeartsteelCompatibilityTarget")
+		?.Value ?? "unknown";
 }

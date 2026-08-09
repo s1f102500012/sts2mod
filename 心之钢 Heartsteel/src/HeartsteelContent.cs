@@ -16,10 +16,12 @@ using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Saves.Runs;
 using MegaCrit.Sts2.Core.ValueProps;
+using STS2RitsuLib.Scaffolding.Content;
+using STS2RitsuLib.Scaffolding.Content.Patches;
 
 namespace Heartsteel;
 
-public sealed class HeartsteelRelic : RelicModel
+public sealed class HeartsteelRelic : ModRelicTemplate
 {
 	private const int CooldownTurns = 3;
 
@@ -56,11 +58,10 @@ public sealed class HeartsteelRelic : RelicModel
 
 	public override RelicRarity Rarity => RelicRarity.Rare;
 
-	public override string PackedIconPath => ModInfo.RelicIconPath;
-
-	protected override string PackedIconOutlinePath => PackedIconPath;
-
-	protected override string BigIconPath => PackedIconPath;
+	public override RelicAssetProfile AssetProfile { get; } = new(
+		IconPath: ModInfo.RelicIconPath,
+		IconOutlinePath: ModInfo.RelicIconPath,
+		BigIconPath: ModInfo.RelicIconPath);
 
 	[SavedProperty(SerializationCondition.SaveIfNotTypeDefault)]
 	public int SavedMaxHpGainedFromHeartsteel
@@ -110,8 +111,12 @@ public sealed class HeartsteelRelic : RelicModel
 		return Task.CompletedTask;
 	}
 
-	public override async Task AfterSideTurnStart(CombatSide side, CombatState combatState)
+	public override async Task AfterSideTurnStart(
+		CombatSide side,
+		IReadOnlyList<Creature> participants,
+		ICombatState combatState)
 	{
+		_ = participants;
 		if (side != CombatSide.Player)
 		{
 			return;
@@ -166,8 +171,7 @@ public sealed class HeartsteelRelic : RelicModel
 				target,
 				bonusDamage,
 				ValueProp.Unpowered | ValueProp.SkipHurtAnim,
-				Owner.Creature,
-				cardSource: null);
+				Owner.Creature);
 		}
 
 		if (maxHpGain > 0)
@@ -194,7 +198,12 @@ public sealed class HeartsteelRelic : RelicModel
 
 	private async Task ApplyDevourMark(Creature enemy)
 	{
-		HeartsteelDevourPower? power = await PowerCmd.Apply<HeartsteelDevourPower>(enemy, GetCurrentBonusDamage(), Owner.Creature, null);
+		HeartsteelDevourPower? power = await PowerCmd.Apply<HeartsteelDevourPower>(
+			new ThrowingPlayerChoiceContext(),
+			enemy,
+			GetCurrentBonusDamage(),
+			Owner.Creature,
+			cardSource: null);
 		if (power == null)
 		{
 			return;
@@ -235,7 +244,17 @@ public sealed class HeartsteelRelic : RelicModel
 		int bonusDamage = GetCurrentBonusDamage();
 		foreach (Creature enemy in MarkedEnemies.Where(static enemy => enemy.IsAlive).ToList())
 		{
-			await PowerCmd.SetAmount<HeartsteelDevourPower>(enemy, bonusDamage, Owner.Creature, null);
+			HeartsteelDevourPower? power = enemy.GetPower<HeartsteelDevourPower>();
+			if (power != null && power.Amount != bonusDamage)
+			{
+				await PowerCmd.ModifyAmount(
+					new ThrowingPlayerChoiceContext(),
+					power,
+					bonusDamage - power.Amount,
+					Owner.Creature,
+					cardSource: null,
+					silent: true);
+			}
 		}
 	}
 
@@ -328,8 +347,16 @@ public sealed class HeartsteelRelic : RelicModel
 	}
 }
 
-public sealed class HeartsteelDevourPower : PowerModel
+public sealed class HeartsteelDevourPower : PowerModel, IModPowerAssetOverrides
 {
+	public PowerAssetProfile AssetProfile { get; } = new(
+		IconPath: ModInfo.PowerIconPath,
+		BigIconPath: ModInfo.PowerIconPath);
+
+	public string? CustomIconPath => ModInfo.PowerIconPath;
+
+	public string? CustomBigIconPath => ModInfo.PowerIconPath;
+
 	public override PowerType Type => PowerType.Buff;
 
 	public override PowerStackType StackType => PowerStackType.Counter;
