@@ -24,7 +24,8 @@ internal static partial class IntegratedStrategyEventSpawnRules
 			[typeof(HundredMileEncampmentEvent)] = [typeof(Glory)],
 			[typeof(InviteToPlayEvent)] = [typeof(Glory)],
 			[typeof(NorthWindWitchEvent)] = [typeof(Glory)],
-			[typeof(FutureHunterEvent)] = [typeof(Glory)]
+			[typeof(FutureHunterEvent)] = [typeof(Glory)],
+			[typeof(PrimalEntertainmentEvent)] = [typeof(Glory)]
 		};
 
 	public static IReadOnlyDictionary<Type, Type[]> ActRegistrations => ActRules;

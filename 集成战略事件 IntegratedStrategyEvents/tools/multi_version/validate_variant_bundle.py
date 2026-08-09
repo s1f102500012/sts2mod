@@ -105,12 +105,12 @@ def main() -> int:
 
     dependencies = mod_manifest.get("dependencies") or []
     ritsu = next((item for item in dependencies if item.get("id") == "STS2-RitsuLib"), None)
-    if ritsu is None or ritsu.get("min_version") != "0.4.60":
-        raise ValueError("STS2-RitsuLib dependency must require version 0.4.60")
+    if ritsu is None or ritsu.get("min_version") != "0.5.10":
+        raise ValueError("STS2-RitsuLib dependency must require version 0.5.10")
 
     print(
         f"validated {args.mod_id}: loader + {len(variants)} variants, "
-        f"targets={', '.join(targets)}, RitsuLib=0.4.60"
+        f"targets={', '.join(targets)}, RitsuLib=0.5.10"
     )
     return 0
 

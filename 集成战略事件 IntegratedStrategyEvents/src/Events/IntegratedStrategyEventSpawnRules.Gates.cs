@@ -17,6 +17,7 @@ internal static partial class IntegratedStrategyEventSpawnRules
 	private const int TrappedPersonMaximumGold = 100;
 	private const int FortuneFlowsMinimumGold = 150;
 	private const int ForSurvivalMinimumStartingGold = 15;
+	private const int GoodsFromTheMouthMinimumGold = 150;
 
 	private const int WastefulRevelryMinimumHp = 19;
 	private const int FatefulMeetingMinimumHp = 9;
@@ -75,6 +76,8 @@ internal static partial class IntegratedStrategyEventSpawnRules
 				AllPlayersHaveGold(runState, FortuneFlowsMinimumGold),
 			[typeof(ForSurvivalEvent)] = static runState =>
 				AnyPlayerHasGold(runState, ForSurvivalMinimumStartingGold),
+			[typeof(GoodsFromTheMouthEvent)] = static runState =>
+				AnyPlayerHasGold(runState, GoodsFromTheMouthMinimumGold),
 			[typeof(TransmissionEvent)] = static runState =>
 				runState.Players.Any(HasTransformableStrikeOrDefend),
 			[typeof(WastefulRevelryEvent)] = static runState =>

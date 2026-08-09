@@ -29,8 +29,8 @@ for required in \
 	"$DIST_DIR/$VARIANT_MANIFEST_NAME" \
 	"$DIST_DIR/lib/0.107.1/$FILE_STEM.dll" \
 	"$DIST_DIR/lib/0.107.1/compat-target.txt" \
-	"$DIST_DIR/lib/0.109.0/$FILE_STEM.dll" \
-	"$DIST_DIR/lib/0.109.0/compat-target.txt"; do
+	"$DIST_DIR/lib/0.110.1/$FILE_STEM.dll" \
+	"$DIST_DIR/lib/0.110.1/compat-target.txt"; do
 	if [[ ! -f "$required" ]]; then
 		print -u2 "Missing release artifact: $required"
 		exit 1
@@ -66,8 +66,8 @@ printf "%s\n" \
 	"$FILE_STEM/$VARIANT_MANIFEST_NAME" \
 	"$FILE_STEM/lib/0.107.1/$FILE_STEM.dll" \
 	"$FILE_STEM/lib/0.107.1/compat-target.txt" \
-	"$FILE_STEM/lib/0.109.0/$FILE_STEM.dll" \
-	"$FILE_STEM/lib/0.109.0/compat-target.txt" \
+	"$FILE_STEM/lib/0.110.1/$FILE_STEM.dll" \
+	"$FILE_STEM/lib/0.110.1/compat-target.txt" \
 	| LC_ALL=C sort > "$EXPECTED_ENTRIES_FILE"
 unzip -Z1 "$ZIP_PATH" | rg -v '/$' | LC_ALL=C sort > "$ACTUAL_ENTRIES_FILE"
 

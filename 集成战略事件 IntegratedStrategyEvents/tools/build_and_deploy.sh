@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FILE_STEM="IntegratedStrategyEvents"
 VARIANT_MANIFEST_NAME="integrated-strategy-events-variants.manifest"
-TARGETS=(0.107.1 0.109.0)
+TARGETS=(0.107.1 0.110.1)
 
 MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
 VARIANT_PROJECT="$ROOT/src/$FILE_STEM.csproj"
@@ -20,10 +20,9 @@ GAME_APP="${STS2_GAME_APP:-/Users/iniad/Library/Application Support/Steam/steama
 GAME_BIN="$GAME_APP/Contents/MacOS/Slay the Spire 2"
 GAME_RELEASE_INFO="$GAME_APP/Contents/Resources/release_info.json"
 MOD_DIR="$GAME_APP/Contents/MacOS/mods/$FILE_STEM"
-RITSULIB_MOD_DIR="$GAME_APP/Contents/MacOS/mods/STS2-RitsuLib"
 RITSULIB_WORKSHOP_ROOT="/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295"
-RITSULIB_ROOT="${RITSULIB_ROOT:-}"
-RITSULIB_REQUIRED_VERSION="0.4.60"
+RITSULIB_ROOT="${RITSULIB_ROOT:-$RITSULIB_WORKSHOP_ROOT}"
+RITSULIB_REQUIRED_VERSION="0.5.10"
 INTEGRATED_STRATEGY_DEPLOY="${INTEGRATED_STRATEGY_DEPLOY:-1}"
 
 DEFAULT_GODOT_EDITOR="$ROOT/../.tools/godot-4.5.1/Godot_mono.app/Contents/MacOS/Godot"
@@ -63,57 +62,37 @@ manifest_has_version() {
 	grep -q "\"version\"[[:space:]]*:[[:space:]]*\"$version\"" "$manifest"
 }
 
-resolve_ritsulib_root() {
-	if [[ -n "$RITSULIB_ROOT" ]]; then
-		return 0
-	fi
-
-	for candidate in "$RITSULIB_MOD_DIR" "$RITSULIB_WORKSHOP_ROOT"; do
-		if manifest_has_version "$candidate/mod_manifest.json" "$RITSULIB_REQUIRED_VERSION"; then
-			RITSULIB_ROOT="$candidate"
-			return 0
-		fi
-	done
-
-	print -u2 "Could not find an exact RitsuLib $RITSULIB_REQUIRED_VERSION build. Set RITSULIB_ROOT explicitly."
-	exit 1
-}
-
 require_references() {
 	local target="$1"
 	local refs="$REFS_ROOT/$target/game-refs"
+	local ritsulib_target
+	ritsulib_target="$(ritsulib_target_for_game_target "$target")"
 	for reference in sts2.dll GodotSharp.dll 0Harmony.dll; do
 		if [[ ! -f "$refs/$reference" ]]; then
 			print -u2 "Missing reference for STS2 $target: $refs/$reference"
 			exit 1
 		fi
 	done
-	if [[ ! -f "$RITSULIB_ROOT/lib/$target/STS2-RitsuLib.dll" ]]; then
-		print -u2 "Missing RitsuLib $RITSULIB_REQUIRED_VERSION variant for STS2 $target."
+	if [[ ! -f "$RITSULIB_ROOT/lib/$ritsulib_target/STS2-RitsuLib.dll" ]]; then
+		print -u2 "Missing RitsuLib $RITSULIB_REQUIRED_VERSION variant $ritsulib_target for STS2 $target."
 		exit 1
 	fi
 }
 
-ensure_ritsulib() {
+ritsulib_target_for_game_target() {
+	local target="$1"
+	if [[ "$target" == "0.110.1" ]]; then
+		echo "0.110.0"
+	else
+		echo "$target"
+	fi
+}
+
+validate_ritsulib() {
 	if ! manifest_has_version "$RITSULIB_ROOT/mod_manifest.json" "$RITSULIB_REQUIRED_VERSION"; then
-		print -u2 "RitsuLib $RITSULIB_REQUIRED_VERSION is required at $RITSULIB_ROOT."
+		print -u2 "RitsuLib $RITSULIB_REQUIRED_VERSION is required from Steam Workshop item 3747602295 at $RITSULIB_ROOT."
 		exit 1
 	fi
-	if manifest_has_version "$RITSULIB_MOD_DIR/mod_manifest.json" "$RITSULIB_REQUIRED_VERSION"; then
-		return 0
-	fi
-
-	local stage="$RITSULIB_MOD_DIR.tmp.$$"
-	local previous="$RITSULIB_MOD_DIR.previous.$$"
-	rm -rf "$stage" "$previous"
-	mkdir -p "$stage"
-	rsync -a --delete "$RITSULIB_ROOT/" "$stage/"
-	clean_macos_metadata "$stage"
-	if [[ -d "$RITSULIB_MOD_DIR" ]]; then
-		mv "$RITSULIB_MOD_DIR" "$previous"
-	fi
-	mv "$stage" "$RITSULIB_MOD_DIR"
-	rm -rf "$previous"
 }
 
 deploy_bundle_atomically() {
@@ -133,11 +112,10 @@ major_minor_version() {
 	sed -E 's/^([0-9]+[.][0-9]+).*/\1/' <<< "$1"
 }
 
-resolve_ritsulib_root
+validate_ritsulib
 for target in "${TARGETS[@]}"; do
 	require_references "$target"
 done
-ensure_ritsulib
 
 if [[ ! -x "$GAME_BIN" ]]; then
 	print -u2 "Missing Slay the Spire 2 executable: $GAME_BIN"
@@ -156,6 +134,7 @@ rm -rf "$ROOT/src/bin" "$ROOT/src/obj" "$ROOT/loader/bin" "$ROOT/loader/obj"
 
 for target in "${TARGETS[@]}"; do
 	refs="$REFS_ROOT/$target/game-refs"
+	ritsulib_target="$(ritsulib_target_for_game_target "$target")"
 	output="$BUILD_ROOT/variants/$target"
 	mkdir -p "$output"
 
@@ -163,10 +142,12 @@ for target in "${TARGETS[@]}"; do
 	"$DOTNET_BIN" clean "$VARIANT_PROJECT" -c Release \
 		-p:IntegratedStrategySts2Target="$target" \
 		-p:GameDataPath="$refs" \
+		-p:RitsuLibTarget="$ritsulib_target" \
 		-p:RitsuLibRoot="$RITSULIB_ROOT" >/dev/null
 	"$DOTNET_BIN" build "$VARIANT_PROJECT" -c Release \
 		-p:IntegratedStrategySts2Target="$target" \
 		-p:GameDataPath="$refs" \
+		-p:RitsuLibTarget="$ritsulib_target" \
 		-p:RitsuLibRoot="$RITSULIB_ROOT" \
 		-o "$output"
 
@@ -190,7 +171,7 @@ python3 "$ROOT/tools/multi_version/generate_variant_manifest.py" \
 	--mod-id "$FILE_STEM" \
 	--manifest-name "$VARIANT_MANIFEST_NAME" \
 	--target "0.107.1" \
-	--target "0.109.0"
+	--target "0.110.1"
 
 GAME_GODOT_VERSION="$("$GAME_BIN" --version 2>/dev/null | head -n 1)"
 IMPORT_GODOT_VERSION="$("$GODOT_EDITOR" --version 2>/dev/null | head -n 1)"
@@ -210,6 +191,7 @@ clean_macos_metadata "$IMPORT_PROJECT"
 
 cp "$MANIFEST_SRC" "$DIST/$FILE_STEM.json"
 "$GAME_BIN" --headless \
+	--log-file "$BUILD_ROOT/pack-godot.log" \
 	--path "$ROOT/tools" \
 	-s res://pack_mod.gd -- \
 	"$MANIFEST_SRC" \

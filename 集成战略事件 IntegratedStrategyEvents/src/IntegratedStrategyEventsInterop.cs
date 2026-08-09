@@ -33,6 +33,29 @@ public static class IntegratedStrategyEventsInterop
 		return TreeHoles.IntegratedStrategyTreeHoleController.IsTemporaryMap(runState, map);
 	}
 
+	/// <summary>
+	/// 返回当前应被其他模组视为额外幕的稳定 ID。普通树洞与先知号角断章不属于额外幕。
+	/// </summary>
+	public static string? GetCurrentExtraActId(IRunState runState)
+	{
+		if (runState is not RunState state ||
+			!TreeHoles.TreeHoleSessionManager.TryGetFinaleSession(state, out TreeHoles.EndlessFinaleSession session))
+		{
+			return null;
+		}
+
+		return ClassifyExtraAct(
+			session.Kind,
+			TreeHoles.TreeHoleSessionManager.IsCurrentFinaleSessionMap(state, session));
+	}
+
+	internal static string? ClassifyExtraAct(TreeHoles.SpecialFinaleKind kind, bool isCurrentFinaleMap)
+	{
+		return isCurrentFinaleMap && kind != TreeHoles.SpecialFinaleKind.ProphetHornFragment
+			? $"IntegratedStrategyEvents:Finale:{kind}"
+			: null;
+	}
+
 	internal static bool ShouldSkipSecretNodes(ActMap map)
 	{
 		foreach (Func<ActMap, bool> predicate in SecretNodeSkipPredicates)

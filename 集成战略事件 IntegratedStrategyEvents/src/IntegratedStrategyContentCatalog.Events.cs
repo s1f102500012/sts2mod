@@ -64,6 +64,10 @@ internal static partial class IntegratedStrategyContentCatalog
 		typeof(SublimationEvent),
 		typeof(ReconstructionEvent),
 		typeof(ExplorerSmallStepEvent),
-		typeof(ExpressionEvent)
+		typeof(ExpressionEvent),
+		typeof(GoodsFromTheMouthEvent),
+		typeof(PrimalEntertainmentEvent),
+		typeof(ColorAndFlavorDifferentOriginsEvent),
+		typeof(HeavyContractEvent)
 	];
 }

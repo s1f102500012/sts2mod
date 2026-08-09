@@ -230,5 +230,15 @@
   "INTEGRATEDSTRATEGYEVENTS-THEATER_ASSEMBLY.moves.CHARGE_MOVE.title": "蓄力",
   "theaterAssembly.moves.SMASH_MOVE.title": "砸击",
   "THEATER_ASSEMBLY.moves.SMASH_MOVE.title": "砸击",
-  "INTEGRATEDSTRATEGYEVENTS-THEATER_ASSEMBLY.moves.SMASH_MOVE.title": "砸击"
+	"INTEGRATEDSTRATEGYEVENTS-THEATER_ASSEMBLY.moves.SMASH_MOVE.title": "砸击",
+	"mio.name": "澪",
+	"MIO.name": "澪",
+	"mio.moves.DAGGER_MOVE.title": "匕首",
+	"MIO.moves.DAGGER_MOVE.title": "匕首",
+	"mio.moves.SHORT_BLADE_MOVE.title": "短刀",
+	"MIO.moves.SHORT_BLADE_MOVE.title": "短刀",
+	"mio.moves.DRAW_SWORD_MOVE.title": "亮剑",
+	"MIO.moves.DRAW_SWORD_MOVE.title": "亮剑",
+	"mio.moves.COLD_RADIANCE_MOVE.title": "寒晖",
+	"MIO.moves.COLD_RADIANCE_MOVE.title": "寒晖"
 }

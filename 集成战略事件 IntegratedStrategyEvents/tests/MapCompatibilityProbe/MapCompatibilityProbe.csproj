@@ -4,10 +4,13 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <IntegratedStrategySts2Target Condition="'$(IntegratedStrategySts2Target)' == ''">0.109.0</IntegratedStrategySts2Target>
+    <IntegratedStrategySts2Target Condition="'$(IntegratedStrategySts2Target)' == ''">0.110.1</IntegratedStrategySts2Target>
     <VersionedRefsRoot>$(MSBuildThisFileDirectory)../../../HextechRunes/versioned-dll-backups</VersionedRefsRoot>
     <GameDataPath Condition="'$(GameDataPath)' == ''">$(VersionedRefsRoot)/$(IntegratedStrategySts2Target)/game-refs</GameDataPath>
+    <GameRuntimeDataPath Condition="'$(GameRuntimeDataPath)' == ''">/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app/Contents/Resources/data_sts2_macos_arm64</GameRuntimeDataPath>
     <RitsuLibRoot Condition="'$(RitsuLibRoot)' == ''">/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295</RitsuLibRoot>
+    <RitsuLibTarget Condition="'$(RitsuLibTarget)' == '' and '$(IntegratedStrategySts2Target)' == '0.110.1'">0.110.0</RitsuLibTarget>
+    <RitsuLibTarget Condition="'$(RitsuLibTarget)' == ''">$(IntegratedStrategySts2Target)</RitsuLibTarget>
     <IntegratedStrategyAssembly Condition="'$(IntegratedStrategyAssembly)' == ''">$(MSBuildThisFileDirectory)../../dist/lib/$(IntegratedStrategySts2Target)/IntegratedStrategyEvents.dll</IntegratedStrategyAssembly>
   </PropertyGroup>
 
@@ -24,8 +27,20 @@
       <HintPath>$(GameDataPath)/0Harmony.dll</HintPath>
       <Private>true</Private>
     </Reference>
+    <Reference Include="System.IO.Hashing" Condition="'$(IntegratedStrategySts2Target)' == '0.110.1' and Exists('$(GameRuntimeDataPath)/System.IO.Hashing.dll')">
+      <HintPath>$(GameRuntimeDataPath)/System.IO.Hashing.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Sentry.Godot" Condition="'$(IntegratedStrategySts2Target)' == '0.110.1' and Exists('$(GameRuntimeDataPath)/Sentry.Godot.dll')">
+      <HintPath>$(GameRuntimeDataPath)/Sentry.Godot.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Sentry" Condition="'$(IntegratedStrategySts2Target)' == '0.110.1' and Exists('$(GameRuntimeDataPath)/Sentry.dll')">
+      <HintPath>$(GameRuntimeDataPath)/Sentry.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
     <Reference Include="STS2-RitsuLib">
-      <HintPath>$(RitsuLibRoot)/lib/$(IntegratedStrategySts2Target)/STS2-RitsuLib.dll</HintPath>
+      <HintPath>$(RitsuLibRoot)/lib/$(RitsuLibTarget)/STS2-RitsuLib.dll</HintPath>
       <Private>true</Private>
     </Reference>
     <Reference Include="IntegratedStrategyEvents">
@@ -36,6 +51,8 @@
 
   <Target Name="ValidateProbeInputs" BeforeTargets="ResolveReferences">
     <Error Condition="!Exists('$(IntegratedStrategyAssembly)')" Text="Missing IntegratedStrategyEvents variant: $(IntegratedStrategyAssembly)" />
-    <Error Condition="!Exists('$(RitsuLibRoot)/lib/$(IntegratedStrategySts2Target)/STS2-RitsuLib.dll')" Text="Missing RitsuLib variant for $(IntegratedStrategySts2Target)." />
+    <Error Condition="!Exists('$(RitsuLibRoot)/lib/$(RitsuLibTarget)/STS2-RitsuLib.dll')" Text="Missing RitsuLib variant $(RitsuLibTarget) for STS2 $(IntegratedStrategySts2Target)." />
+    <Error Condition="'$(IntegratedStrategySts2Target)' == '0.110.1' and !Exists('$(GameRuntimeDataPath)/Sentry.Godot.dll')" Text="Missing Sentry.Godot runtime dependency for the STS2 0.110.1 probe." />
+    <Error Condition="'$(IntegratedStrategySts2Target)' == '0.110.1' and !Exists('$(GameRuntimeDataPath)/Sentry.dll')" Text="Missing Sentry runtime dependency for the STS2 0.110.1 probe." />
   </Target>
 </Project>

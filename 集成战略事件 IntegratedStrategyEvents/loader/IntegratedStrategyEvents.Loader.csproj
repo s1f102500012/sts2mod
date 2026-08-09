@@ -3,9 +3,9 @@
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>IntegratedStrategyEvents.Loader</AssemblyName>
     <RootNamespace>IntegratedStrategyEvents.Loader</RootNamespace>
-    <Version>0.5.4</Version>
-    <AssemblyVersion>0.5.4.0</AssemblyVersion>
-    <FileVersion>0.5.4.0</FileVersion>
+    <Version>0.5.5</Version>
+    <AssemblyVersion>0.5.5.0</AssemblyVersion>
+    <FileVersion>0.5.5.0</FileVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GameDataDir Condition="'$(GameDataDir)' == ''">$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups/0.107.1/game-refs</GameDataDir>

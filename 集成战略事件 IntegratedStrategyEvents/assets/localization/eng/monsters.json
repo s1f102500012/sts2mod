@@ -230,5 +230,15 @@
   "INTEGRATEDSTRATEGYEVENTS-THEATER_ASSEMBLY.moves.CHARGE_MOVE.title": "Charge",
   "theaterAssembly.moves.SMASH_MOVE.title": "Smash",
   "THEATER_ASSEMBLY.moves.SMASH_MOVE.title": "Smash",
-  "INTEGRATEDSTRATEGYEVENTS-THEATER_ASSEMBLY.moves.SMASH_MOVE.title": "Smash"
+	"INTEGRATEDSTRATEGYEVENTS-THEATER_ASSEMBLY.moves.SMASH_MOVE.title": "Smash",
+	"mio.name": "Mio",
+	"MIO.name": "Mio",
+	"mio.moves.DAGGER_MOVE.title": "Dagger",
+	"MIO.moves.DAGGER_MOVE.title": "Dagger",
+	"mio.moves.SHORT_BLADE_MOVE.title": "Short Blade",
+	"MIO.moves.SHORT_BLADE_MOVE.title": "Short Blade",
+	"mio.moves.DRAW_SWORD_MOVE.title": "Draw Sword",
+	"MIO.moves.DRAW_SWORD_MOVE.title": "Draw Sword",
+	"mio.moves.COLD_RADIANCE_MOVE.title": "Cold Radiance",
+	"MIO.moves.COLD_RADIANCE_MOVE.title": "Cold Radiance"
 }

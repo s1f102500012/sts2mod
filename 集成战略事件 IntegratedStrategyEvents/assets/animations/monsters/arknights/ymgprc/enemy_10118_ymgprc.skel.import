@@ -1,0 +1,12 @@
+[remap]
+
+importer="spine.skel"
+type="SpineSkeletonFileResource"
+path="res://IntegratedStrategyEvents/_imported/enemy_10118_ymgprc.skel.spskel"
+
+[deps]
+
+source_file="res://IntegratedStrategyEvents/animations/monsters/arknights/ymgprc/enemy_10118_ymgprc.skel"
+dest_files=["res://IntegratedStrategyEvents/_imported/enemy_10118_ymgprc.skel.spskel"]
+
+[params]

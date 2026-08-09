@@ -1,6 +1,6 @@
 # 集成战略事件
 
-RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by Arknights Integrated Strategies. 同一个模组包支持 STS2 0.107.1 与 0.109.0，并依赖 RitsuLib 0.4.60（Workshop 3747602295）。
+RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by Arknights Integrated Strategies. 同一个模组包支持 STS2 0.107.1 与 0.110.1，并依赖 RitsuLib 0.5.10（Workshop 3747602295）。
 
 ## Structure
 
@@ -52,7 +52,7 @@ RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by 
 7. Add the new event type to `IntegratedStrategyContentCatalog.Events.cs`.
 8. Add act restrictions in `IntegratedStrategyEventSpawnRules.Acts.cs` and resource/deck gates in `IntegratedStrategyEventSpawnRules.Gates.cs` when the event should not be globally eligible.
 9. Keep `event_options.txt`, `event_descriptions.txt`, and `event_refresh_conditions.txt` in sync as human review summaries.
-10. Run `tools/validate_event_structure.sh`, then `tools/build_and_deploy.sh`; both 0.107.1 and 0.109.0 variants must compile.
+10. Run `tools/validate_event_structure.sh`, then `tools/build_and_deploy.sh`; both 0.107.1 and 0.110.1 variants must compile.
 
 ## Adding Event Relics
 

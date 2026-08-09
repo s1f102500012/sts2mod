@@ -6,20 +6,26 @@
     <AssemblyName>IntegratedStrategyEvents</AssemblyName>
     <RootNamespace>IntegratedStrategyEvents</RootNamespace>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
-    <Version>0.5.4</Version>
-    <AssemblyVersion>0.5.4.0</AssemblyVersion>
-    <FileVersion>0.5.4.0</FileVersion>
-    <InformationalVersion>0.5.4</InformationalVersion>
+    <Version>0.5.5</Version>
+    <AssemblyVersion>0.5.5.0</AssemblyVersion>
+    <FileVersion>0.5.5.0</FileVersion>
+    <InformationalVersion>0.5.5</InformationalVersion>
     <IntegratedStrategySts2Target Condition="'$(IntegratedStrategySts2Target)' == ''">0.107.1</IntegratedStrategySts2Target>
     <VersionedRefsRoot>$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups</VersionedRefsRoot>
     <OfficialGameDataPath>$(VersionedRefsRoot)/$(IntegratedStrategySts2Target)/game-refs</OfficialGameDataPath>
     <GameDataPath Condition="'$(GameDataPath)' == ''">$(OfficialGameDataPath)</GameDataPath>
     <RitsuLibRoot Condition="'$(RitsuLibRoot)' == ''">/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295</RitsuLibRoot>
-    <RitsuLibHintPath Condition="'$(RitsuLibHintPath)' == ''">$(RitsuLibRoot)/lib/$(IntegratedStrategySts2Target)/STS2-RitsuLib.dll</RitsuLibHintPath>
+    <RitsuLibTarget Condition="'$(RitsuLibTarget)' == '' and '$(IntegratedStrategySts2Target)' == '0.110.1'">0.110.0</RitsuLibTarget>
+    <RitsuLibTarget Condition="'$(RitsuLibTarget)' == ''">$(IntegratedStrategySts2Target)</RitsuLibTarget>
+    <RitsuLibHintPath Condition="'$(RitsuLibHintPath)' == ''">$(RitsuLibRoot)/lib/$(RitsuLibTarget)/STS2-RitsuLib.dll</RitsuLibHintPath>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(IntegratedStrategySts2Target)' == '0.109.0'">
+  <PropertyGroup Condition="'$(IntegratedStrategySts2Target)' == '0.109.0' or '$(IntegratedStrategySts2Target)' == '0.110.1'">
     <DefineConstants>$(DefineConstants);STS2_109_OR_NEWER</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IntegratedStrategySts2Target)' == '0.110.1'">
+    <DefineConstants>$(DefineConstants);STS2_110_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

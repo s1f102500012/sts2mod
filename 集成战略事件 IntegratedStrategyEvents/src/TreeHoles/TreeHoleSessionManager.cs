@@ -393,6 +393,11 @@ internal static class TreeHoleSessionManager
 		SessionStore.SetFinaleSession(state, session);
 	}
 
+	internal static bool IsCurrentFinaleSessionMap(RunState state, EndlessFinaleSession session)
+	{
+		return IsSessionFinaleMap(state, session, state.Map);
+	}
+
 	public static bool AddPendingTreeHoleEntry(RunState state)
 	{
 		return SessionStore.AddPendingTreeHoleEntry(state);
@@ -725,11 +730,15 @@ internal static class TreeHoleSessionManager
 			return true;
 		}
 
-		return ReferenceEquals(state.Map, map) &&
-			map.GetColumnCount() == session.FinaleMap.GetColumnCount() &&
-			map.GetRowCount() == session.FinaleMap.GetRowCount() &&
-			map.BossMapPoint.coord.Equals(session.FinaleMap.BossMapPoint.coord) &&
-			map.StartingMapPoint.coord.Equals(session.FinaleMap.StartingMapPoint.coord);
+		return ReferenceEquals(state.Map, map) && MatchesFinaleMapTopology(map, session.FinaleMap);
+	}
+
+	internal static bool MatchesFinaleMapTopology(ActMap currentMap, ActMap finaleMap)
+	{
+		return currentMap.GetColumnCount() == finaleMap.GetColumnCount() &&
+			currentMap.GetRowCount() == finaleMap.GetRowCount() &&
+			currentMap.BossMapPoint.coord.Equals(finaleMap.BossMapPoint.coord) &&
+			currentMap.StartingMapPoint.coord.Equals(finaleMap.StartingMapPoint.coord);
 	}
 
 	private static void RestoreOriginalMap(RunState state, TreeHoleSession session)

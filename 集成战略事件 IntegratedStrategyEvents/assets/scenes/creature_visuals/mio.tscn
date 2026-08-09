@@ -1,0 +1,36 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://src/Core/Nodes/Combat/NCreatureVisuals.cs" id="1_script"]
+[ext_resource type="SpineSkeletonDataResource" path="res://IntegratedStrategyEvents/animations/monsters/arknights/ymgprc/enemy_10118_ymgprc_skel_data.tres" id="2_skel_data"]
+
+[node name="MioCreatureVisuals" type="Node2D"]
+script = ExtResource("1_script")
+
+[node name="Visuals" type="SpineSprite" parent="." owner="."]
+unique_name_in_owner = true
+skeleton_data_res = ExtResource("2_skel_data")
+preview_skin = "Default"
+preview_animation = "Idle"
+position = Vector2(0, -12)
+scale = Vector2(-0.72, 0.72)
+
+[node name="Bounds" type="Control" parent="." owner="."]
+unique_name_in_owner = true
+position = Vector2(-135, -315)
+size = Vector2(270, 315)
+
+[node name="IntentPos" type="Marker2D" parent="." owner="."]
+unique_name_in_owner = true
+position = Vector2(0, -340)
+
+[node name="CenterPos" type="Marker2D" parent="." owner="."]
+unique_name_in_owner = true
+position = Vector2(0, -165)
+
+[node name="OrbPos" type="Marker2D" parent="." owner="."]
+unique_name_in_owner = true
+position = Vector2(0, -220)
+
+[node name="TalkPos" type="Marker2D" parent="." owner="."]
+unique_name_in_owner = true
+position = Vector2(65, -285)
