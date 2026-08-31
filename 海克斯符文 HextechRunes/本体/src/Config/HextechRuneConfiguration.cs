@@ -7,7 +7,7 @@ internal static class HextechRuneConfiguration
 {
 	private const string ConfigFileName = "rune_config.json";
 	// v15(0.8.4):一次性强制重置——旧版本配置载入时整体丢弃回默认(含禁用池/数量/权重/重随/价格/总开关)。
-	private const int CurrentConfigVersion = 32;
+	private const int CurrentConfigVersion = 33;
 	private const int ForceResetBelowConfigVersion = 15;
 	private const int HexActCount = 3;
 	private const int MinActHexCount = 0;
@@ -30,7 +30,7 @@ internal static class HextechRuneConfiguration
 	private static readonly int[] DefaultPlayerHexCountsByAct = [ 1, 1, 1 ];
 	private static readonly int[] DefaultEnemyHexCountsByAct = [ 1, 2, 3 ];
 	private const int DefaultPlayerRuneRerollLimit = 1;
-	private const int DefaultMonsterHexRerollLimit = InfiniteRerollLimit;
+	private const int DefaultMonsterHexRerollLimit = 1;
 	private static readonly HextechRarityWeights DefaultRuneRarityWeights = new(1, 1, 1);
 	private static readonly HextechRarityWeights[] DefaultRuneRarityWeightsByAct =
 	[
@@ -539,6 +539,11 @@ internal static class HextechRuneConfiguration
 			config.RuneRarityWeightsByAct = FromRarityWeightsByAct([ legacyWeights, legacyWeights, legacyWeights ]);
 		}
 
+		if (previousConfigVersion < 33 && config.MonsterHexRerollLimit == InfiniteRerollLimit)
+		{
+			config.MonsterHexRerollLimit = DefaultMonsterHexRerollLimit;
+		}
+
 		config.ConfigVersion = CurrentConfigVersion;
 		config.DisabledPlayerRuneIds = disabledIds;
 		config.PlayerHexCountsByAct = NormalizePlayerHexCounts(config.PlayerHexCountsByAct);
@@ -822,6 +827,19 @@ internal static class HextechRuneConfiguration
 		};
 		RuneConfig normalized = NormalizeLoadedConfig(config);
 		return ToRarityWeightsByAct(normalized.RuneRarityWeightsByAct, DefaultRuneRarityWeightsByAct);
+	}
+
+	internal static (int ConfigVersion, int MonsterHexRerollLimit) MigrateMonsterHexRerollLimitForTests(
+		int configVersion,
+		int rerollLimit)
+	{
+		RuneConfig config = new()
+		{
+			ConfigVersion = configVersion,
+			MonsterHexRerollLimit = rerollLimit
+		};
+		RuneConfig normalized = NormalizeLoadedConfig(config);
+		return (normalized.ConfigVersion, normalized.MonsterHexRerollLimit);
 	}
 
 	private static HashSet<string> NormalizeConfigDisabledIds(IEnumerable<string>? ids)

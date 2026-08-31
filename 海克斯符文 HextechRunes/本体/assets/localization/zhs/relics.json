@@ -1220,7 +1220,7 @@
   "CARD_INSPECTION_RUNE.flavor": "顶牌只是建议，牌堆才是答案。",
   "BLANK_CHECK_RUNE.title": "空白支票",
   "BLANK_CHECK_RUNE.description": "回合开始时，获得[blue]1[/blue]张随机无色牌。你的无色牌变为[blue]0[/blue]费，但打出后会[gold]消耗[/gold]。",
-  "BLANK_CHECK_RUNE.flavor": "金额留空，代价写在背面。——哈基川",
+  "BLANK_CHECK_RUNE.flavor": "赞助者物品：金额留空，代价写在背面。——哈基川",
   "SKULKING_COLONY_HEX.title": "升级：鬼祟珊瑚群",
   "SKULKING_COLONY_HEX.description": "战斗开始时，如果敌人自身没有[gold]硬化外壳[/gold]，则获得相当于自身最大生命值[blue]60%[/blue]的[gold]硬化外壳[/gold]，最少获得[blue]12[/blue]层[gold]硬化外壳[/gold]。",
   "SKULKING_COLONY_HEX.flavor": "珊瑚也懂得把软处藏进壳里。",
@@ -1406,5 +1406,8 @@
   "DEATH_WARRANT_RUNE.flavor": "八声纸响，毒便提前来收账。",
   "PIERCING_THREAD_RUNE.title": "穿针引线",
   "PIERCING_THREAD_RUNE.description": "你造成的伤害中有[blue]{PiercingPercent}%[/blue]会无视敌人的格挡。",
-  "PIERCING_THREAD_RUNE.flavor": "再窄的缝隙，也足够一击穿过。"
+  "PIERCING_THREAD_RUNE.flavor": "再窄的缝隙，也足够一击穿过。",
+  "SOMETHING_FOR_NOTHING_RUNE.title": "无本万利",
+  "SOMETHING_FOR_NOTHING_RUNE.description": "打出[blue]0[/blue]费牌时，抽[blue]{Cards}[/blue]张牌。每回合首次打出非[blue]0[/blue]费牌时，该牌在本场战斗中的耗能降低[blue]{Energy}[/blue]。",
+  "SOMETHING_FOR_NOTHING_RUNE.flavor": "赞助者物品：真正划算的交易，连本钱都不需要。——哈基川"
 }

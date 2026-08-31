@@ -1,5 +1,5 @@
 {
-  "generatedFrom": "HextechRunes + HextechRunesSponsorPack zhs relics.json (0.8.10 补全)",
+  "generatedFrom": "HextechRunes + HextechRunesSponsorPack zhs relics.json (0.9.0 补全，含退役海克斯历史标签)",
   "runes": {
     "JUDICATOR_RUNE": "裁决使",
     "SLAP_RUNE": "扇巴掌",
@@ -451,9 +451,15 @@
     "TWIN_FLAMES_RUNE": "双生火焰",
     "DEATH_WARRANT_RUNE": "催命符",
     "PIERCING_THREAD_RUNE": "穿针引线",
+    "SOMETHING_FOR_NOTHING_RUNE": "无本万利",
     "STORM_UPGRADE_RUNE": "升级：雷暴",
     "WROUGHT_IN_WAR_UPGRADE_RUNE": "升级：战火铸就",
-    "DECISIONS_DECISIONS_UPGRADE_RUNE": "升级：抉择，抉择"
+    "DECISIONS_DECISIONS_UPGRADE_RUNE": "升级：抉择，抉择",
+    "NO_NONSENSE_RUNE": "一板一眼",
+    "MIND_PURIFICATION_RUNE": "心灵净化",
+    "HOLY_FIRE_RUNE": "圣火",
+    "OLD_IDOL_RUNE": "旧日雕像",
+    "CRACK_THE_EGG_RUNE": "砸开那颗蛋"
   },
   "monsterHexes": {
     "Slap": "扇巴掌",
@@ -588,7 +594,8 @@
     "Stats": "属性！",
     "StatsOnStats": "属性叠属性！",
     "StatsOnStatsOnStats": "属性叠属性叠属性！",
-    "MiserableFate": "悲惨命运"
+    "MiserableFate": "悲惨命运",
+    "BlankCheck": "空白支票"
   },
   "characters": {
     "IRONCLAD": "战士",

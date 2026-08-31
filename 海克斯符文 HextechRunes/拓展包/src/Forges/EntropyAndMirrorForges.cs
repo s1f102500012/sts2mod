@@ -11,6 +11,8 @@ namespace HextechRunesSponsorPack;
 
 public sealed class DollysMirrorForge : HextechForgeBase
 {
+	internal const int RelicsPerPage = 6;
+
 	public override bool HasUponPickupEffect => true;
 
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
@@ -79,10 +81,28 @@ public sealed class DollysMirrorForge : HextechForgeBase
 	private async Task CopySelectedRelic()
 	{
 		IReadOnlyList<RelicModel> options = CreateRelicOptions();
-		RelicModel? selected = await HextechRunesApi.SelectRelicOption(
-			Owner!,
-			options,
-			"dollys-mirror-relic-choice");
+		int pageIndex = 0;
+		RelicModel? selected;
+		while (true)
+		{
+			DollyRelicPage page = CreateRelicPage(options, pageIndex);
+			selected = await HextechRunesApi.SelectRelicOption(
+				Owner!,
+				page.Options,
+				$"dollys-mirror-relic-choice page={page.PageIndex + 1}/{page.PageCount}");
+			if (selected is DollyPreviousPageRelic)
+			{
+				pageIndex = page.PageIndex - 1;
+				continue;
+			}
+			if (selected is DollyNextPageRelic)
+			{
+				pageIndex = page.PageIndex + 1;
+				continue;
+			}
+			break;
+		}
+
 		if (selected == null)
 		{
 			return;
@@ -104,7 +124,46 @@ public sealed class DollysMirrorForge : HextechForgeBase
 			.Where(IsNonHextechRelic)
 			.GroupBy(static relic => relic.CanonicalInstance?.Id ?? relic.Id)
 			.Select(static group => group.First())
+			.OrderBy(static relic => (relic.CanonicalInstance?.Id ?? relic.Id).ToString(), StringComparer.Ordinal)
 			.ToArray();
+	}
+
+	internal static DollyRelicPage CreateRelicPage(IReadOnlyList<RelicModel> relics, int requestedPageIndex)
+	{
+		ArgumentNullException.ThrowIfNull(relics);
+		DollyRelicPageLayout layout = GetRelicPageLayout(relics.Count, requestedPageIndex);
+		List<RelicModel> pageOptions = [];
+		if (layout.HasPreviousPage)
+		{
+			pageOptions.Add(ModelDb.Relic<DollyPreviousPageRelic>());
+		}
+
+		pageOptions.AddRange(relics.Skip(layout.StartIndex).Take(layout.RelicCount));
+		if (layout.HasNextPage)
+		{
+			pageOptions.Add(ModelDb.Relic<DollyNextPageRelic>());
+		}
+
+		return new DollyRelicPage(pageOptions, layout.PageIndex, layout.PageCount);
+	}
+
+	internal static DollyRelicPageLayout GetRelicPageLayout(int relicCount, int requestedPageIndex)
+	{
+		if (relicCount < 0)
+		{
+			throw new ArgumentOutOfRangeException(nameof(relicCount));
+		}
+
+		int pageCount = Math.Max(1, (relicCount + RelicsPerPage - 1) / RelicsPerPage);
+		int pageIndex = Math.Clamp(requestedPageIndex, 0, pageCount - 1);
+		int startIndex = pageIndex * RelicsPerPage;
+		return new DollyRelicPageLayout(
+			startIndex,
+			Math.Min(RelicsPerPage, Math.Max(0, relicCount - startIndex)),
+			pageIndex > 0,
+			pageIndex + 1 < pageCount,
+			pageIndex,
+			pageCount);
 	}
 
 	private static bool IsNonHextechRelic(RelicModel relic)
@@ -120,6 +179,19 @@ public sealed class DollysMirrorForge : HextechForgeBase
 			|| type.Namespace?.StartsWith("HextechRunes", StringComparison.Ordinal) is true;
 	}
 }
+
+internal readonly record struct DollyRelicPage(
+	IReadOnlyList<RelicModel> Options,
+	int PageIndex,
+	int PageCount);
+
+internal readonly record struct DollyRelicPageLayout(
+	int StartIndex,
+	int RelicCount,
+	bool HasPreviousPage,
+	bool HasNextPage,
+	int PageIndex,
+	int PageCount);
 
 public sealed class EntropyForge : HextechForgeBase
 {
@@ -208,6 +280,14 @@ public sealed class DollyCardChoiceRelic : PrismaticForgeChoiceRelic
 }
 
 public sealed class DollyRelicChoiceRelic : PrismaticForgeChoiceRelic
+{
+}
+
+public sealed class DollyPreviousPageRelic : PrismaticForgeChoiceRelic
+{
+}
+
+public sealed class DollyNextPageRelic : PrismaticForgeChoiceRelic
 {
 }
 

@@ -1406,5 +1406,8 @@
   "DEATH_WARRANT_RUNE.flavor": "Ao oitavo farfalhar, o veneno vem cobrar.",
   "PIERCING_THREAD_RUNE.title": "Passar pelo Buraco da Agulha",
   "PIERCING_THREAD_RUNE.description": "[blue]{PiercingPercent}%[/blue] do dano que você causa ignora o Bloqueio dos inimigos.",
-  "PIERCING_THREAD_RUNE.flavor": "Até a menor abertura basta para um golpe perfeito."
+  "PIERCING_THREAD_RUNE.flavor": "Até a menor abertura basta para um golpe perfeito.",
+  "SOMETHING_FOR_NOTHING_RUNE.title": "Lucro sem Investimento",
+  "SOMETHING_FOR_NOTHING_RUNE.description": "Sempre que você jogar uma carta que custe [blue]0[/blue] de Energia, compre [blue]{Cards}[/blue] carta. Na primeira vez a cada turno que jogar uma carta que custe mais de [blue]0[/blue] de Energia, reduza o custo de Energia dela em [blue]{Energy}[/blue] pelo resto do combate.",
+  "SOMETHING_FOR_NOTHING_RUNE.flavor": "O melhor lucro começa sem investimento algum."
 }

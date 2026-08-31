@@ -120,7 +120,7 @@ public sealed class ArcaneForge : HextechForgeBase
 
 	private static bool HasCloneEnchantment(CardModel card)
 	{
-		return EnchantmentCompositionAdapter.Contains(card.Enchantment, typeof(Clone));
+		return EnchantmentCompositionAdapter.Contains(card, typeof(Clone));
 	}
 
 }

@@ -73,7 +73,7 @@ internal static class HextechFormVfxSafetyHooks
 
 	private static bool AddFormVfxPrefix(NCreatureVisuals __instance, NFormVfx formVfx)
 	{
-		Control? holder = __instance._formVfxHolder;
+		Control? holder = GetFormVfxHolder(__instance);
 		if (!ShouldRunOriginal(holder != null))
 		{
 			return false;
@@ -106,7 +106,16 @@ internal static class HextechFormVfxSafetyHooks
 
 	private static bool RemoveFormVfxPrefix(NCreatureVisuals __instance)
 	{
-		return ShouldRunOriginal(__instance._formVfxHolder != null);
+		return ShouldRunOriginal(GetFormVfxHolder(__instance) != null);
+	}
+
+	private static Control? GetFormVfxHolder(NCreatureVisuals visuals)
+	{
+#if STS2_111_OR_NEWER
+		return visuals.FormVfxHolder;
+#else
+		return visuals._formVfxHolder;
+#endif
 	}
 
 	private static bool HasSymphonyOfWar(NCreatureVisuals visuals)

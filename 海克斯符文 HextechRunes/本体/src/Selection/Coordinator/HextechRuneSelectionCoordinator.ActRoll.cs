@@ -73,7 +73,7 @@ internal static partial class HextechRuneSelectionCoordinator
 			: [ HextechRarityTier.Gold, HextechRarityTier.Prismatic ];
 	}
 
-	private static async Task<(HextechRarityTier Rarity, MonsterHexKind? MonsterHex)> ResolveActRoll(RunState runState, HextechMayhemModifier modifier, int actIndex)
+	private static async Task<(HextechRarityTier Rarity, MonsterHexKind? MonsterHex, int PlayerHexCount)> ResolveActRoll(RunState runState, HextechMayhemModifier modifier, int actIndex)
 	{
 		RunManager runManager = RunManager.Instance;
 		NetGameType gameType = runManager.NetService.Type;
@@ -148,7 +148,7 @@ internal static partial class HextechRuneSelectionCoordinator
 
 			modifier.SetRunConfigurationSnapshot(localRunConfigSnapshot, $"local act-roll act={actIndex}");
 			modifier.HostUsesBetterMultiplayerScaling = false;
-			return (localRarity, localMonsterHex);
+			return (localRarity, localMonsterHex, ResolvePlayerHexCount(localRunConfigSnapshot, modifier, actIndex));
 		}
 
 		PlayerChoiceSynchronizer synchronizer = await WaitForPlayerChoiceSynchronizerAsync(runManager);
@@ -191,7 +191,7 @@ internal static partial class HextechRuneSelectionCoordinator
 
 				modifier.SetRarityForAct(actIndex, localRarity);
 				HextechLog.Info($"[{ModInfo.Id}][Mayhem] ResolveActRoll host sync: act={actIndex} choiceId={sentChoiceId} authority={authorityPlayer.NetId} rarity={localRarity} monsterHex={localMonsterHex} playerCounts={string.Join(",", hostSnapshot.PlayerHexCountsByAct)} enemyCounts={string.Join(",", modifier.EnemyHexCountsByAct)} playerConfigDisabled={modifier.PlayerRuneConfigDisabledIds.Count} enemyConfigDisabled={hostSnapshot.DisabledMonsterHexIds.Count} forgeConfigDisabled={hostSnapshot.DisabledForgeIds.Count} betterMultiplayerScaling={hostUsesExternalScaling}");
-				return (localRarity, localMonsterHex);
+				return (localRarity, localMonsterHex, ResolvePlayerHexCount(hostSnapshot, modifier, actIndex));
 			}
 			catch (HextechChoiceProtocolException)
 			{
@@ -230,7 +230,17 @@ internal static partial class HextechRuneSelectionCoordinator
 		}, $"host act-roll act={actIndex}");
 		modifier.HostUsesBetterMultiplayerScaling = syncedHostUsesExternalScaling;
 		HextechLog.Info($"[{ModInfo.Id}][Mayhem] ResolveActRoll client sync: act={actIndex} choiceId={receivedChoiceId} authority={authorityPlayer.NetId} rarity={syncedRarity} monsterHex={syncedMonsterHex} playerCounts={string.Join(",", modifier.PlayerHexCountsByAct)} enemyCounts={string.Join(",", modifier.EnemyHexCountsByAct)} playerConfigDisabled={modifier.PlayerRuneConfigDisabledIds.Count} enemyConfigDisabled={modifier.DisabledMonsterHexIdsForPool.Count} forgeConfigDisabled={modifier.DisabledForgeIdsForPool.Count} betterMultiplayerScaling={syncedHostUsesExternalScaling} localRarity={localRarity} localMonsterHex={localMonsterHex}");
-		return (syncedRarity, syncedMonsterHex);
+		return (syncedRarity, syncedMonsterHex, ResolvePlayerHexCount(syncedRunConfigSnapshot, modifier, actIndex));
+	}
+
+	private static int ResolvePlayerHexCount(
+		HextechRunConfigurationSnapshot snapshot,
+		HextechMayhemModifier modifier,
+		int actIndex)
+	{
+		int[] counts = HextechPlayerHexCountState.Normalize(snapshot.PlayerHexCountsByAct);
+		int slot = modifier.IsEndlessLoopActive ? 2 : Math.Clamp(actIndex, 0, counts.Length - 1);
+		return counts[slot];
 	}
 
 	private static Player? GetActRollAuthorityPlayer(RunManager runManager, RunState runState)
@@ -376,11 +386,17 @@ internal static partial class HextechRuneSelectionCoordinator
 		int actIndex,
 		MonsterHexKind? currentHex,
 		int rerollOrdinal,
-		IReadOnlySet<ModelId> excludedIconRelicIds)
+		IReadOnlySet<ModelId> excludedIconRelicIds,
+		HashSet<MonsterHexKind> seenEnemyHexes)
 	{
+		if (currentHex.HasValue)
+		{
+			seenEnemyHexes.Add(currentHex.Value);
+		}
+
 		IReadOnlyList<MonsterHexKind> pool = HextechMonsterHexRoller.BuildRerollPool(
 			rarity,
-			modifier.GetKnownMonsterHexes(),
+			seenEnemyHexes,
 			currentHex,
 			excludedIconRelicIds,
 			GetMonsterHexIconRelicId,
@@ -400,7 +416,9 @@ internal static partial class HextechRuneSelectionCoordinator
 			(currentHex.HasValue ? ((int)currentHex.Value).ToString() : "none"),
 			rerollOrdinal.ToString(),
 			poolKey);
-		return pool[index];
+		MonsterHexKind rerolled = pool[index];
+		seenEnemyHexes.Add(rerolled);
+		return rerolled;
 	}
 
 	private static ModelId GetMonsterHexIconRelicId(MonsterHexKind hex)

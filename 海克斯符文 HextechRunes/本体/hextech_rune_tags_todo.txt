@@ -199,6 +199,7 @@
 我方	TransmuteChaosRune	质变：混沌	标签=随机
 我方	DoubleVisionRune	复视	标签=综合
 我方	PrismaticEggRune	棱彩蛋	标签=随机
+我方	SomethingForNothingRune	无本万利	标签=运转
 我方	StrikeUpgradeRune	升级：打击	标签=输出
 我方	DefendUpgradeRune	升级：防御	标签=生存
 我方	JackpotUpgradeRune	升级：大奖	标签=随机

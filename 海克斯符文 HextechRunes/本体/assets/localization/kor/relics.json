@@ -1406,5 +1406,8 @@
   "DEATH_WARRANT_RUNE.flavor": "여덟 번째 종이 소리에 독이 값을 받으러 옵니다.",
   "PIERCING_THREAD_RUNE.title": "바늘 꿰기",
   "PIERCING_THREAD_RUNE.description": "내가 주는 피해의 [blue]{PiercingPercent}%[/blue]가 적의 방어도를 무시합니다.",
-  "PIERCING_THREAD_RUNE.flavor": "가장 좁은 틈도 완벽한 일격에는 충분합니다."
+  "PIERCING_THREAD_RUNE.flavor": "가장 좁은 틈도 완벽한 일격에는 충분합니다.",
+  "SOMETHING_FOR_NOTHING_RUNE.title": "밑천 없는 대박",
+  "SOMETHING_FOR_NOTHING_RUNE.description": "에너지 비용이 [blue]0[/blue]인 카드를 낼 때마다 카드를 [blue]{Cards}[/blue]장 뽑습니다. 매 턴 처음으로 에너지 비용이 [blue]0[/blue]보다 큰 카드를 내면, 그 카드의 에너지 비용이 이번 전투 동안 [blue]{Energy}[/blue] 감소합니다.",
+  "SOMETHING_FOR_NOTHING_RUNE.flavor": "최고의 이익에는 밑천조차 필요 없습니다."
 }

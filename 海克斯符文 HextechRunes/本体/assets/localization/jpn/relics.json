@@ -1406,5 +1406,8 @@
   "DEATH_WARRANT_RUNE.flavor": "八度目の紙鳴りで、毒が取り立てに来る。",
   "PIERCING_THREAD_RUNE.title": "針の穴を通す",
   "PIERCING_THREAD_RUNE.description": "与えるダメージの[blue]{PiercingPercent}%[/blue]は敵のブロックを無視する。",
-  "PIERCING_THREAD_RUNE.flavor": "どれほど狭い隙間でも、完璧な一撃には十分だ。"
+  "PIERCING_THREAD_RUNE.flavor": "どれほど狭い隙間でも、完璧な一撃には十分だ。",
+  "SOMETHING_FOR_NOTHING_RUNE.title": "元手なしの大儲け",
+  "SOMETHING_FOR_NOTHING_RUNE.description": "エナジーコストが[blue]0[/blue]のカードをプレイするたび、カードを[blue]{Cards}[/blue]枚引く。各ターン最初にエナジーコストが[blue]0[/blue]より大きいカードをプレイした時、そのカードのコストをこの戦闘中[blue]{Energy}[/blue]減少させる。",
+  "SOMETHING_FOR_NOTHING_RUNE.flavor": "最高の利益は、元手すら要らない。"
 }

@@ -23,7 +23,7 @@ internal sealed class IInspectEnemyHex : HextechEnemyHexEffect
 		int limit,
 		bool fromHandDraw)
 	{
-		if (fromHandDraw || limit <= 0)
+		if (fromHandDraw || tracking.IsPlayerTurnStart(playerId) || limit <= 0)
 		{
 			return false;
 		}

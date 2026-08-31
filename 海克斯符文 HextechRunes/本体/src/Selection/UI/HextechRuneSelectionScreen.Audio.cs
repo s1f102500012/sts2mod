@@ -1,4 +1,5 @@
 using Godot;
+using MegaCrit.Sts2.Core.Commands;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Saves;
 
@@ -13,6 +14,11 @@ internal sealed partial class HextechRuneSelectionScreen
 	private void PlayRerollSfx()
 	{
 		PlaySfx(RerollButtonSfxPath, ref RerollSfxPlayer, "HextechRerollSfx", RerollButtonSfxVolumeScale);
+	}
+
+	private static void PlayButtonClickSfx()
+	{
+		SfxCmd.Play("event:/sfx/ui/clicks/ui_click");
 	}
 
 	private void PlayRuneSelectSfx(RelicModel relic)

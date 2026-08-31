@@ -3,6 +3,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>HextechRunesSponsorPack.Loader</AssemblyName>
     <RootNamespace>HextechRunesSponsorPack.Loader</RootNamespace>
+    <Version>0.9.1</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GameDataDir Condition="'$(GameDataDir)' == ''">$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups/0.107.1/game-refs</GameDataDir>

@@ -2,13 +2,12 @@ const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const crypto = require("node:crypto");
-const { spawn } = require("node:child_process");
 const community = require("./community");
 
 const HOST = process.env.HOST || "127.0.0.1";
 const PORT = Number.parseInt(process.env.PORT || "3000", 10);
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
-const PUBLIC_DIR = path.join(__dirname, "public");
+const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, "public");
 const DERIVED_DIR = path.join(DATA_DIR, "derived");
 const SUMMARY_FILE = path.join(DERIVED_DIR, "summary.json");
 const DERIVED_INDEX_FILE = path.join(DERIVED_DIR, "index.html");
@@ -18,10 +17,13 @@ const LATEST_VERSION_FILE = path.join(PUBLIC_DIR, "latest-version.json");
 const RESULTS_FILE = path.join(DATA_DIR, "run_results.jsonl");
 const MAX_BODY_BYTES = 256 * 1024;
 const MIN_RUN_TIME_FOR_DEFAULT_STATS = 60;
-const parsedDerivedRefreshDelayMs = Number.parseInt(process.env.DERIVED_REFRESH_DELAY_MS || "300000", 10);
-const DERIVED_REFRESH_DELAY_MS = Number.isFinite(parsedDerivedRefreshDelayMs) ? parsedDerivedRefreshDelayMs : 60000;
-const parsedSummaryRefreshIntervalMs = Number.parseInt(process.env.SUMMARY_REFRESH_INTERVAL_MS || "300000", 10);
-const SUMMARY_REFRESH_INTERVAL_MS = Number.isFinite(parsedSummaryRefreshIntervalMs) ? parsedSummaryRefreshIntervalMs : 300000;
+const parsedSummaryFlushIntervalMs = Number.parseInt(process.env.SUMMARY_FLUSH_INTERVAL_MS || "300000", 10);
+const SUMMARY_FLUSH_INTERVAL_MS = Number.isFinite(parsedSummaryFlushIntervalMs) ? Math.max(1000, parsedSummaryFlushIntervalMs) : 300000;
+const parsedRecentRunIdLimit = Number.parseInt(process.env.RECENT_RUN_ID_LIMIT || "250000", 10);
+const RECENT_RUN_ID_LIMIT = Number.isFinite(parsedRecentRunIdLimit) ? Math.max(1000, parsedRecentRunIdLimit) : 250000;
+const parsedRecentRunIdTailBytes = Number.parseInt(process.env.RECENT_RUN_ID_TAIL_BYTES || String(64 * 1024 * 1024), 10);
+const RECENT_RUN_ID_TAIL_BYTES = Number.isFinite(parsedRecentRunIdTailBytes) ? Math.max(1024 * 1024, parsedRecentRunIdTailBytes) : 64 * 1024 * 1024;
+const INCREMENTAL_SCHEMA_VERSION = 1;
 const DERIVED_FILE_NAMES = ["summary.json", "runs.csv", "player_runes.csv", "rune_choices.csv", "monster_hexes.csv"];
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -29,16 +31,21 @@ fs.mkdirSync(DERIVED_DIR, { recursive: true });
 
 const LABELS = loadLabels();
 const isRebuildProcess = process.argv.includes("--rebuild-derived");
-const knownRunIds = isRebuildProcess ? new Set() : loadKnownRunIds();
+const isBootstrapProcess = process.argv.includes("--bootstrap-incremental");
+const isOfflineProcess = isRebuildProcess || isBootstrapProcess;
+const recentRunIds = isOfflineProcess ? new Map() : loadRecentRunIds();
 const summaryCache = new Map();
 const derivedState = {
   dirty: false,
-  rebuilding: false,
+  flushing: false,
   timer: null,
-  interval: null,
   lastBuiltAtMs: 0,
-  lastError: null
+  lastError: null,
+  pendingRecords: 0,
+  persistedOffset: 0
 };
+let summaryBundle = null;
+let resultsEndOffset = fs.existsSync(RESULTS_FILE) ? fs.statSync(RESULTS_FILE).size : 0;
 
 function loadLabels() {
   try {
@@ -65,20 +72,36 @@ function displayLabel(row) {
   return `${row.name} (${row.id})`;
 }
 
-function loadKnownRunIds() {
-  const ids = new Set();
-  forEachJsonlLine(RESULTS_FILE, (line) => {
+function loadRecentRunIds() {
+  const ids = new Map();
+  if (!fs.existsSync(RESULTS_FILE)) {
+    return ids;
+  }
+
+  const fileSize = fs.statSync(RESULTS_FILE).size;
+  const startOffset = Math.max(0, fileSize - RECENT_RUN_ID_TAIL_BYTES);
+  forEachJsonlLineFromOffset(RESULTS_FILE, startOffset, (line) => {
     try {
       const record = JSON.parse(line);
       const runId = record?.payload?.run?.runId;
       if (typeof runId === "string" && runId.length > 0) {
-        ids.add(runId);
+        rememberRunId(ids, runId);
       }
     } catch {
-      // Bad historical lines are ignored here; readRecordSet records them for analytics.
+      // 损坏的历史尾行由增量回放统计；近期去重窗口只收录有效 runId。
     }
   });
   return ids;
+}
+
+function rememberRunId(ids, runId) {
+  if (ids.has(runId)) {
+    ids.delete(runId);
+  }
+  ids.set(runId, true);
+  while (ids.size > RECENT_RUN_ID_LIMIT) {
+    ids.delete(ids.keys().next().value);
+  }
 }
 
 function sendJson(res, status, value) {
@@ -198,7 +221,7 @@ async function handleIngest(req, res) {
   }
 
   const runId = payload.run.runId;
-  if (knownRunIds.has(runId)) {
+  if (recentRunIds.has(runId)) {
     return sendJson(res, 202, { ok: true, duplicate: true, runId });
   }
 
@@ -207,10 +230,13 @@ async function handleIngest(req, res) {
     payloadHash: sha256(JSON.stringify(payload)),
     payload
   };
-  fs.appendFileSync(RESULTS_FILE, `${JSON.stringify(record)}\n`, "utf8");
-  knownRunIds.add(runId);
-  markDerivedDirty();
-  scheduleDerivedRebuild();
+  const serializedRecord = `${JSON.stringify(record)}\n`;
+  fs.appendFileSync(RESULTS_FILE, serializedRecord, "utf8");
+  resultsEndOffset += Buffer.byteLength(serializedRecord);
+  rememberRunId(recentRunIds, runId);
+  applyRecordToSummaryBundle(summaryBundle, record);
+  markDerivedDirty(resultsEndOffset);
+  scheduleSummaryFlush();
   return sendJson(res, 202, { ok: true, duplicate: false, runId });
 }
 
@@ -268,6 +294,64 @@ function forEachJsonlLine(filePath, callback) {
   }
 
   return lineCount;
+}
+
+function forEachJsonlLineFromOffset(filePath, requestedOffset, callback) {
+  if (!fs.existsSync(filePath)) {
+    return { lineCount: 0, endOffset: 0 };
+  }
+
+  const fileSize = fs.statSync(filePath).size;
+  const startOffset = Math.max(0, Math.min(requestedOffset, fileSize));
+  const fd = fs.openSync(filePath, "r");
+  const buffer = Buffer.allocUnsafe(1024 * 1024);
+  let carry = Buffer.alloc(0);
+  let readOffset = startOffset;
+  let lineOffset = startOffset;
+  let lineCount = 0;
+  let skipPartialLine = false;
+  try {
+    if (startOffset > 0) {
+      const previousByte = Buffer.allocUnsafe(1);
+      skipPartialLine = fs.readSync(fd, previousByte, 0, 1, startOffset - 1) === 1 && previousByte[0] !== 10;
+    }
+    while (readOffset < fileSize) {
+      const bytesRead = fs.readSync(fd, buffer, 0, Math.min(buffer.length, fileSize - readOffset), readOffset);
+      if (bytesRead <= 0) {
+        break;
+      }
+      readOffset += bytesRead;
+      const chunk = carry.length > 0
+        ? Buffer.concat([carry, buffer.subarray(0, bytesRead)])
+        : buffer.subarray(0, bytesRead);
+      let lineStart = 0;
+      for (let i = 0; i < chunk.length; i++) {
+        if (chunk[i] !== 10) {
+          continue;
+        }
+        const nextOffset = lineOffset + i + 1;
+        if (skipPartialLine) {
+          skipPartialLine = false;
+        } else {
+          let line = chunk.subarray(lineStart, i);
+          if (line.length > 0 && line[line.length - 1] === 13) {
+            line = line.subarray(0, line.length - 1);
+          }
+          if (line.toString("utf8").trim().length > 0) {
+            callback(line.toString("utf8"), lineOffset + lineStart, nextOffset);
+            lineCount += 1;
+          }
+        }
+        lineStart = i + 1;
+      }
+      carry = Buffer.from(chunk.subarray(lineStart));
+      lineOffset = readOffset - carry.length;
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+
+  return { lineCount, endOffset: lineOffset };
 }
 
 function buildRecordIndex() {
@@ -843,6 +927,256 @@ function buildSummaryBundle() {
   return allSummary;
 }
 
+function getResultsIdentity() {
+  if (!fs.existsSync(RESULTS_FILE)) {
+    fs.closeSync(fs.openSync(RESULTS_FILE, "a"));
+  }
+  const stat = fs.statSync(RESULTS_FILE);
+  return {
+    device: String(stat.dev),
+    inode: String(stat.ino),
+    size: stat.size
+  };
+}
+
+function setIncrementalCheckpoint(summary, identity, offset) {
+  summary._incremental = {
+    schemaVersion: INCREMENTAL_SCHEMA_VERSION,
+    source: {
+      device: identity.device,
+      inode: identity.inode,
+      offset
+    }
+  };
+}
+
+function bootstrapIncrementalSummary() {
+  const summary = readDerivedSummary();
+  if (!summary) {
+    throw new Error("cannot bootstrap incremental summary without derived/summary.json");
+  }
+  const identity = getResultsIdentity();
+  const cutoffMs = Date.parse(summary.generatedAtUtc || "");
+  const offset = Number.isFinite(cutoffMs)
+    ? findFirstRecordOffsetAfter(RESULTS_FILE, cutoffMs)
+    : identity.size;
+  setIncrementalCheckpoint(summary, identity, offset);
+  writeFileAtomic(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
+  console.log(`incremental summary bootstrapped at byte ${offset} of ${identity.size}`);
+  return summary;
+}
+
+function findNextLineStart(fd, requestedOffset, fileSize) {
+  if (requestedOffset <= 0) {
+    return 0;
+  }
+  if (requestedOffset < fileSize) {
+    const previousByte = Buffer.allocUnsafe(1);
+    if (fs.readSync(fd, previousByte, 0, 1, requestedOffset - 1) === 1 && previousByte[0] === 10) {
+      return requestedOffset;
+    }
+  }
+  const buffer = Buffer.allocUnsafe(64 * 1024);
+  let offset = Math.min(requestedOffset, fileSize);
+  while (offset < fileSize) {
+    const bytesRead = fs.readSync(fd, buffer, 0, Math.min(buffer.length, fileSize - offset), offset);
+    if (bytesRead <= 0) {
+      return fileSize;
+    }
+    const newlineIndex = buffer.subarray(0, bytesRead).indexOf(10);
+    if (newlineIndex >= 0) {
+      return offset + newlineIndex + 1;
+    }
+    offset += bytesRead;
+  }
+  return fileSize;
+}
+
+function readJsonlEntry(fd, lineStart, fileSize) {
+  const chunks = [];
+  const buffer = Buffer.allocUnsafe(64 * 1024);
+  let offset = lineStart;
+  while (offset < fileSize) {
+    const bytesRead = fs.readSync(fd, buffer, 0, Math.min(buffer.length, fileSize - offset), offset);
+    if (bytesRead <= 0) {
+      break;
+    }
+    const chunk = buffer.subarray(0, bytesRead);
+    const newlineIndex = chunk.indexOf(10);
+    if (newlineIndex >= 0) {
+      chunks.push(Buffer.from(chunk.subarray(0, newlineIndex)));
+      return { line: Buffer.concat(chunks).toString("utf8"), endOffset: offset + newlineIndex + 1 };
+    }
+    chunks.push(Buffer.from(chunk));
+    offset += bytesRead;
+    if (offset - lineStart > MAX_BODY_BYTES * 2) {
+      return { line: "", endOffset: findNextLineStart(fd, offset, fileSize) };
+    }
+  }
+  return { line: Buffer.concat(chunks).toString("utf8"), endOffset: fileSize };
+}
+
+function findFirstRecordOffsetAfter(filePath, cutoffMs) {
+  if (!fs.existsSync(filePath)) {
+    return 0;
+  }
+  const fileSize = fs.statSync(filePath).size;
+  if (fileSize === 0) {
+    return 0;
+  }
+
+  const fd = fs.openSync(filePath, "r");
+  let low = 0;
+  let high = fileSize;
+  let result = fileSize;
+  try {
+    for (let iteration = 0; iteration < 64 && low < high; iteration += 1) {
+      const midpoint = low + Math.floor((high - low) / 2);
+      const lineStart = findNextLineStart(fd, midpoint, fileSize);
+      if (lineStart >= fileSize) {
+        high = midpoint;
+        continue;
+      }
+      const entry = readJsonlEntry(fd, lineStart, fileSize);
+      let receivedAtMs = Number.NaN;
+      try {
+        receivedAtMs = Date.parse(JSON.parse(entry.line)?.receivedAtUtc || "");
+      } catch {
+        // 单条损坏记录不应迫使首次迁移退化成全文件扫描。
+      }
+      if (!Number.isFinite(receivedAtMs) || receivedAtMs <= cutoffMs) {
+        low = Math.max(entry.endOffset, midpoint + 1);
+      } else {
+        result = lineStart;
+        high = lineStart;
+      }
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  return result;
+}
+
+function createFreshSummaryBundle() {
+  const summary = createEmptySummary(null, {
+    physicalLines: 0,
+    totalUniqueRuns: 0,
+    duplicateLines: 0,
+    malformedLines: 0
+  });
+  finalizeSummary(summary, []);
+  summary.versionSummaries = {};
+  return summary;
+}
+
+function initializeIncrementalSummary() {
+  const identity = getResultsIdentity();
+  let summary = readDerivedSummary();
+  if (!summary) {
+    if (identity.size > 0) {
+      throw new Error("run_results.jsonl contains data but no summary checkpoint; run --rebuild-derived or restore summary.json first");
+    }
+    summary = createFreshSummaryBundle();
+    setIncrementalCheckpoint(summary, identity, 0);
+    writeFileAtomic(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
+    derivedState.persistedOffset = 0;
+    return summary;
+  }
+
+  const checkpoint = summary._incremental;
+  if (!checkpoint) {
+    if (identity.size > 0) {
+      throw new Error("summary.json has no incremental checkpoint; stop the service and run node server.js --bootstrap-incremental once");
+    }
+    setIncrementalCheckpoint(summary, identity, 0);
+    writeFileAtomic(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
+    return summary;
+  }
+  if (checkpoint.schemaVersion !== INCREMENTAL_SCHEMA_VERSION) {
+    throw new Error(`unsupported incremental summary schema ${checkpoint.schemaVersion}`);
+  }
+  if (checkpoint.source?.device !== identity.device || checkpoint.source?.inode !== identity.inode) {
+    throw new Error("run_results.jsonl identity differs from summary checkpoint; bootstrap or rebuild explicitly before starting the service");
+  }
+  if (!Number.isSafeInteger(checkpoint.source.offset) || checkpoint.source.offset < 0 || checkpoint.source.offset > identity.size) {
+    throw new Error("summary checkpoint offset is outside run_results.jsonl");
+  }
+  summary.versionSummaries ||= {};
+  replayIncrementalTail(summary, checkpoint.source.offset, identity);
+  return summary;
+}
+
+function incrementGlobalRawCounters(summary, field) {
+  summary.raw[field] = (summary.raw[field] || 0) + 1;
+  for (const versionSummary of Object.values(summary.versionSummaries || {})) {
+    versionSummary.raw[field] = (versionSummary.raw[field] || 0) + 1;
+  }
+}
+
+function applyRecordToSummaryBundle(summary, record) {
+  const recordVersion = getModVersion(record);
+  const isEligible = isDefaultEligible(record);
+  incrementGlobalRawCounters(summary, "physicalLines");
+  incrementGlobalRawCounters(summary, "totalUniqueRuns");
+  addRecordToSummary(summary, record, recordVersion, isEligible);
+
+  if (!summary.versionSummaries[recordVersion]) {
+    summary.versionSummaries[recordVersion] = createEmptySummary(recordVersion, {
+      physicalLines: summary.raw.physicalLines,
+      totalUniqueRuns: summary.raw.totalUniqueRuns,
+      duplicateLines: summary.raw.duplicateLines || 0,
+      malformedLines: summary.raw.malformedLines || 0
+    });
+  }
+  addRecordToSummary(summary.versionSummaries[recordVersion], record, recordVersion, isEligible);
+}
+
+function recordMalformedIncrementalLine(summary) {
+  incrementGlobalRawCounters(summary, "physicalLines");
+  incrementGlobalRawCounters(summary, "malformedLines");
+}
+
+function replayIncrementalTail(summary, startOffset, identity) {
+  let appliedRecords = 0;
+  let malformedLines = 0;
+  const replay = forEachJsonlLineFromOffset(RESULTS_FILE, startOffset, (line) => {
+    try {
+      const record = JSON.parse(line);
+      const runId = record?.payload?.run?.runId;
+      if (typeof runId !== "string" || runId.length === 0) {
+        throw new Error("missing runId");
+      }
+      applyRecordToSummaryBundle(summary, record);
+      rememberRunId(recentRunIds, runId);
+      appliedRecords += 1;
+    } catch {
+      recordMalformedIncrementalLine(summary);
+      malformedLines += 1;
+    }
+  });
+  if (replay.endOffset > startOffset) {
+    setIncrementalCheckpoint(summary, identity, replay.endOffset);
+    finalizeSummaryBundle(summary);
+    writeFileAtomic(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
+    derivedState.persistedOffset = replay.endOffset;
+  }
+  if (appliedRecords > 0 || malformedLines > 0) {
+    console.log(`replayed ${appliedRecords} records and ${malformedLines} malformed lines from incremental tail`);
+  }
+}
+
+function finalizeSummaryBundle(summary) {
+  const generatedAtUtc = new Date().toISOString();
+  const availableVersions = buildCountRows(summary.versions || {});
+  summary.generatedAtUtc = generatedAtUtc;
+  finalizeSummary(summary, availableVersions);
+  for (const versionSummary of Object.values(summary.versionSummaries || {})) {
+    versionSummary.generatedAtUtc = generatedAtUtc;
+    finalizeSummary(versionSummary, availableVersions);
+  }
+  return summary;
+}
+
 function pctNumber(part, total) {
   return total > 0 ? Number(((part / total) * 100).toFixed(1)) : 0;
 }
@@ -992,55 +1326,76 @@ function allDerivedFilesExist() {
 }
 
 function derivedFilesAreCurrent() {
-  if (!fs.existsSync(SUMMARY_FILE)) {
+  if (!summaryBundle?._incremental?.source) {
     return false;
   }
-  const resultsMtimeMs = fs.existsSync(RESULTS_FILE) ? fs.statSync(RESULTS_FILE).mtimeMs : 0;
-  return fs.statSync(SUMMARY_FILE).mtimeMs >= resultsMtimeMs;
+  return summaryBundle._incremental.source.offset >= resultsEndOffset && !derivedState.dirty;
 }
 
-function markDerivedDirty() {
+function markDerivedDirty(offset) {
+  const identity = getResultsIdentity();
+  setIncrementalCheckpoint(summaryBundle, identity, offset);
   derivedState.dirty = true;
+  derivedState.pendingRecords += 1;
 }
 
-function scheduleDerivedRebuild(delayMs = DERIVED_REFRESH_DELAY_MS) {
-  if (derivedState.rebuilding || derivedState.timer) {
+function scheduleSummaryFlush(delayMs = SUMMARY_FLUSH_INTERVAL_MS) {
+  if (derivedState.flushing || derivedState.timer) {
     return;
   }
-  const safeDelayMs = Number.isFinite(delayMs) ? Math.max(0, delayMs) : DERIVED_REFRESH_DELAY_MS;
+  const safeDelayMs = Number.isFinite(delayMs) ? Math.max(0, delayMs) : SUMMARY_FLUSH_INTERVAL_MS;
   derivedState.timer = setTimeout(() => {
     derivedState.timer = null;
-    if (!derivedState.dirty && derivedFilesAreCurrent()) {
-      return;
+    if (derivedState.dirty) {
+      flushSummaryNow();
     }
-    startDerivedRebuildChild();
   }, safeDelayMs);
   derivedState.timer.unref?.();
 }
 
-function startPeriodicDerivedRefresh() {
-  if (derivedState.interval || SUMMARY_REFRESH_INTERVAL_MS <= 0) {
+function flushSummaryNow() {
+  if (!summaryBundle || derivedState.flushing || !derivedState.dirty) {
     return;
   }
-  derivedState.interval = setInterval(() => {
-    if (!derivedFilesAreCurrent()) {
-      scheduleDerivedRebuild(0);
-    }
-  }, SUMMARY_REFRESH_INTERVAL_MS);
-  derivedState.interval.unref?.();
+  if (derivedState.timer) {
+    clearTimeout(derivedState.timer);
+    derivedState.timer = null;
+  }
+  derivedState.flushing = true;
+  try {
+    finalizeSummaryBundle(summaryBundle);
+    writeFileAtomic(SUMMARY_FILE, `${JSON.stringify(summaryBundle, null, 2)}\n`);
+    writeFileAtomic(DERIVED_INDEX_FILE, renderIndexHtml(getDefaultDisplayVersion()));
+    derivedState.dirty = false;
+    derivedState.pendingRecords = 0;
+    derivedState.persistedOffset = summaryBundle._incremental.source.offset;
+    derivedState.lastBuiltAtMs = Date.now();
+    derivedState.lastError = null;
+    summaryCache.clear();
+  } catch (error) {
+    derivedState.lastError = error?.message || String(error);
+    console.error(`failed to flush incremental summary: ${derivedState.lastError}`);
+  } finally {
+    derivedState.flushing = false;
+  }
+  if (derivedState.dirty) {
+    scheduleSummaryFlush(Math.max(SUMMARY_FLUSH_INTERVAL_MS, 30000));
+  }
 }
 
 function rebuildDerivedTablesNow() {
-  if (derivedState.rebuilding) {
+  if (derivedState.flushing) {
     return readDerivedSummary();
   }
   if (derivedState.timer) {
     clearTimeout(derivedState.timer);
     derivedState.timer = null;
   }
-  derivedState.rebuilding = true;
+  derivedState.flushing = true;
   try {
     const summary = buildSummaryBundle();
+    const identity = getResultsIdentity();
+    setIncrementalCheckpoint(summary, identity, identity.size);
     writeFileAtomic(SUMMARY_FILE, `${JSON.stringify(summary, null, 2)}\n`);
     writeFileAtomic(DERIVED_INDEX_FILE, renderIndexHtml(getDefaultDisplayVersion()));
     derivedState.dirty = false;
@@ -1048,7 +1403,7 @@ function rebuildDerivedTablesNow() {
     derivedState.lastError = null;
     return summary;
   } finally {
-    derivedState.rebuilding = false;
+    derivedState.flushing = false;
   }
 }
 
@@ -1085,35 +1440,6 @@ function rebuildDerivedTablesWithLock() {
   }
 }
 
-function startDerivedRebuildChild() {
-  if (derivedState.rebuilding) {
-    return;
-  }
-  derivedState.rebuilding = true;
-  const child = spawn(process.execPath, [__filename, "--rebuild-derived"], {
-    env: process.env,
-    stdio: "ignore"
-  });
-  child.on("exit", (code) => {
-    derivedState.rebuilding = false;
-    if (code === 0) {
-      derivedState.dirty = false;
-      derivedState.lastBuiltAtMs = Date.now();
-      derivedState.lastError = null;
-      summaryCache.clear();
-    } else {
-      derivedState.lastError = `rebuild child exited with code ${code}`;
-      scheduleDerivedRebuild(Math.max(DERIVED_REFRESH_DELAY_MS, 30000));
-    }
-  });
-  child.on("error", (error) => {
-    derivedState.rebuilding = false;
-    derivedState.lastError = error?.message || String(error);
-    scheduleDerivedRebuild(Math.max(DERIVED_REFRESH_DELAY_MS, 30000));
-  });
-  child.unref?.();
-}
-
 function getSummaryFileMtimeMs() {
   try {
     return fs.statSync(SUMMARY_FILE).mtimeMs;
@@ -1127,12 +1453,18 @@ function getDerivedStatus() {
   const resultsMtimeMs = fs.existsSync(RESULTS_FILE) ? fs.statSync(RESULTS_FILE).mtimeMs : 0;
   return {
     summaryExists: summaryMtimeMs > 0,
-    summaryCurrent: summaryMtimeMs >= resultsMtimeMs,
+    summaryCurrent: derivedFilesAreCurrent(),
     summaryGeneratedAtUtc: summaryMtimeMs > 0 ? new Date(summaryMtimeMs).toISOString() : null,
     resultsUpdatedAtUtc: resultsMtimeMs > 0 ? new Date(resultsMtimeMs).toISOString() : null,
-    refreshIntervalMs: SUMMARY_REFRESH_INTERVAL_MS,
+    refreshIntervalMs: SUMMARY_FLUSH_INTERVAL_MS,
     scheduled: Boolean(derivedState.timer),
-    rebuilding: derivedState.rebuilding,
+    rebuilding: false,
+    flushing: derivedState.flushing,
+    pendingRecords: derivedState.pendingRecords,
+    recentRunIds: recentRunIds.size,
+    checkpointOffset: derivedState.persistedOffset,
+    pendingOffset: summaryBundle?._incremental?.source?.offset ?? null,
+    resultsSize: resultsEndOffset,
     lastBuiltAtUtc: derivedState.lastBuiltAtMs ? new Date(derivedState.lastBuiltAtMs).toISOString() : null,
     lastError: derivedState.lastError
   };
@@ -1157,7 +1489,7 @@ function getSummaryFromDerived(versionFilter = null) {
   }
   const normalizedVersionFilter = normalizeVersionFilter(versionFilter);
   if (!normalizedVersionFilter) {
-    const { versionSummaries, ...publicSummary } = summary;
+    const { versionSummaries, _incremental, ...publicSummary } = summary;
     return publicSummary;
   }
   return summary.versionSummaries?.[normalizedVersionFilter] || makeEmptyDerivedVersionSummary(summary, normalizedVersionFilter);
@@ -1174,14 +1506,10 @@ function getSummaryForDisplay(versionFilter = null) {
 
   const derivedSummary = getSummaryFromDerived(normalizedVersionFilter);
   if (derivedSummary) {
-    if (!derivedFilesAreCurrent()) {
-      scheduleDerivedRebuild();
-    }
     summaryCache.set(cacheKey, { summaryMtimeMs, summary: derivedSummary });
     return derivedSummary;
   }
 
-  scheduleDerivedRebuild(0);
   const summary = createUnavailableSummary(normalizedVersionFilter);
   summaryCache.set(cacheKey, { summaryMtimeMs: 0, summary });
   return summary;
@@ -1380,7 +1708,12 @@ function serveStatic(req, res) {
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   if (req.method === "GET" && url.pathname === "/health") {
-    return sendJson(res, 200, { ok: true, service: "hextech-runes-telemetry", runs: knownRunIds.size, derived: getDerivedStatus() });
+    return sendJson(res, 200, {
+      ok: true,
+      service: "hextech-runes-telemetry",
+      runs: summaryBundle?.raw?.totalUniqueRuns || 0,
+      derived: getDerivedStatus()
+    });
   }
   if (req.method === "GET" && url.pathname === "/api/hextech-runes/summary") {
     return sendJson(res, 200, getSummaryForDisplay(url.searchParams.get("version")));
@@ -1403,6 +1736,16 @@ const server = http.createServer(async (req, res) => {
   return sendText(res, 405, "method not allowed");
 });
 
+if (isBootstrapProcess) {
+  try {
+    bootstrapIncrementalSummary();
+    process.exit(0);
+  } catch (error) {
+    console.error(error?.stack || error);
+    process.exit(1);
+  }
+}
+
 if (isRebuildProcess) {
   try {
     rebuildDerivedTablesWithLock();
@@ -1413,11 +1756,22 @@ if (isRebuildProcess) {
   }
 }
 
-if (!derivedFilesAreCurrent()) {
-  scheduleDerivedRebuild(0);
-}
-startPeriodicDerivedRefresh();
+summaryBundle = initializeIncrementalSummary();
+resultsEndOffset = fs.statSync(RESULTS_FILE).size;
+derivedState.persistedOffset = summaryBundle._incremental.source.offset;
 community.init({ dataDir: DATA_DIR, publicDir: PUBLIC_DIR });
+
+function shutdown(signal) {
+  if (derivedState.dirty) {
+    flushSummaryNow();
+  }
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 10000).unref();
+  console.log(`received ${signal}; telemetry summary flushed`);
+}
+
+process.once("SIGTERM", () => shutdown("SIGTERM"));
+process.once("SIGINT", () => shutdown("SIGINT"));
 
 server.listen(PORT, HOST, () => {
   console.log(`hextech-runes-telemetry listening on ${HOST}:${PORT}`);

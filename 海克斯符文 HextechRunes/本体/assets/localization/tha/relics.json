@@ -1406,5 +1406,8 @@
   "DEATH_WARRANT_RUNE.flavor": "เมื่อกระดาษดังเป็นครั้งที่แปด พิษก็มาเก็บหนี้",
   "PIERCING_THREAD_RUNE.title": "ร้อยด้ายเข้ารูเข็ม",
   "PIERCING_THREAD_RUNE.description": "ความเสียหาย [blue]{PiercingPercent}%[/blue] ที่คุณสร้างจะไม่สนใจบล็อกของศัตรู",
-  "PIERCING_THREAD_RUNE.flavor": "แม้ช่องว่างจะแคบเพียงใด ก็เพียงพอสำหรับการโจมตีที่สมบูรณ์แบบ"
+  "PIERCING_THREAD_RUNE.flavor": "แม้ช่องว่างจะแคบเพียงใด ก็เพียงพอสำหรับการโจมตีที่สมบูรณ์แบบ",
+  "SOMETHING_FOR_NOTHING_RUNE.title": "กำไรโดยไม่ต้องลงทุน",
+  "SOMETHING_FOR_NOTHING_RUNE.description": "เมื่อคุณเล่นการ์ดที่ใช้พลังงาน [blue]0[/blue] จั่วการ์ด [blue]{Cards}[/blue] ใบ ครั้งแรกในแต่ละเทิร์นที่คุณเล่นการ์ดซึ่งใช้พลังงานมากกว่า [blue]0[/blue] ลดค่าพลังงานของการ์ดใบนั้นลง [blue]{Energy}[/blue] ตลอดการต่อสู้นี้",
+  "SOMETHING_FOR_NOTHING_RUNE.flavor": "กำไรที่ดีที่สุดเริ่มต้นได้โดยไม่ต้องมีทุนเลย"
 }

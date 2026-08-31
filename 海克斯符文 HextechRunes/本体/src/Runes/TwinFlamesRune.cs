@@ -44,6 +44,25 @@ public sealed class TwinFlamesRune : HextechRelicBase
 
 		int targetOrdinal = ConsumeCombatProcOrdinal(nameof(TwinFlamesRune), ref _targetRollsThisCombat);
 		string cardKey = HextechStableRandom.CardKey(cardPlay.Card);
+		if (HextechPlayerContextHelper.IsNetworkMultiplayerRun())
+		{
+			Creature? target = HextechRuneTargeting.PickRandomHittableEnemy(
+				Owner,
+				combatState,
+				"twin-flames-target",
+				combatState.RoundNumber.ToString(),
+				targetOrdinal.ToString(),
+				cardKey);
+			if (target == null)
+			{
+				return Task.CompletedTask;
+			}
+
+			Flash([target]);
+			_ = TaskHelper.RunSafely(PlayVolleyVfxAsync(source, target));
+			return ResolveVolleyDamageInLockstepAsync(choiceContext, source, combatState, target, damage);
+		}
+
 		_ = TaskHelper.RunSafely(ResolveVolleyAfterCardSettlesAsync(
 			source,
 			combatState,
@@ -52,6 +71,40 @@ public sealed class TwinFlamesRune : HextechRelicBase
 			targetOrdinal,
 			cardKey));
 		return Task.CompletedTask;
+	}
+
+	private static async Task PlayVolleyVfxAsync(Creature source, Creature target)
+	{
+		await Task.WhenAll(Enumerable.Range(0, MissileCount)
+			.Select(missileIndex => HextechCombatVfx.PlayTwinFlamesMissile(source, target, missileIndex)));
+	}
+
+	private static async Task ResolveVolleyDamageInLockstepAsync(
+		PlayerChoiceContext choiceContext,
+		Creature source,
+		HextechCombatState combatState,
+		Creature target,
+		decimal damage)
+	{
+		// 联机时共享状态必须留在当前卡牌动作内结算；弹道只做视觉，不能在独立任务中稍后改血量。
+		for (int missileIndex = 0; missileIndex < MissileCount; missileIndex++)
+		{
+			if (source.IsDead
+				|| !target.IsAlive
+				|| !ReferenceEquals(source.CombatState, combatState)
+				|| !ReferenceEquals(target.CombatState, combatState))
+			{
+				return;
+			}
+
+			await HextechGameApiCompat.Damage(
+				choiceContext,
+				target,
+				damage,
+				ValueProp.Unpowered,
+				source,
+				null);
+		}
 	}
 
 	private async Task ResolveVolleyAfterCardSettlesAsync(

@@ -1406,5 +1406,8 @@
   "DEATH_WARRANT_RUNE.flavor": "After the eighth rustle, the poison comes to collect.",
   "PIERCING_THREAD_RUNE.title": "Thread the Needle",
   "PIERCING_THREAD_RUNE.description": "[blue]{PiercingPercent}%[/blue] of the damage you deal ignores enemy Block.",
-  "PIERCING_THREAD_RUNE.flavor": "The narrowest opening is still wide enough for a perfect strike."
+  "PIERCING_THREAD_RUNE.flavor": "The narrowest opening is still wide enough for a perfect strike.",
+  "SOMETHING_FOR_NOTHING_RUNE.title": "Something for Nothing",
+  "SOMETHING_FOR_NOTHING_RUNE.description": "Whenever you play a card that costs [blue]0[/blue] Energy, draw [blue]{Cards}[/blue] card. The first time each turn you play a card that costs more than [blue]0[/blue] Energy, reduce that card's Energy cost by [blue]{Energy}[/blue] for the rest of combat.",
+  "SOMETHING_FOR_NOTHING_RUNE.flavor": "The best returns begin with no investment at all."
 }

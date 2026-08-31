@@ -13,7 +13,9 @@ internal static class HextechRuneTargeting
 			return null;
 		}
 
-		List<Creature> enemies = combatState.HittableEnemies.ToList();
+		List<Creature> enemies = combatState.HittableEnemies
+			.OrderBy(static enemy => enemy.CombatId ?? uint.MaxValue)
+			.ToList();
 		if (enemies.Count == 0)
 		{
 			return null;

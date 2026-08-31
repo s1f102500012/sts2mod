@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FILE_STEM="HextechRunesSponsorPack"
 VARIANT_MANIFEST_NAME="hextech-runes-sponsor-pack-variants.manifest"
-TARGETS=(0.107.1 0.109.0)
+TARGETS=(0.107.1 0.110.0 0.111.0)
 
 MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
 VARIANT_PROJECT="$ROOT/src/$FILE_STEM.csproj"
@@ -114,10 +114,12 @@ for target in "${TARGETS[@]}"; do
 
 	echo "Building $FILE_STEM implementation for STS2 $target using $refs"
 	"$DOTNET_BIN" clean "$VARIANT_PROJECT" -c Release \
+		--disable-build-servers \
 		-p:HextechSponsorSts2Target="$target" \
 		-p:HextechSts2Target="$target" \
 		-p:GameDataDir="$refs" >/dev/null
 	"$DOTNET_BIN" build "$VARIANT_PROJECT" -c Release \
+		--disable-build-servers \
 		-p:HextechSponsorSts2Target="$target" \
 		-p:HextechSts2Target="$target" \
 		-p:GameDataDir="$refs" \
@@ -132,8 +134,9 @@ loader_refs="$REFS_ROOT/0.107.1/game-refs"
 loader_output="$BUILD_ROOT/loader"
 mkdir -p "$loader_output"
 echo "Building stable $FILE_STEM loader against STS2 0.107.1 references"
-"$DOTNET_BIN" clean "$LOADER_PROJECT" -c Release >/dev/null
+"$DOTNET_BIN" clean "$LOADER_PROJECT" -c Release --disable-build-servers >/dev/null
 "$DOTNET_BIN" build "$LOADER_PROJECT" -c Release \
+	--disable-build-servers \
 	-p:GameDataDir="$loader_refs" \
 	-o "$loader_output"
 cp "$loader_output/$FILE_STEM.Loader.dll" "$DIST/$FILE_STEM.dll"
@@ -144,7 +147,8 @@ python3 \
 	--mod-id "$FILE_STEM" \
 	--manifest-name "$VARIANT_MANIFEST_NAME" \
 	--target "0.107.1" \
-	--target "0.109.0"
+	--target "0.110.0" \
+	--target "0.111.0"
 
 mkdir -p "$IMPORT_PROJECT/$FILE_STEM"
 cp "$PACK_TOOL_PROJECT/project.godot" "$IMPORT_PROJECT/project.godot"

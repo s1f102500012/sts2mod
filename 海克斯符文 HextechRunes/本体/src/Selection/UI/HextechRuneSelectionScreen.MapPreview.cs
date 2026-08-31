@@ -256,11 +256,17 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 
 	private void TryGrabOverlayFocus()
 	{
-		if (_closed || !IsInsideTree() || !IsVisibleInTree() || FocusMode == FocusModeEnum.None)
+		if (!_controllerNavigationActivated || _closed || !IsInsideTree() || !IsVisibleInTree() || FocusMode == FocusModeEnum.None)
 		{
 			return;
 		}
 
-		GrabFocus();
+		Control? focused = GetViewport()?.GuiGetFocusOwner();
+		if (focused != null && IsAncestorOf(focused))
+		{
+			return;
+		}
+
+		RestoreFocusDeferred(DefaultFocusedControl ?? this);
 	}
 }

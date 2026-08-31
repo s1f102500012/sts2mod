@@ -111,6 +111,10 @@ public static class ModEntry
 
 	private static void RegisterContent()
 	{
+		HextechRunesApi.RegisterSavedPropertyCarrier<Evolution>();
+		HextechRunesApi.RegisterSavedPropertyCarrier<EntropyIncrease>();
+		HextechRunesApi.RegisterSavedPropertyCarrier<EntropyDecrease>();
+		HextechRunesApi.RegisterSavedPropertyCarrier<SponsorCompositeEnchantment>();
 		HextechRunesApi.RegisterEnchantmentIcon<Evolution>($"res://{ModInfo.Id}/images/enchantments/evolution.png");
 		HextechRunesApi.RegisterEnchantmentIcon<EntropyIncrease>($"res://{ModInfo.Id}/images/enchantments/plus.png");
 		HextechRunesApi.RegisterEnchantmentIcon<EntropyDecrease>($"res://{ModInfo.Id}/images/enchantments/minus.png");
@@ -167,6 +171,8 @@ public static class ModEntry
 		HextechRunesApi.RegisterEventRelic<ArcaneRoyallyApprovedChoiceRelic>(ModInfo.Id);
 		HextechRunesApi.RegisterEventRelic<DollyCardChoiceRelic>(ModInfo.Id);
 		HextechRunesApi.RegisterEventRelic<DollyRelicChoiceRelic>(ModInfo.Id);
+		HextechRunesApi.RegisterEventRelic<DollyPreviousPageRelic>(ModInfo.Id);
+		HextechRunesApi.RegisterEventRelic<DollyNextPageRelic>(ModInfo.Id);
 		HextechRunesApi.RegisterEventRelic<EntropyIncreaseChoiceRelic>(ModInfo.Id);
 		HextechRunesApi.RegisterEventRelic<EntropyDecreaseChoiceRelic>(ModInfo.Id);
 		HextechRunesApi.RegisterEventRelic<WarriorContractChoiceRelic>(ModInfo.Id);

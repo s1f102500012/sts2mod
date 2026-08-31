@@ -25,8 +25,11 @@ internal static class HextechEnemyHexCollapseView
 	private static Label? _countBadge;
 	private static PanelContainer? _panel;
 	private static GridContainer? _grid;
+	private static Control? _firstHolder;
 	private static bool _open;
 	private static Vector2 _cellSize = Vector2.Zero;
+	private static Control? _linkedMapControl;
+	private static NodePath _previousMapFocusNeighborLeft = new();
 
 	// 展示折叠视图。hexRows 为每幕一行;全空则隐藏。
 	internal static void Show(IReadOnlyList<IReadOnlyList<MonsterHexKind>> hexRows, int reservedColumns)
@@ -65,6 +68,10 @@ internal static class HextechEnemyHexCollapseView
 	// 切回旧版或清理:移除按钮与面板。
 	internal static void Remove()
 	{
+		if (_linkedMapControl != null && GodotObject.IsInstanceValid(_linkedMapControl))
+		{
+			_linkedMapControl.FocusNeighborLeft = _previousMapFocusNeighborLeft;
+		}
 		QueueFreeIfValid(_button);
 		QueueFreeIfValid(_panel);
 		_button = null;
@@ -72,7 +79,10 @@ internal static class HextechEnemyHexCollapseView
 		_countBadge = null;
 		_panel = null;
 		_grid = null;
+		_firstHolder = null;
 		_open = false;
+		_linkedMapControl = null;
+		_previousMapFocusNeighborLeft = new NodePath();
 	}
 
 	private static MonsterHexKind LatestHex(IReadOnlyList<IReadOnlyList<MonsterHexKind>> hexRows)
@@ -112,7 +122,7 @@ internal static class HextechEnemyHexCollapseView
 		Button button = new()
 		{
 			Name = ButtonName,
-			FocusMode = Control.FocusModeEnum.None,
+			FocusMode = Control.FocusModeEnum.All,
 			MouseFilter = Control.MouseFilterEnum.Stop,
 			CustomMinimumSize = iconSize,
 			SizeFlagsVertical = Control.SizeFlags.ShrinkCenter
@@ -120,8 +130,9 @@ internal static class HextechEnemyHexCollapseView
 		button.AddThemeStyleboxOverride("normal", CreateButtonStyle(0.62f));
 		button.AddThemeStyleboxOverride("hover", CreateButtonStyle(0.82f));
 		button.AddThemeStyleboxOverride("pressed", CreateButtonStyle(0.9f));
-		button.AddThemeStyleboxOverride("focus", new StyleBoxEmpty());
+		button.AddThemeStyleboxOverride("focus", CreateButtonStyle(0.9f));
 		button.Pressed += OnButtonPressed;
+		button.TreeExiting += () => OnButtonTreeExiting(button);
 
 		TextureRect icon = new()
 		{
@@ -155,6 +166,14 @@ internal static class HextechEnemyHexCollapseView
 
 		parent.AddChild(button);
 		parent.MoveChild(button, mapButton.GetIndex());
+		if (mapButton is Control focusableMap)
+		{
+			_linkedMapControl = focusableMap;
+			_previousMapFocusNeighborLeft = focusableMap.FocusNeighborLeft;
+			button.FocusNeighborLeft = button.GetPath();
+			button.FocusNeighborRight = focusableMap.GetPath();
+			focusableMap.FocusNeighborLeft = button.GetPath();
+		}
 
 		// 角标数字字体照抄原版牌组计数,渲染完全一致(需先入树,主题才可解析)。
 		ApplyDeckCountFont(badge);
@@ -162,6 +181,27 @@ internal static class HextechEnemyHexCollapseView
 		_button = button;
 		_iconRect = icon;
 		_countBadge = badge;
+	}
+
+	private static void OnButtonTreeExiting(Button owner)
+	{
+		// 面板位于全局 HoverTipsContainer，不是顶栏按钮的子节点。离开一局时顶栏会先退树，
+		// 必须由按钮的生命周期显式带走面板，否则它会继续留在主菜单上。
+		if (!ReferenceEquals(_button, owner))
+		{
+			return;
+		}
+
+		QueueFreeIfValid(_panel);
+		_button = null;
+		_iconRect = null;
+		_countBadge = null;
+		_panel = null;
+		_grid = null;
+		_firstHolder = null;
+		_open = false;
+		_linkedMapControl = null;
+		_previousMapFocusNeighborLeft = new NodePath();
 	}
 
 	// 把原版牌组按钮计数标签的字体/字号/颜色/描边照抄到角标,使数字与牌组「10」渲染一致。取不到就保留角标自带兜底样式。
@@ -325,6 +365,7 @@ internal static class HextechEnemyHexCollapseView
 
 		Vector2 cell = ResolveCellSize(hexRows);
 
+		List<Control> focusableHolders = [];
 		foreach (IReadOnlyList<MonsterHexKind> row in hexRows)
 		{
 			for (int i = 0; i < columns; i++)
@@ -335,7 +376,9 @@ internal static class HextechEnemyHexCollapseView
 					{
 						Control holder = HextechEnemyUi.CreateEnemyHexHolder(row[i]);
 						holder.Scale = Vector2.One; // 折叠面板里保持原始大小,不缩小图标(需要更多空间时靠背景变大)
+						holder.FocusMode = Control.FocusModeEnum.All;
 						_grid.AddChild(holder);
+						focusableHolders.Add(holder);
 						continue;
 					}
 					catch (Exception ex)
@@ -346,6 +389,28 @@ internal static class HextechEnemyHexCollapseView
 
 				_grid.AddChild(EmptyCell(cell));
 			}
+		}
+
+		ConfigureHolderNavigation(focusableHolders);
+	}
+
+	private static void ConfigureHolderNavigation(IReadOnlyList<Control> holders)
+	{
+		_firstHolder = holders.FirstOrDefault();
+		for (int i = 0; i < holders.Count; i++)
+		{
+			Control holder = holders[i];
+			holder.FocusNeighborLeft = holders[Math.Max(0, i - 1)].GetPath();
+			holder.FocusNeighborRight = holders[Math.Min(holders.Count - 1, i + 1)].GetPath();
+			holder.FocusNeighborTop = i == 0 && _button != null
+				? _button.GetPath()
+				: holders[Math.Max(0, i - 1)].GetPath();
+			holder.FocusNeighborBottom = holders[Math.Min(holders.Count - 1, i + 1)].GetPath();
+		}
+
+		if (_button != null && _open && holders.Count > 0)
+		{
+			_button.FocusNeighborBottom = holders[0].GetPath();
 		}
 	}
 
@@ -402,7 +467,22 @@ internal static class HextechEnemyHexCollapseView
 		_panel.Visible = _open;
 		if (_open)
 		{
+			if (_button != null && _firstHolder != null && GodotObject.IsInstanceValid(_firstHolder))
+			{
+				_button.FocusNeighborBottom = _firstHolder.GetPath();
+			}
 			PositionPanel();
+		}
+		else if (_button != null
+			&& _panel.GetViewport()?.GuiGetFocusOwner() is { } focusOwner
+			&& _panel.IsAncestorOf(focusOwner))
+		{
+			_button.FocusNeighborBottom = _button.GetPath();
+			_button.GrabFocus();
+		}
+		else if (!_open && _button != null)
+		{
+			_button.FocusNeighborBottom = _button.GetPath();
 		}
 	}
 

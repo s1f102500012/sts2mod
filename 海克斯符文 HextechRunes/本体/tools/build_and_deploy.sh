@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FILE_STEM="HextechRunes"
 VARIANT_MANIFEST_NAME="hextech-runes-variants.manifest"
-TARGETS=(0.107.1 0.110.0)
+TARGETS=(0.107.1 0.110.0 0.111.0)
 
 MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
 VARIANT_PROJECT="$ROOT/src/$FILE_STEM.csproj"
@@ -143,7 +143,8 @@ python3 \
 	--mod-id "$FILE_STEM" \
 	--manifest-name "$VARIANT_MANIFEST_NAME" \
 	--target "0.107.1" \
-	--target "0.110.0"
+	--target "0.110.0" \
+	--target "0.111.0"
 
 mkdir -p "$IMPORT_PROJECT/$FILE_STEM"
 cp "$ROOT/tools/project.godot" "$IMPORT_PROJECT/project.godot"

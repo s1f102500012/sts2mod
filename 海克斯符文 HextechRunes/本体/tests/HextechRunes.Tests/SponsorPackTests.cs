@@ -1,10 +1,12 @@
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.CompilerServices;
 using HextechRunesSponsorPack;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Enchantments;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Models.Cards;
 using MegaCrit.Sts2.Core.Models.Characters;
 using MegaCrit.Sts2.Core.Models.Enchantments;
 using MegaCrit.Sts2.Core.Models.Relics;
@@ -50,6 +52,103 @@ internal static partial class Program
 		Equal(sharp, EnchantmentCompositionAdapter.Find(composite, typeof(Sharp)), "sponsor composite lookup");
 		Expect(EnchantmentCompositionAdapter.Contains(composite, typeof(Sharp)), "sponsor composite should contain its inner enchantment");
 		Expect(!EnchantmentCompositionAdapter.Contains(composite, typeof(Sown)), "sponsor composite should reject missing enchantment types");
+	}
+
+	private static void EnchantmentCompositionAdapterUsesMultiEnchantmentPublicApi()
+	{
+		AssemblyBuilder assembly = AssemblyBuilder.DefineDynamicAssembly(
+			new AssemblyName("MultiEnchantmentMod"),
+			AssemblyBuilderAccess.Run);
+		TypeBuilder apiType = assembly
+			.DefineDynamicModule("MultiEnchantmentMod")
+			.DefineType(
+				"MultiEnchantmentMod.Api.MultiEnchantmentApi",
+				TypeAttributes.Public | TypeAttributes.Abstract | TypeAttributes.Sealed);
+		MethodBuilder getEnchantment = apiType.DefineMethod(
+			"GetEnchantment",
+			MethodAttributes.Public | MethodAttributes.Static,
+			typeof(EnchantmentModel),
+			[ typeof(CardModel), typeof(Type) ]);
+		MethodInfo enchantmentGetter = typeof(CardModel)
+			.GetProperty(nameof(CardModel.Enchantment))!
+			.GetMethod!;
+		ILGenerator il = getEnchantment.GetILGenerator();
+		il.Emit(OpCodes.Ldarg_1);
+		il.Emit(OpCodes.Ldarg_0);
+		il.Emit(OpCodes.Callvirt, enchantmentGetter);
+		il.Emit(OpCodes.Callvirt, typeof(Type).GetMethod(nameof(Type.IsInstanceOfType), [ typeof(object) ])!);
+		Label missing = il.DefineLabel();
+		il.Emit(OpCodes.Brfalse_S, missing);
+		il.Emit(OpCodes.Ldarg_0);
+		il.Emit(OpCodes.Callvirt, enchantmentGetter);
+		il.Emit(OpCodes.Ret);
+		il.MarkLabel(missing);
+		il.Emit(OpCodes.Ldnull);
+		il.Emit(OpCodes.Ret);
+		apiType.CreateType();
+
+		EnchantmentModel sharp = (Sharp)RuntimeHelpers.GetUninitializedObject(typeof(Sharp));
+		CardModel card = (Bash)RuntimeHelpers.GetUninitializedObject(typeof(Bash));
+		typeof(CardModel)
+			.GetField("<Enchantment>k__BackingField", BindingFlags.Instance | BindingFlags.NonPublic)!
+			.SetValue(card, sharp);
+
+		Equal(sharp, EnchantmentCompositionAdapter.Find(card, typeof(Sharp)), "MultiEnchantmentMod public API lookup");
+		Expect(EnchantmentCompositionAdapter.Find(card, typeof(Sown)) == null, "MultiEnchantmentMod public API should respect requested type");
+	}
+
+	private static void SponsorCompositeExpandsInnerHookListeners()
+	{
+		EnchantmentModel sharp = (Sharp)RuntimeHelpers.GetUninitializedObject(typeof(Sharp));
+		SponsorCompositeEnchantment composite = (SponsorCompositeEnchantment)RuntimeHelpers.GetUninitializedObject(typeof(SponsorCompositeEnchantment));
+		typeof(SponsorCompositeEnchantment)
+			.GetField("_innerEnchantments", BindingFlags.Instance | BindingFlags.NonPublic)!
+			.SetValue(composite, new List<EnchantmentModel> { sharp });
+		typeof(SponsorCompositeEnchantment)
+			.GetField("_subscribedInnerEnchantments", BindingFlags.Instance | BindingFlags.NonPublic)!
+			.SetValue(composite, new List<EnchantmentModel>());
+
+		AbstractModel[] expanded = BuiltInRepeatableEnchantments
+			.ExpandCompositeHookListeners([ composite ])
+			.ToArray();
+		Equal(1, expanded.Length, "expanded hook listener count");
+		Equal(sharp, expanded[0], "expanded hook listener");
+
+		string[] manuallyForwardedHooks =
+		[
+			nameof(AbstractModel.AfterCardPlayed),
+			nameof(AbstractModel.AfterCardDrawn),
+			nameof(AbstractModel.AfterPlayerTurnStart),
+			nameof(AbstractModel.BeforeFlush),
+			nameof(AbstractModel.ModifyShuffleOrder)
+		];
+		foreach (string hook in manuallyForwardedHooks)
+		{
+			Expect(
+				typeof(SponsorCompositeEnchantment).GetMethod(
+					hook,
+					BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly) == null,
+				$"composite should not hard-code hook forwarding for {hook}");
+		}
+	}
+
+	private static void DollysMirrorRelicPagesStayWithinVanillaViewport()
+	{
+		DollyRelicPageLayout first = DollysMirrorForge.GetRelicPageLayout(13, 0);
+		Equal(6, first.RelicCount, "first Dolly relic page count");
+		Expect(!first.HasPreviousPage, "first Dolly relic page should not have previous-page navigation");
+		Expect(first.HasNextPage, "first Dolly relic page should have next-page navigation");
+
+		DollyRelicPageLayout middle = DollysMirrorForge.GetRelicPageLayout(13, 1);
+		Equal(6, middle.RelicCount, "middle Dolly relic page count");
+		Expect(middle.HasPreviousPage, "middle Dolly relic page should have previous-page navigation");
+		Expect(middle.HasNextPage, "middle Dolly relic page should have next-page navigation");
+
+		DollyRelicPageLayout last = DollysMirrorForge.GetRelicPageLayout(13, 99);
+		Equal(1, last.RelicCount, "last Dolly relic page count");
+		Expect(last.HasPreviousPage, "last Dolly relic page should have previous-page navigation");
+		Expect(!last.HasNextPage, "last Dolly relic page should not have next-page navigation");
+		Equal(2, last.PageIndex, "Dolly relic page index clamp");
 	}
 
 	private static void AbyssalContractChoiceModelsMapToExpectedContracts()

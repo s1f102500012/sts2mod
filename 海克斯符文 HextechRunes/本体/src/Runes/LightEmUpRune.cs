@@ -82,6 +82,12 @@ public sealed class LightEmUpRune : HextechRelicBase
 
 		Flash(targets);
 		Creature source = Owner.Creature;
+		if (HextechPlayerContextHelper.IsNetworkMultiplayerRun())
+		{
+			_ = TaskHelper.RunSafely(PlayVolleyVfxAsync(source, targets));
+			return ResolveVolleyDamageInLockstepAsync(choiceContext, source, combatState, targets, damage);
+		}
+
 		_ = TaskHelper.RunSafely(ResolveVolleyAfterCardSettlesAsync(
 			source,
 			combatState,
@@ -89,6 +95,45 @@ public sealed class LightEmUpRune : HextechRelicBase
 			targets,
 			damage));
 		return Task.CompletedTask;
+	}
+
+	private static async Task PlayVolleyVfxAsync(Creature source, IReadOnlyList<Creature> targets)
+	{
+		await Task.WhenAll(Enumerable.Range(0, MissileCount)
+			.SelectMany(missileIndex => targets
+				.Select(target => HextechCombatVfx.PlayTwinFlamesMissile(source, target, missileIndex))));
+	}
+
+	private static async Task ResolveVolleyDamageInLockstepAsync(
+		PlayerChoiceContext choiceContext,
+		Creature source,
+		HextechCombatState combatState,
+		IReadOnlyList<Creature> targets,
+		decimal damage)
+	{
+		for (int missileIndex = 0; missileIndex < MissileCount; missileIndex++)
+		{
+			if (source.IsDead || !ReferenceEquals(source.CombatState, combatState))
+			{
+				return;
+			}
+
+			foreach (Creature target in targets)
+			{
+				if (!target.IsAlive || !ReferenceEquals(target.CombatState, combatState))
+				{
+					continue;
+				}
+
+				await HextechGameApiCompat.Damage(
+					choiceContext,
+					target,
+					damage,
+					ValueProp.Unpowered,
+					source,
+					null);
+			}
+		}
 	}
 
 	private static async Task ResolveVolleyAfterCardSettlesAsync(
@@ -171,6 +216,7 @@ public sealed class LightEmUpRune : HextechRelicBase
 				: [];
 		return targets
 			.Where(static target => target.IsAlive && target.Side == CombatSide.Enemy)
+			.OrderBy(static target => target.CombatId ?? uint.MaxValue)
 			.ToList();
 	}
 

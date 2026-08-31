@@ -43,6 +43,8 @@ internal static partial class HextechRuneSelectionCoordinator
 		}
 
 		bool isAuthorityLocal = syncContext != null && IsLocalPlayer(runManager, syncContext.AuthorityPlayer);
+		HashSet<MonsterHexKind> seenEnemyHexes = modifier.GetKnownMonsterHexes().ToHashSet();
+		seenEnemyHexes.UnionWith(syncContext?.CurrentMonsterHexes ?? initialNewMonsterHexes);
 		return new HextechEnemyHexAdjustmentOptions
 		{
 			// choiceOrdinal>0 时无新 hex 可调整(syncContext 为 null):只读展示【本幕新增】的敌方 hex。
@@ -60,7 +62,8 @@ internal static partial class HextechRuneSelectionCoordinator
 					actIndex,
 					GetMonsterHexSlot(currentHexes, slotIndex),
 					rerollOrdinal,
-					CreateEnemyHexRerollExcludedIds(enemyRerollExcludedIds, currentHexes, slotIndex))
+					CreateEnemyHexRerollExcludedIds(enemyRerollExcludedIds, currentHexes, slotIndex),
+					seenEnemyHexes)
 				: null,
 			Changed = isAuthorityLocal && syncContext != null
 				? (monsterHexes, rerollCounts) => SendEnemyHexAdjustment(syncContext, monsterHexes, rerollCounts, isFinal: false)

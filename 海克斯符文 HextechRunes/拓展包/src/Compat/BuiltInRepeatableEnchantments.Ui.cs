@@ -15,7 +15,7 @@ internal static partial class BuiltInRepeatableEnchantments
 {
 	private static void GetEnchantmentHoverTipsPostfix(EnchantmentModel __instance, ref IEnumerable<IHoverTip> __result)
 	{
-		if (IsOriginalRepeatableEnchantmentsActive() || __instance is not SponsorCompositeEnchantment composite)
+		if (IsExternalMultiEnchantmentProviderActive() || __instance is not SponsorCompositeEnchantment composite)
 		{
 			return;
 		}
@@ -30,7 +30,7 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	private static void GetDescriptionForPilePostfix(CardModel __instance, ref string __result)
 	{
-		if (!IsOriginalRepeatableEnchantmentsActive())
+		if (!IsExternalMultiEnchantmentProviderActive())
 		{
 			__result = AppendCompositeExtraText(__result, __instance);
 		}
@@ -38,7 +38,7 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	private static void GetDescriptionForUpgradePreviewPostfix(CardModel __instance, ref string __result)
 	{
-		if (!IsOriginalRepeatableEnchantmentsActive())
+		if (!IsExternalMultiEnchantmentProviderActive())
 		{
 			__result = AppendCompositeExtraText(__result, __instance);
 		}
@@ -46,7 +46,7 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	private static bool UpdateEnchantmentVisualsPrefix(NCard __instance)
 	{
-		if (IsOriginalRepeatableEnchantmentsActive())
+		if (IsExternalMultiEnchantmentProviderActive())
 		{
 			return true;
 		}
@@ -92,7 +92,7 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	private static bool EnchantPreviewInitPrefix(NEnchantPreview __instance, CardModel card, EnchantmentModel canonicalEnchantment, int amount)
 	{
-		if (IsOriginalRepeatableEnchantmentsActive()
+		if (IsExternalMultiEnchantmentProviderActive()
 			|| (card.Enchantment is not SponsorCompositeEnchantment && !CanUseBuiltInRepeatableEnchantments(card)))
 		{
 			return true;
@@ -128,7 +128,7 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	private static void CardEnchantVfxReadyPostfix(NCardEnchantVfx __instance)
 	{
-		if (IsOriginalRepeatableEnchantmentsActive())
+		if (IsExternalMultiEnchantmentProviderActive())
 		{
 			return;
 		}

@@ -95,6 +95,7 @@ internal sealed partial class HextechMayhemModifier
 #if STS2_104_OR_NEWER
 	public override async Task AfterAutoPrePlayPhaseEnteredLate(PlayerChoiceContext choiceContext, Player player)
 	{
+		_combatTracking.EnterPlayerPlayPhase(player.NetId);
 		await HextechEnemyHexDispatcher.ForEachActive(
 			this,
 			(effect, context) => effect.AfterAutoPrePlayPhaseEnteredLate(context, choiceContext, player));
@@ -102,6 +103,7 @@ internal sealed partial class HextechMayhemModifier
 #else
 	public override async Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
 	{
+		_combatTracking.EnterPlayerPlayPhase(player.NetId);
 		await HextechEnemyHexDispatcher.ForEachActive(
 			this,
 			(effect, context) => effect.BeforePlayPhaseStart(context, choiceContext, player));

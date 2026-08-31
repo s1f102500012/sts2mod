@@ -153,69 +153,153 @@ internal sealed partial class HextechRuneSelectionScreen
 
 		if (_enemyHexControlsEnabled && slotIndex >= 0)
 		{
+			bool showUndoButton = ShouldShowEnemyHexUndoButton(monsterHex);
 			HBoxContainer actionRow = new()
 			{
 				Name = $"EnemyHexActionRow{slotIndex}",
 				MouseFilter = MouseFilterEnum.Pass,
-				CustomMinimumSize = new Vector2(236f, 0f),
+				CustomMinimumSize = showUndoButton
+					? EnemyUndoButtonSize
+					: new Vector2(EnemyRerollButtonSize.X + EnemyRemoveButtonSize.X + 10f, EnemyRerollButtonSize.Y),
 				SizeFlagsHorizontal = SizeFlags.ShrinkEnd,
 				Alignment = BoxContainer.AlignmentMode.Center
 			};
 			actionRow.AddThemeConstantOverride("separation", 10);
 			row.AddChild(actionRow);
 
-			Button rerollButton = CreateEnemyHexActionButton(new LocString(LocTable, "HEXTECH_REROLL").GetRawText(), 104f);
-			rerollButton.Disabled = !monsterHex.HasValue || _enemyHexRerollFunc == null || IsEnemyHexRerollLimitReached(slotIndex);
-			rerollButton.Pressed += () => OnEnemyHexRerollPressed(slotIndex);
+			Button rerollButton;
+			if (showUndoButton)
+			{
+				rerollButton = new Button
+				{
+					Name = $"EnemyHexRerollButton_{slotIndex}",
+					Visible = false,
+					Disabled = true,
+					FocusMode = FocusModeEnum.None
+				};
+			}
+			else
+			{
+				bool rerollDisabled = _enemyHexRerollFunc == null || IsEnemyHexRerollLimitReached(slotIndex);
+				rerollButton = CreateRerollIconButton(
+					$"EnemyHexRerollButton_{slotIndex}",
+					EnemyRerollButtonSize,
+					rerollDisabled,
+					includeGoldenVisual: false);
+				rerollButton.Pressed += () => OnEnemyHexRerollPressed(slotIndex);
+			}
 			actionRow.AddChild(rerollButton);
+			_enemyHexRerollButtons.Add(rerollButton);
 
 			bool canUndoRemove = !monsterHex.HasValue && GetMonsterHexBeforeRemovalSlot(slotIndex).HasValue;
-			Button removeButton = CreateEnemyHexActionButton(new LocString(LocTable, monsterHex.HasValue ? "HEXTECH_ENEMY_REMOVE" : "HEXTECH_ENEMY_UNDO_REMOVE").GetRawText(), 104f);
-			removeButton.Disabled = !monsterHex.HasValue && !canUndoRemove;
+			Button removeButton = CreateEnemyHexRemovalButton(
+				slotIndex,
+				showUndoButton,
+				disabled: showUndoButton && !canUndoRemove);
 			removeButton.Pressed += () => OnEnemyHexRemovePressed(slotIndex);
 			actionRow.AddChild(removeButton);
+			_enemyHexRemoveButtons.Add(removeButton);
 		}
 
 		return row;
 	}
 
-	private Button CreateEnemyHexActionButton(string text, float width)
+	private Button CreateEnemyHexRemovalButton(int slotIndex, bool undo, bool disabled)
 	{
-		Color accent = GetAccentColor();
+		Vector2 buttonSize = undo ? EnemyUndoButtonSize : EnemyRemoveButtonSize;
 		Button button = new()
 		{
+			Name = undo ? $"EnemyHexUndoButton_{slotIndex}" : $"EnemyHexRemoveButton_{slotIndex}",
 			Text = string.Empty,
 			FocusMode = FocusModeEnum.All,
 			MouseDefaultCursorShape = CursorShape.PointingHand,
-			CustomMinimumSize = new Vector2(width, 40f)
+			CustomMinimumSize = buttonSize,
+			Disabled = disabled
 		};
-		button.AddThemeStyleboxOverride("normal", CreateRerollStyle(new Color(0.08f, 0.1f, 0.15f, 0.72f), accent.Lightened(0.05f)));
-		button.AddThemeStyleboxOverride("hover", CreateRerollStyle(new Color(0.1f, 0.13f, 0.18f, 0.82f), accent));
-		button.AddThemeStyleboxOverride("pressed", CreateRerollStyle(new Color(0.07f, 0.09f, 0.13f, 0.86f), accent.Lightened(0.12f)));
-		button.AddThemeStyleboxOverride("focus", CreateRerollStyle(new Color(0.1f, 0.13f, 0.18f, 0.82f), accent));
-		button.AddThemeStyleboxOverride("disabled", CreateRerollStyle(new Color(0.08f, 0.09f, 0.12f, 0.56f), accent.Darkened(0.35f)));
-		AddCrispButtonText(button, text, 16, new Color(0.94f, 0.92f, 0.86f, 1f));
+		StyleBoxEmpty emptyStyle = new();
+		button.AddThemeStyleboxOverride("normal", emptyStyle);
+		button.AddThemeStyleboxOverride("hover", emptyStyle);
+		button.AddThemeStyleboxOverride("pressed", emptyStyle);
+		button.AddThemeStyleboxOverride("focus", emptyStyle);
+		button.AddThemeStyleboxOverride("disabled", emptyStyle);
+
+		TextureRect icon = new()
+		{
+			Name = undo ? "UndoButtonTexture" : "RemoveButtonTexture",
+			MouseFilter = MouseFilterEnum.Ignore,
+			CustomMinimumSize = buttonSize,
+			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
+			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered
+		};
+		icon.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
+		button.AddChild(icon);
+
+		bool hovered = false;
+		bool focused = false;
+		bool pressed = false;
+		void UpdateVisualState()
+		{
+			string normalPath = undo ? UndoButtonTexturePath : RemoveButtonTexturePath;
+			string path = ResolveEnemyHexRemovalButtonTexture(undo, disabled, pressed, hovered || focused);
+			icon.Texture = HextechAssetHooks.LoadUiTexture(path)
+				?? HextechAssetHooks.LoadUiTexture(normalPath);
+		}
+
+		button.MouseEntered += () =>
+		{
+			hovered = true;
+			UpdateVisualState();
+		};
+		button.MouseExited += () =>
+		{
+			hovered = false;
+			UpdateVisualState();
+		};
+		button.FocusEntered += () =>
+		{
+			focused = true;
+			UpdateVisualState();
+		};
+		button.FocusExited += () =>
+		{
+			focused = false;
+			UpdateVisualState();
+		};
+		button.ButtonDown += () =>
+		{
+			pressed = true;
+			UpdateVisualState();
+		};
+		button.ButtonUp += () =>
+		{
+			pressed = false;
+			UpdateVisualState();
+		};
+		UpdateVisualState();
 		return button;
 	}
 
-	private void AddCrispButtonText(Button button, string text, int fontSize, Color fontColor)
+	internal static string ResolveEnemyHexRemovalButtonTexture(bool undo, bool disabled, bool pressed, bool highlighted)
 	{
-		MegaLabel label = new()
+		if (undo)
 		{
-			MouseFilter = MouseFilterEnum.Ignore,
-			HorizontalAlignment = HorizontalAlignment.Center,
-			VerticalAlignment = VerticalAlignment.Center,
-			MinFontSize = fontSize,
-			MaxFontSize = fontSize
-		};
-		label.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		HextechUiTheme.ApplyDefaultMegaLabelTheme(label);
-		label.AddThemeFontSizeOverride("font_size", fontSize);
-		label.AddThemeColorOverride("font_color", fontColor);
-		label.AddThemeColorOverride("font_outline_color", new Color(0f, 0f, 0f, 0.62f));
-		label.AddThemeConstantOverride("outline_size", 2);
-		label.SetTextAutoSize(text);
-		button.AddChild(label);
+			return disabled
+				? UndoButtonDisabledTexturePath
+				: pressed
+					? UndoButtonPressedTexturePath
+					: highlighted ? UndoButtonHoverTexturePath : UndoButtonTexturePath;
+		}
+
+		return disabled
+			? RemoveButtonDisabledTexturePath
+			: pressed
+				? RemoveButtonPressedTexturePath
+				: highlighted ? RemoveButtonHoverTexturePath : RemoveButtonTexturePath;
+	}
+
+	internal static bool ShouldShowEnemyHexUndoButton(MonsterHexKind? monsterHex)
+	{
+		return !monsterHex.HasValue;
 	}
 
 	private MonsterHexKind? GetMonsterHexBeforeRemovalSlot(int slotIndex)
@@ -224,4 +308,5 @@ internal sealed partial class HextechRuneSelectionScreen
 			? _monsterHexBeforeRemoval[slotIndex]
 			: null;
 	}
+
 }

@@ -1,13 +1,9 @@
 using System.Text.Json;
-using MegaCrit.Sts2.Core.Commands;
-using MegaCrit.Sts2.Core.Combat;
 using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Entities.Enchantments;
-using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.GameActions.Multiplayer;
 using MegaCrit.Sts2.Core.HoverTips;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Models.Enchantments;
 using MegaCrit.Sts2.Core.Saves.Runs;
 using MegaCrit.Sts2.Core.ValueProps;
 
@@ -306,78 +302,6 @@ public sealed class SponsorCompositeEnchantment : EnchantmentModel
 		RefreshCompositeStatus();
 	}
 
-	public override async Task AfterCardPlayed(PlayerChoiceContext context, CardPlay cardPlay)
-	{
-		EnsureInnerBindings();
-		foreach (EnchantmentModel enchantment in _innerEnchantments)
-		{
-			if (enchantment is Goopy goopy)
-			{
-				await HandleGoopyAfterCardPlayed(goopy, cardPlay);
-				continue;
-			}
-
-			await enchantment.AfterCardPlayed(context, cardPlay);
-		}
-
-		RefreshCompositeStatus();
-	}
-
-	public override async Task AfterCardDrawn(PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw)
-	{
-		EnsureInnerBindings();
-		foreach (EnchantmentModel enchantment in _innerEnchantments)
-		{
-			await enchantment.AfterCardDrawn(choiceContext, card, fromHandDraw);
-		}
-
-		RefreshCompositeStatus();
-	}
-
-	public override async Task AfterPlayerTurnStart(PlayerChoiceContext choiceContext, Player player)
-	{
-		EnsureInnerBindings();
-		foreach (EnchantmentModel enchantment in _innerEnchantments)
-		{
-			if (enchantment is Imbued)
-			{
-				CardModel compositeCard = Card;
-				ICombatState? combatState = compositeCard.CombatState;
-				if (player == compositeCard.Owner && combatState?.RoundNumber == 1)
-				{
-					BuiltInRepeatableEnchantments.DebugLog("Imbued", $"Auto-playing imbued composite card {BuiltInRepeatableEnchantments.DescribeCard(compositeCard)} at player turn start.");
-					await CardCmd.AutoPlay(choiceContext, compositeCard, null);
-				}
-
-				continue;
-			}
-
-			await enchantment.AfterPlayerTurnStart(choiceContext, player);
-		}
-
-		RefreshCompositeStatus();
-	}
-
-	public override async Task BeforeFlush(PlayerChoiceContext choiceContext, Player player)
-	{
-		EnsureInnerBindings();
-		foreach (EnchantmentModel enchantment in _innerEnchantments)
-		{
-			await enchantment.BeforeFlush(choiceContext, player);
-		}
-
-		RefreshCompositeStatus();
-	}
-
-	public override void ModifyShuffleOrder(Player player, List<CardModel> cards, bool isInitialShuffle)
-	{
-		EnsureInnerBindings();
-		foreach (EnchantmentModel enchantment in _innerEnchantments)
-		{
-			enchantment.ModifyShuffleOrder(player, cards, isInitialShuffle);
-		}
-	}
-
 	private decimal CalculateFinalBlock(decimal originalBlock)
 	{
 		decimal current = originalBlock;
@@ -400,34 +324,6 @@ public sealed class SponsorCompositeEnchantment : EnchantmentModel
 		}
 
 		return current;
-	}
-
-	private Task HandleGoopyAfterCardPlayed(Goopy goopy, CardPlay cardPlay)
-	{
-		if (cardPlay.Card != goopy.Card)
-		{
-			return Task.CompletedTask;
-		}
-
-		goopy.Amount++;
-		goopy.RecalculateValues();
-		if (goopy.Card.DeckVersion?.Enchantment is SponsorCompositeEnchantment deckVersionComposite)
-		{
-			if (deckVersionComposite.FindEnchantment(typeof(Goopy)) is Goopy deckGoopy)
-			{
-				deckGoopy.Amount++;
-				deckGoopy.RecalculateValues();
-				deckVersionComposite.RefreshCompositeStatus();
-			}
-		}
-		else if (goopy.Card.DeckVersion?.Enchantment is Goopy deckVersionGoopy)
-		{
-			deckVersionGoopy.Amount++;
-			deckVersionGoopy.RecalculateValues();
-		}
-
-		goopy.Card.DynamicVars.RecalculateForUpgradeOrEnchant();
-		return Task.CompletedTask;
 	}
 
 	private void EnsureCompositeCard()

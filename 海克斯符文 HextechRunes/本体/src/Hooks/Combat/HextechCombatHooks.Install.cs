@@ -43,10 +43,25 @@ internal static partial class HextechCombatHooks
 
 	private static void InstallHealingHooks(Harmony harmony)
 	{
+		MethodInfo healMethod = RequireMethod(
+			typeof(CreatureCmd),
+			nameof(CreatureCmd.Heal),
+			BindingFlags.Public | BindingFlags.Static,
+			typeof(Creature),
+			typeof(decimal),
+			typeof(bool));
 		harmony.Patch(
-			RequireMethod(typeof(CreatureCmd), nameof(CreatureCmd.Heal), BindingFlags.Public | BindingFlags.Static, typeof(Creature), typeof(decimal), typeof(bool)),
+			healMethod,
 			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(HealPrefix)),
 			postfix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(HealPostfix)));
+
+		// 回血倍率都在同一命令的 prefix 中合成；封顶必须最后执行，加载顺序才不会改变整数生命值。
+		HarmonyMethod finalHealCapPrefix = new(typeof(HextechCombatHooks), nameof(FinalizeGlassCannonHealCapPrefix))
+		{
+			priority = Priority.Last,
+			after = [EndlessModeHarmonyId]
+		};
+		harmony.Patch(healMethod, prefix: finalHealCapPrefix);
 	}
 
 	private static void InstallCardPlayHooks(Harmony harmony)

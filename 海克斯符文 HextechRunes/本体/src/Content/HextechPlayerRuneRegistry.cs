@@ -354,7 +354,8 @@ internal static class HextechPlayerRuneRegistry
 		Rune<CorrosiveWaveUpgradeRune>(HextechRarityTier.Prismatic, characterPool: PlayerRuneCharacterPool.Silent, characterOrder: 29, tagKey: "POISON"),
 		Rune<OblivionUpgradeRune>(HextechRarityTier.Prismatic, characterPool: PlayerRuneCharacterPool.Necrobinder, characterOrder: 36, tagKey: "DOOM"),
 		Rune<StormUpgradeRune>(HextechRarityTier.Prismatic, characterPool: PlayerRuneCharacterPool.Defect, characterOrder: 32, tagKey: "ORB"),
-		Rune<DecisionsDecisionsUpgradeRune>(HextechRarityTier.Prismatic, characterPool: PlayerRuneCharacterPool.Regent, characterOrder: 30, tagKey: "COMPREHENSIVE")
+		Rune<DecisionsDecisionsUpgradeRune>(HextechRarityTier.Prismatic, characterPool: PlayerRuneCharacterPool.Regent, characterOrder: 30, tagKey: "COMPREHENSIVE"),
+		Rune<SomethingForNothingRune>(HextechRarityTier.Prismatic, tagKey: "RESOURCE")
 	];
 
 	private static PlayerRuneRegistration Rune<TRune>(

@@ -44,6 +44,7 @@ public static class ModEntry
 			HextechRunLifecycleHooks.Install(harmony);
 			HextechCombatHooks.Install(harmony);
 			HextechEnemyPowerScalingHooks.Install(harmony);
+			TryInstallOptionalHookGroup("endless mode monster power normalization", () => HextechEndlessModeCompatibilityHooks.Install(harmony));
 			TryInstallOptionalHookGroup("artifact encounter compatibility", () => HextechArtifactCompatibilityHooks.Install(harmony));
 			TryInstallOptionalHookGroup("personal hive damage-response safety", () => HextechPersonalHiveSafetyHooks.Install(harmony));
 			TryInstallOptionalHookGroup("encounter compatibility", () => HextechEncounterCompatibilityHooks.Install(harmony));

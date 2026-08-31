@@ -10,9 +10,15 @@ WorkingDirectory=/opt/hextech-runes-telemetry/app
 Environment=HOST=127.0.0.1
 Environment=PORT=3000
 Environment=DATA_DIR=/opt/hextech-runes-telemetry/data
+Environment=SUMMARY_FLUSH_INTERVAL_MS=300000
+Environment=RECENT_RUN_ID_LIMIT=250000
+Environment=RECENT_RUN_ID_TAIL_BYTES=67108864
 ExecStart=/usr/bin/env node server.js
 Restart=always
 RestartSec=3
+MemoryHigh=768M
+MemoryMax=1G
+TasksMax=32
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full

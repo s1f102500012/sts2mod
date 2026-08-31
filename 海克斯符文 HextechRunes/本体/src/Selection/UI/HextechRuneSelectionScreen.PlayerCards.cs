@@ -131,7 +131,7 @@ internal sealed partial class HextechRuneSelectionScreen
 		content.AddChild(body);
 
 		SetMouseFilterIgnoreRecursive(margin);
-		AttachRelicHoverTips(relicTexture, relic);
+		AttachRelicHoverTips(button, relic);
 		button.Pressed += () => OnHolderSelected(relic);
 		return button;
 	}
@@ -139,14 +139,25 @@ internal sealed partial class HextechRuneSelectionScreen
 	private Button CreateRerollButton(int slotIndex)
 	{
 		bool rerollLimitReached = IsPlayerRuneRerollLimitReached(slotIndex);
+		Button button = CreateRerollIconButton(
+			$"RerollButton_{slotIndex}",
+			PlayerRerollButtonSize,
+			rerollLimitReached,
+			includeGoldenVisual: true);
+		button.Pressed += () => OnRerollPressed(slotIndex);
+		return button;
+	}
+
+	private Button CreateRerollIconButton(string name, Vector2 size, bool disabled, bool includeGoldenVisual)
+	{
 		Button button = new()
 		{
-			Name = $"RerollButton_{slotIndex}",
+			Name = name,
 			Text = string.Empty,
 			FocusMode = FocusModeEnum.All,
 			MouseDefaultCursorShape = CursorShape.PointingHand,
-			CustomMinimumSize = PlayerRerollButtonSize,
-			Disabled = rerollLimitReached
+			CustomMinimumSize = size,
+			Disabled = disabled
 		};
 		StyleBoxFlat transparentStyle = CreateRerollStyle(new Color(0f, 0f, 0f, 0f), new Color(0f, 0f, 0f, 0f));
 		transparentStyle.SetBorderWidthAll(0);
@@ -162,46 +173,56 @@ internal sealed partial class HextechRuneSelectionScreen
 		{
 			Name = "RerollButtonTexture",
 			MouseFilter = MouseFilterEnum.Ignore,
-			CustomMinimumSize = PlayerRerollButtonSize,
+			CustomMinimumSize = size,
 			ExpandMode = TextureRect.ExpandModeEnum.IgnoreSize,
 			StretchMode = TextureRect.StretchModeEnum.KeepAspectCentered,
 			SelfModulate = Colors.White
 		};
 		icon.SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
-		ApplyRerollButtonVisualState(button, icon, rerollLimitReached, hovered: false);
+		ApplyRerollButtonVisualState(button, icon, disabled, hovered: false);
 		if (icon.Texture == null)
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] SelectionScreen.CreateRerollButton: failed to load reroll button texture path={RerollButtonTexturePath}");
 		}
 		button.AddChild(icon);
-		HextechGoldenRerollVisual? goldenVisual = CreateGoldenRerollVisual(rerollLimitReached);
+		HextechGoldenRerollVisual? goldenVisual = includeGoldenVisual
+			? CreateGoldenRerollVisual(disabled)
+			: null;
 		if (goldenVisual != null)
 		{
 			button.AddChild(goldenVisual);
 			_goldenRerollVisuals.Add(goldenVisual);
 		}
 		bool hovered = false;
+		bool focused = false;
+		void UpdateVisualState()
+		{
+			bool highlighted = hovered || focused;
+			ApplyRerollButtonVisualState(button, icon, disabled, highlighted);
+			goldenVisual?.SetVisualState(
+				_goldenRerollSession?.IsActive == true,
+				highlighted,
+				disabled);
+		}
 		button.MouseEntered += () =>
 		{
 			hovered = true;
-			ApplyRerollButtonVisualState(button, icon, rerollLimitReached, hovered);
-			goldenVisual?.SetVisualState(
-				_goldenRerollSession?.IsActive == true,
-				hovered,
-				rerollLimitReached);
+			UpdateVisualState();
 		};
 		button.MouseExited += () =>
 		{
 			hovered = false;
-			ApplyRerollButtonVisualState(button, icon, rerollLimitReached, hovered);
-			goldenVisual?.SetVisualState(
-				_goldenRerollSession?.IsActive == true,
-				hovered,
-				rerollLimitReached);
+			UpdateVisualState();
 		};
-		button.Pressed += () =>
+		button.FocusEntered += () =>
 		{
-			OnRerollPressed(slotIndex);
+			focused = true;
+			UpdateVisualState();
+		};
+		button.FocusExited += () =>
+		{
+			focused = false;
+			UpdateVisualState();
 		};
 		return button;
 	}

@@ -31,6 +31,8 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 	private readonly string _rarityKey;
 	private readonly List<Button> _holders = new();
 	private readonly List<Button> _rerollButtons = new();
+	private readonly List<Button> _enemyHexRerollButtons = new();
+	private readonly List<Button> _enemyHexRemoveButtons = new();
 	private readonly List<HextechGoldenRerollVisual> _goldenRerollVisuals = new();
 	private readonly List<int> _playerRuneRerollCounts = new();
 	private readonly List<int> _rerollHistory = new();
@@ -41,6 +43,7 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 	private bool _choiceLocked;
 	private bool _blockMapUntilDismissed;
 	private bool _closed;
+	private bool _controllerNavigationActivated;
 	private bool _selectionConfirmGuardStarted;
 	private ulong _selectionConfirmGuardEndsAtMsec;
 
@@ -48,7 +51,7 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 
 	public bool UseSharedBackstop => true;
 
-	public Control? DefaultFocusedControl => _holders.FirstOrDefault();
+	public Control? DefaultFocusedControl => _controllerNavigationActivated ? _holders.FirstOrDefault() : null;
 
 	public bool RequestedReroll => false;
 

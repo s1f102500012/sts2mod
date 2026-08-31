@@ -120,7 +120,10 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			child.QueueFree();
 		}
 
+		_enemyHexRerollButtons.Clear();
+		_enemyHexRemoveButtons.Clear();
 		_enemyPreviewHost.AddChild(CreateEnemyPreview());
+		ConfigureControllerNavigation();
 	}
 
 	private void RebuildCards()
@@ -149,6 +152,8 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			Control slot = CreateCardSlot(_relics[i], i);
 			_cardsRow.AddChild(slot);
 		}
+
+		ConfigureControllerNavigation();
 	}
 
 }

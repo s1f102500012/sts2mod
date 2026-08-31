@@ -13,6 +13,8 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		holder.MouseDefaultCursorShape = CursorShape.Help;
 		holder.MouseEntered += () => ShowRelicHoverTips(holder, relic, monsterHex);
 		holder.MouseExited += () => NHoverTipSet.Remove(holder);
+		holder.FocusEntered += () => ShowRelicHoverTips(holder, relic, monsterHex);
+		holder.FocusExited += () => NHoverTipSet.Remove(holder);
 		holder.TreeExiting += () => NHoverTipSet.Remove(holder);
 	}
 

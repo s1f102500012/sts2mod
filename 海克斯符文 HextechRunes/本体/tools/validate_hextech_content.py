@@ -311,7 +311,7 @@ def validate_combat_tracking_state(errors: list[str]) -> None:
     state_fields = {
         name: field_type
         for field_type, name in re.findall(
-            r"\bpublic\s+(?:readonly\s+)?(Dictionary<[^>]+>|HashSet<[^>]+>|string\?|bool|int)\s+([A-Za-z0-9]+)",
+            r"\bpublic\s+(?:readonly\s+)?(Dictionary<[^>]+>|HashSet<[^>]+>|string\?|bool|int)\s+([A-Za-z0-9]+)(?=\s*(?:=|;))",
             state_text,
         )
     }
@@ -375,6 +375,7 @@ def validate_icon_assets(errors: list[str], warnings: list[str]) -> None:
         "hungryHex": "eightPennyGateRune",
         "inspectHex": "eightPennyGateRune",
         "gripHex": "eightPennyGateRune",
+        "somethingForNothingRune": "acceleratingSorceryRune",
     }
 
     expected_stems: set[str] = set()
@@ -384,6 +385,8 @@ def validate_icon_assets(errors: list[str], warnings: list[str]) -> None:
     for values_list in ("EnemyHexIconRelicTypes", "EventRelicTypes"):
         for type_name in extract_type_list(registry_text, values_list):
             expected_stems.add(model_loc_stem(type_name))
+
+    expected_stems.update(shared_icon_stems.values())
 
     run_modifiers_dir = SRC / "RunModifiers"
     for source_path in run_modifiers_dir.glob("*.cs"):

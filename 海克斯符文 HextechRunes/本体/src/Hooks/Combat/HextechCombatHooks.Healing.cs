@@ -4,6 +4,8 @@ namespace HextechRunes;
 
 internal static partial class HextechCombatHooks
 {
+	internal const string EndlessModeHarmonyId = "Natsuki.EndlessMode";
+
 	private readonly record struct HealPostState(Player? Player, Creature Creature, int CurrentHpBefore, bool ShouldProcess);
 
 	private static bool HealPrefix(Creature creature, ref decimal amount, ref Task __result, out HealPostState __state)
@@ -67,6 +69,45 @@ internal static partial class HextechCombatHooks
 
 		__state = new HealPostState(player, creature, creature.CurrentHp, ShouldProcess: true);
 		return true;
+	}
+
+	private static void FinalizeGlassCannonHealCapPrefix(Creature creature, ref decimal amount)
+	{
+		if (amount <= 0m || IsEnemyReviveHeal(creature, amount))
+		{
+			return;
+		}
+
+		decimal? capPercent = null;
+		Player? player = creature.Player;
+		if (player?.GetRelic<GlassCannonRune>() is GlassCannonRune glassCannonRune
+			&& creature == player.Creature)
+		{
+			capPercent = glassCannonRune.HealCapPercent;
+		}
+		else if (creature.Side == CombatSide.Enemy
+			&& creature.CombatState?.RunState is RunState runState
+			&& HextechMayhemModifier.FindIn(runState) is HextechMayhemModifier modifier
+			&& modifier.HasActiveMonsterHex(MonsterHexKind.GlassCannon))
+		{
+			capPercent = GlassCannonEnemyHex.HealCapPercent;
+		}
+
+		if (capPercent.HasValue)
+		{
+			amount = ClampHealAmountToCap(creature.CurrentHp, creature.MaxHp, amount, capPercent.Value);
+		}
+	}
+
+	internal static decimal ClampHealAmountToCap(int currentHp, int maxHp, decimal amount, decimal capPercent)
+	{
+		if (amount <= 0m)
+		{
+			return amount;
+		}
+
+		int healCap = (int)Math.Floor(maxHp * capPercent);
+		return Math.Min(amount, Math.Max(0m, healCap - currentHp));
 	}
 
 	private static void HealPostfix(HealPostState __state, ref Task __result)

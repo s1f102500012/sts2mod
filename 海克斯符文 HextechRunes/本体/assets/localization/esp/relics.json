@@ -1406,5 +1406,8 @@
   "DEATH_WARRANT_RUNE.flavor": "Al octavo susurro, el veneno viene a cobrar.",
   "PIERCING_THREAD_RUNE.title": "Enhebrar la aguja",
   "PIERCING_THREAD_RUNE.description": "El [blue]{PiercingPercent}%[/blue] del daño que infliges ignora el Bloqueo de los enemigos.",
-  "PIERCING_THREAD_RUNE.flavor": "Hasta la abertura más estrecha basta para un golpe perfecto."
+  "PIERCING_THREAD_RUNE.flavor": "Hasta la abertura más estrecha basta para un golpe perfecto.",
+  "SOMETHING_FOR_NOTHING_RUNE.title": "Beneficio sin inversión",
+  "SOMETHING_FOR_NOTHING_RUNE.description": "Cuando juegues una carta que cueste [blue]0[/blue] de Energía, roba [blue]{Cards}[/blue] carta. La primera vez en cada turno que juegues una carta que cueste más de [blue]0[/blue] de Energía, reduce su coste de Energía en [blue]{Energy}[/blue] durante el resto del combate.",
+  "SOMETHING_FOR_NOTHING_RUNE.flavor": "La mejor ganancia empieza sin inversión alguna."
 }

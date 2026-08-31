@@ -2,8 +2,6 @@ namespace HextechRunes;
 
 public sealed class EchoRune : HextechRelicBase
 {
-	private bool _echoingCard;
-
 	protected override IEnumerable<IHoverTip> ExtraHoverTips =>
 	[
 		HoverTipFactory.FromKeyword(CardKeyword.Ethereal)
@@ -23,8 +21,7 @@ public sealed class EchoRune : HextechRelicBase
 #if STS2_104_OR_NEWER
 		bool addedByPlayer = creator == Owner;
 #endif
-		if (_echoingCard
-			|| !addedByPlayer
+		if (!addedByPlayer
 			|| Owner == null
 			|| Owner.Creature.IsDead
 			|| card.Owner != Owner
@@ -37,16 +34,10 @@ public sealed class EchoRune : HextechRelicBase
 		echo.AddKeyword(CardKeyword.Ethereal);
 		echo.SetToFreeThisTurn();
 
-		_echoingCard = true;
-		try
-		{
-			Flash();
-			await HextechCardGeneration.AddGeneratedCardToCombat(echo, pileType, addedByPlayer: true, previewNonHandAdds: false);
-		}
-		finally
-		{
-			_echoingCard = false;
-		}
+		// echo 已从完成生成的原牌克隆，直接入堆即可。再次走 AddGeneratedCardToCombat 会递归触发
+		// 整条生成钩子链；多次打出需要选择的生成牌时，两端可能因此构造出不同的分支任务树。
+		Flash();
+		await CardPileCmd.Add(echo, pileType, CardPilePosition.Bottom, this);
 	}
 
 	private static bool TryGetEchoPile(CardModel card, out PileType pileType)

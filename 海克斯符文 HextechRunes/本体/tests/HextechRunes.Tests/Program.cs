@@ -97,6 +97,11 @@ internal static partial class Program
 			new(nameof(WeightedIndexBoundarySelection), WeightedIndexBoundarySelection),
 			new(nameof(RuneSelectionCandidateConstraintsReserveCharacterAndLimitUpgrades), RuneSelectionCandidateConstraintsReserveCharacterAndLimitUpgrades),
 			new(nameof(UnconfirmedRuneSelectionCancelsInsteadOfDefaultingToFirstOption), UnconfirmedRuneSelectionCancelsInsteadOfDefaultingToFirstOption),
+			new(nameof(SelectionUiWaitsForControllerInputBeforeFocusing), SelectionUiWaitsForControllerInputBeforeFocusing),
+			new(nameof(EnemyHexRerollPlaysRerollSound), EnemyHexRerollPlaysRerollSound),
+			new(nameof(EnemyHexRemovalCanBeUndoneWithoutConsumingTheSlot), EnemyHexRemovalCanBeUndoneWithoutConsumingTheSlot),
+			new(nameof(EnemyHexActionButtonsUseTexturesWithoutTooltipText), EnemyHexActionButtonsUseTexturesWithoutTooltipText),
+			new(nameof(CollapsedEnemyHexPanelFollowsTopBarButtonLifecycle), CollapsedEnemyHexPanelFollowsTopBarButtonLifecycle),
 			new(nameof(DestructivePickupRunesAreExcludedFromRandomRewards), DestructivePickupRunesAreExcludedFromRandomRewards),
 			new(nameof(StarterUpgradeCapsTerminateExternalUpgradeToMaxLoops), StarterUpgradeCapsTerminateExternalUpgradeToMaxLoops),
 			new(nameof(SearingAttackRuneGrantsUpgradedCard), SearingAttackRuneGrantsUpgradedCard),
@@ -133,14 +138,19 @@ internal static partial class Program
 			new(nameof(DrainTargetsFirstEnemyWithHighestCurrentHp), DrainTargetsFirstEnemyWithHighestCurrentHp),
 			new(nameof(FeyMagicUsesThreeCostWithoutTurnLimit), FeyMagicUsesThreeCostWithoutTurnLimit),
 			new(nameof(GiantSlayerScalesFromEnemyMaxHp), GiantSlayerScalesFromEnemyMaxHp),
+			new(nameof(SomethingForNothingDrawsAtZeroAndDiscountsFirstPaidCard), SomethingForNothingDrawsAtZeroAndDiscountsFirstPaidCard),
 			new(nameof(MagicMissileUsesThreeTwoPercentHits), MagicMissileUsesThreeTwoPercentHits),
+			new(nameof(EchoAddsItsCopyWithoutRecursingThroughGenerationHooks), EchoAddsItsCopyWithoutRecursingThroughGenerationHooks),
 			new(nameof(TwinFlamesUsesTwoEnergyScaledHits), TwinFlamesUsesTwoEnergyScaledHits),
+			new(nameof(TwinFlamesKeepsMultiplayerDamageInsideCardAction), TwinFlamesKeepsMultiplayerDamageInsideCardAction),
 			new(nameof(LightEmUpUsesFiveEnergyScaledTwinFlameMissiles), LightEmUpUsesFiveEnergyScaledTwinFlameMissiles),
+			new(nameof(ProjectileRunesKeepMultiplayerDamageInsideCardAction), ProjectileRunesKeepMultiplayerDamageInsideCardAction),
 			new(nameof(PiercingThreadSplitsOneDamageEventBeforeBlock), PiercingThreadSplitsOneDamageEventBeforeBlock),
 			new(nameof(DualcastUpgradeReturnsBothCastCardsToHand), DualcastUpgradeReturnsBothCastCardsToHand),
 			new(nameof(DeathWarrantTriggersPoisonEveryEightDraws), DeathWarrantTriggersPoisonEveryEightDraws),
 			new(nameof(MadScientistOrbLayoutOnlyTweensFirstTen), MadScientistOrbLayoutOnlyTweensFirstTen),
 			new(nameof(MyriadSwordsUsesShuffleTriggerInsteadOfTurnEnd), MyriadSwordsUsesShuffleTriggerInsteadOfTurnEnd),
+			new(nameof(MyriadSwordsExplicitlyClosesAStalePlayPile), MyriadSwordsExplicitlyClosesAStalePlayPile),
 			new(nameof(SovereignBladeVfxSyncUsesVanillaForgeScale), SovereignBladeVfxSyncUsesVanillaForgeScale),
 			new(nameof(SlowCookVfxUsesDedicatedPressureCookerTextures), SlowCookVfxUsesDedicatedPressureCookerTextures),
 			new(nameof(AssetResolverPrefersRawTextureBeforePackedResource), AssetResolverPrefersRawTextureBeforePackedResource),
@@ -202,6 +212,7 @@ internal static partial class Program
 			new(nameof(ConfigMigrationV27KeepsNormalWeightsAndEnablesConsecutiveSilverPrevention), ConfigMigrationV27KeepsNormalWeightsAndEnablesConsecutiveSilverPrevention),
 			new(nameof(ConfigMigrationV30EnablesAdvanceToRetreat), ConfigMigrationV30EnablesAdvanceToRetreat),
 			new(nameof(ConfigMigrationV31EnablesHappyAccident), ConfigMigrationV31EnablesHappyAccident),
+			new(nameof(ConfigMigrationV33ChangesLegacyInfiniteMonsterRerolls), ConfigMigrationV33ChangesLegacyInfiniteMonsterRerolls),
 			new(nameof(ConfigMigrationCurrentVersionPreservesCustomDisabledIds), ConfigMigrationCurrentVersionPreservesCustomDisabledIds),
 			new(nameof(ConfigShareRoundTripKeepsActRarityWeights), ConfigShareRoundTripKeepsActRarityWeights),
 			new(nameof(MayhemRunContextResetForNewRunClearsState), MayhemRunContextResetForNewRunClearsState),
@@ -285,6 +296,9 @@ internal static partial class Program
 			new(nameof(RepeatableEnchantmentsRequireCurrentlyOwnedEnchantmentMasterRune), RepeatableEnchantmentsRequireCurrentlyOwnedEnchantmentMasterRune),
 			new(nameof(EnchantmentCompositionAdapterFindsDirectEnchantments), EnchantmentCompositionAdapterFindsDirectEnchantments),
 			new(nameof(EnchantmentCompositionAdapterFindsSponsorCompositeEnchantments), EnchantmentCompositionAdapterFindsSponsorCompositeEnchantments),
+			new(nameof(EnchantmentCompositionAdapterUsesMultiEnchantmentPublicApi), EnchantmentCompositionAdapterUsesMultiEnchantmentPublicApi),
+			new(nameof(SponsorCompositeExpandsInnerHookListeners), SponsorCompositeExpandsInnerHookListeners),
+			new(nameof(DollysMirrorRelicPagesStayWithinVanillaViewport), DollysMirrorRelicPagesStayWithinVanillaViewport),
 			new(nameof(AbyssalContractChoiceModelsMapToExpectedContracts), AbyssalContractChoiceModelsMapToExpectedContracts),
 			new(nameof(AbyssalContractWarriorEliteThresholdGrows), AbyssalContractWarriorEliteThresholdGrows),
 			new(nameof(AbyssalContractStarterUpgradeMappingsCoverVanillaCharacters), AbyssalContractStarterUpgradeMappingsCoverVanillaCharacters),
@@ -300,8 +314,10 @@ internal static partial class Program
 			new(nameof(StormReplacementRequiresMayhemAndUpgradeRune), StormReplacementRequiresMayhemAndUpgradeRune),
 			new(nameof(EntomancerFallbackIsVersionScopedAndMissingHiveOnly), EntomancerFallbackIsVersionScopedAndMissingHiveOnly),
 			new(nameof(EnemyPowerScalingDoesNotPatchOfficialModifierPipeline), EnemyPowerScalingDoesNotPatchOfficialModifierPipeline),
+			new(nameof(EndlessMonsterPowerNormalizationUsesCapturedBaseAmounts), EndlessMonsterPowerNormalizationUsesCapturedBaseAmounts),
 			new(nameof(CardPlayAllowancePreservesThirdPartyDenials), CardPlayAllowancePreservesThirdPartyDenials),
 			new(nameof(CardPlayAllowanceAndBlockerUseSeparatePriorities), CardPlayAllowanceAndBlockerUseSeparatePriorities),
+			new(nameof(GlassCannonHealCapRunsAfterHealingMultipliers), GlassCannonHealCapRunsAfterHealingMultipliers),
 			new(nameof(HealCompositionUsesActualHpDelta), HealCompositionUsesActualHpDelta),
 			new(nameof(ColorDiscoveryRewardUsesPublicCardsAndMissingSpecialFieldKeepsOriginal), ColorDiscoveryRewardUsesPublicCardsAndMissingSpecialFieldKeepsOriginal),
 			new(nameof(ColorDiscoveryIncludesThirdPartyCharacterPools), ColorDiscoveryIncludesThirdPartyCharacterPools),
@@ -864,8 +880,13 @@ internal static partial class Program
 		HextechMayhemCombatTrackingState tracking = new();
 		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 1, 2, fromHandDraw: true), "normal hand draw should never be blocked");
 		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 1, 0, fromHandDraw: false), "tier one should block no extra draws");
-		Expect(IInspectEnemyHex.TryPreventExtraDraw(tracking, 2, 1, fromHandDraw: false), "tier two should block the first extra draw trigger");
-		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 2, 1, fromHandDraw: false), "tier two should allow the second extra draw trigger");
+
+		tracking.BeginPlayerTurnStart([2]);
+		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 2, 1, fromHandDraw: false), "turn-start extra draw should never be blocked");
+		Equal(0, tracking.InspectExtraDrawsPreventedThisTurn.Count, "turn-start draw should not consume an inspect trigger");
+		tracking.EnterPlayerPlayPhase(2);
+		Expect(IInspectEnemyHex.TryPreventExtraDraw(tracking, 2, 1, fromHandDraw: false), "tier two should block the first in-turn extra draw trigger");
+		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 2, 1, fromHandDraw: false), "tier two should allow the second in-turn extra draw trigger");
 		Expect(IInspectEnemyHex.TryPreventExtraDraw(tracking, 3, 2, fromHandDraw: false), "tier three should block the first extra draw trigger");
 		Expect(IInspectEnemyHex.TryPreventExtraDraw(tracking, 3, 2, fromHandDraw: false), "tier three should block the second extra draw trigger");
 		Expect(!IInspectEnemyHex.TryPreventExtraDraw(tracking, 3, 2, fromHandDraw: false), "tier three should allow the third extra draw trigger");
@@ -1023,7 +1044,7 @@ internal static partial class Program
 	private static void ConfigMigrationForceResetsBelowV15()
 	{
 		(int version, IReadOnlySet<string> disabled) = HextechRuneConfiguration.MigrateDisabledIdsForTests(14, ["some-user-custom-id"]);
-		Equal(32, version, "v14 config should land on current version");
+		Equal(33, version, "v14 config should land on current version");
 		SetEqual(HextechRuneConfiguration.GetDefaultDisabledPlayerRuneIds().ToArray(), disabled, "v14 config should force-reset to factory defaults");
 	}
 
@@ -1033,7 +1054,7 @@ internal static partial class Program
 	{
 		IReadOnlySet<string> baseline = HextechPlayerRuneConfigIds.FromTypes(Version15FactoryDisabledRuneTypes);
 		(int version, IReadOnlySet<string> migrated) = HextechRuneConfiguration.MigrateDisabledIdsForTests(15, baseline);
-		Equal(32, version, "v15 config should land on current version");
+		Equal(33, version, "v15 config should land on current version");
 		SetEqual(
 			HextechRuneConfiguration.GetDefaultDisabledPlayerRuneIds().ToArray(),
 			migrated,
@@ -1043,7 +1064,7 @@ internal static partial class Program
 	private static void ConfigMigrationV26AddsNewPlayerDefaultDisables()
 	{
 		(int version, IReadOnlySet<string> disabled) = HextechRuneConfiguration.MigrateDisabledIdsForTests(26, []);
-		Equal(32, version, "v26 player config should land on current version");
+		Equal(33, version, "v26 player config should land on current version");
 		SetEqual(
 			HextechPlayerRuneConfigIds.FromTypes(
 			[
@@ -1059,13 +1080,13 @@ internal static partial class Program
 	private static void ConfigMigrationCurrentVersionPreservesCustomDisabledIds()
 	{
 		string customId = HextechRuneConfiguration.GetDefaultDisabledPlayerRuneIds().OrderBy(static id => id, StringComparer.Ordinal).First();
-		(int version, IReadOnlySet<string> disabled) = HextechRuneConfiguration.MigrateDisabledIdsForTests(32, [customId]);
-		Equal(32, version, "current-version config keeps version");
+		(int version, IReadOnlySet<string> disabled) = HextechRuneConfiguration.MigrateDisabledIdsForTests(33, [customId]);
+		Equal(33, version, "current-version config keeps version");
 		SetEqual([customId], disabled, "current-version config should pass user selection through unchanged");
 
 		(int monsterVersion, IReadOnlySet<string> disabledMonsters) =
-			HextechRuneConfiguration.MigrateDisabledMonsterHexIdsForTests(32, [MonsterHexKind.FrostWraith.ToString()]);
-		Equal(32, monsterVersion, "current-version monster config keeps version");
+			HextechRuneConfiguration.MigrateDisabledMonsterHexIdsForTests(33, [MonsterHexKind.FrostWraith.ToString()]);
+		Equal(33, monsterVersion, "current-version monster config keeps version");
 		SetEqual(
 			[MonsterHexKind.FrostWraith.ToString()],
 			disabledMonsters,
@@ -1097,7 +1118,7 @@ internal static partial class Program
 				27,
 				new HextechRarityWeights(4, 5, 6),
 				new HextechRarityWeights(0, 7, 8));
-		Equal(32, migratedVersion, "v27 rarity config should land on current version");
+		Equal(33, migratedVersion, "v27 rarity config should land on current version");
 		Equal(new HextechRarityWeights(4, 5, 6), migratedWeights, "v27 normal weights should become rune weights");
 		Equal(true, ruleEnabledWithZeroLegacySilverWeight, "legacy rarity config should enable consecutive-Silver prevention by default");
 
@@ -1125,7 +1146,7 @@ internal static partial class Program
 	{
 		string id = ModelDb.GetId<AdvanceToRetreatRune>().Entry;
 		(int version, IReadOnlySet<string> disabled) = HextechRuneConfiguration.MigrateDisabledIdsForTests(29, [id]);
-		Equal(32, version, "v29 player config should land on current version");
+		Equal(33, version, "v29 player config should land on current version");
 		Expect(!disabled.Contains(id), "v29 player config migration should enable Advance to Retreat");
 	}
 
@@ -1133,8 +1154,27 @@ internal static partial class Program
 	{
 		string id = ModelDb.GetId<HappyAccidentRune>().Entry;
 		(int version, IReadOnlySet<string> disabled) = HextechRuneConfiguration.MigrateDisabledIdsForTests(30, [id]);
-		Equal(32, version, "v30 player config should land on current version");
+		Equal(33, version, "v30 player config should land on current version");
 		Expect(!disabled.Contains(id), "v30 player config migration should enable Happy Accident");
+	}
+
+	private static void ConfigMigrationV33ChangesLegacyInfiniteMonsterRerolls()
+	{
+		(int migratedVersion, int migratedLimit) =
+			HextechRuneConfiguration.MigrateMonsterHexRerollLimitForTests(32, HextechRuneConfiguration.InfiniteRerollLimit);
+		Equal(33, migratedVersion, "v32 config should land on current version");
+		Equal(1, migratedLimit, "v32 infinite enemy rerolls should migrate to the new one-reroll default");
+
+		(_, int finiteLimit) = HextechRuneConfiguration.MigrateMonsterHexRerollLimitForTests(32, 4);
+		Equal(4, finiteLimit, "v32 custom finite enemy rerolls should be preserved");
+
+		(_, int currentInfiniteLimit) = HextechRuneConfiguration.MigrateMonsterHexRerollLimitForTests(
+			33,
+			HextechRuneConfiguration.InfiniteRerollLimit);
+		Equal(
+			HextechRuneConfiguration.InfiniteRerollLimit,
+			currentInfiniteLimit,
+			"v33 explicit infinite enemy rerolls should be preserved");
 	}
 
 	// SavedProperty 属性名集合直接决定联机 net-id 布局(规范化按名排序):任何新增/改名/删除都必须是
@@ -1776,6 +1816,174 @@ internal static partial class Program
 		}
 	}
 
+	private static void SelectionUiWaitsForControllerInputBeforeFocusing()
+	{
+		MethodInfo defaultFocusGetter = typeof(HextechRuneSelectionScreen)
+			.GetProperty(nameof(HextechRuneSelectionScreen.DefaultFocusedControl))!
+			.GetMethod!;
+		Expect(
+			PatchProcessor.GetOriginalInstructions(defaultFocusGetter)
+				.Select(static instruction => instruction.operand)
+				.OfType<FieldInfo>()
+				.Any(static field => field.Name == "_controllerNavigationActivated"),
+			"selection overlay should not expose an initial focus target before controller navigation activates");
+
+		MethodInfo selectionInput = typeof(HextechRuneSelectionScreen).GetMethod(
+			nameof(HextechRuneSelectionScreen._UnhandledInput),
+			BindingFlags.Instance | BindingFlags.Public)
+			?? throw new MissingMethodException(nameof(HextechRuneSelectionScreen), nameof(HextechRuneSelectionScreen._UnhandledInput));
+		Expect(
+			PatchProcessor.GetOriginalInstructions(selectionInput)
+				.Select(static instruction => instruction.operand)
+				.OfType<MethodInfo>()
+				.Any(static method => method.DeclaringType == typeof(HextechControllerInput) && method.Name == nameof(HextechControllerInput.IsIntentional)),
+			"selection overlay should activate focus from real joypad input");
+
+		MethodInfo openConfig = typeof(HextechRuneConfigMenuHooks).GetMethod(
+			"OpenOverlay",
+			BindingFlags.Static | BindingFlags.NonPublic)
+			?? throw new MissingMethodException(nameof(HextechRuneConfigMenuHooks), "OpenOverlay");
+		MethodInfo[] configCalls = PatchProcessor.GetOriginalInstructions(openConfig)
+			.Select(static instruction => instruction.operand)
+			.OfType<MethodInfo>()
+			.ToArray();
+		Expect(
+			configCalls.Any(static method => method.DeclaringType == typeof(HextechControllerOverlay) && method.Name == "set_InitialFocus"),
+			"config overlay should register a deferred controller focus target");
+		Expect(
+			configCalls.All(static method => method.Name != nameof(Control.GrabFocus)),
+			"opening config with mouse should not explicitly focus an option");
+	}
+
+	private static void EnemyHexRerollPlaysRerollSound()
+	{
+		MethodInfo reroll = typeof(HextechRuneSelectionScreen).GetMethod(
+			"OnEnemyHexRerollPressed",
+			BindingFlags.Instance | BindingFlags.NonPublic)
+			?? throw new MissingMethodException(nameof(HextechRuneSelectionScreen), "OnEnemyHexRerollPressed");
+		Expect(
+			PatchProcessor.GetOriginalInstructions(reroll)
+				.Select(static instruction => instruction.operand)
+				.OfType<MethodInfo>()
+				.Any(static method => method.Name == "PlayRerollSfx"),
+			"successful enemy hex rerolls should use the same reroll sound as player rerolls");
+	}
+
+	private static void EnemyHexRemovalCanBeUndoneWithoutConsumingTheSlot()
+	{
+		List<MonsterHexKind?> current = [ MonsterHexKind.EightPennyGate ];
+		List<MonsterHexKind?> beforeRemoval = [ null ];
+		Expect(
+			HextechRuneSelectionScreen.ToggleEnemyHexRemoval(current, beforeRemoval, 0),
+			"an active enemy hex should be removable");
+		Equal<MonsterHexKind?>(null, current[0], "removed enemy hex slot");
+		Equal<MonsterHexKind?>(MonsterHexKind.EightPennyGate, beforeRemoval[0], "removed enemy hex undo snapshot");
+
+		Expect(
+			HextechRuneSelectionScreen.ToggleEnemyHexRemoval(current, beforeRemoval, 0),
+			"a locally removed enemy hex should be restorable");
+		Equal<MonsterHexKind?>(MonsterHexKind.EightPennyGate, current[0], "restored enemy hex slot");
+		Equal<MonsterHexKind?>(null, beforeRemoval[0], "consumed enemy hex undo snapshot");
+		Expect(
+			!HextechRuneSelectionScreen.ToggleEnemyHexRemoval([ null ], [ null ], 0),
+			"a remotely removed slot without an undo snapshot should stay disabled");
+	}
+
+	private static void EnemyHexActionButtonsUseTexturesWithoutTooltipText()
+	{
+		Expect(
+			!HextechRuneSelectionScreen.ShouldShowEnemyHexUndoButton(MonsterHexKind.EightPennyGate),
+			"active enemy hexes should show reroll and remove actions");
+		Expect(
+			HextechRuneSelectionScreen.ShouldShowEnemyHexUndoButton(null),
+			"removed enemy hexes should replace both actions with undo");
+		SetEqual(
+			new[]
+			{
+				"res://HextechRunes/images/ui/hextechRemoveButton.png",
+				"res://HextechRunes/images/ui/hextechRemoveButtonHover.png",
+				"res://HextechRunes/images/ui/hextechRemoveButtonPressed.png",
+				"res://HextechRunes/images/ui/hextechRemoveButtonDisabled.png",
+				"res://HextechRunes/images/ui/hextechUndoButton.png",
+				"res://HextechRunes/images/ui/hextechUndoButtonHover.png",
+				"res://HextechRunes/images/ui/hextechUndoButtonPressed.png",
+				"res://HextechRunes/images/ui/hextechUndoButtonDisabled.png"
+			},
+			new[]
+			{
+				"RemoveButtonTexturePath",
+				"RemoveButtonHoverTexturePath",
+				"RemoveButtonPressedTexturePath",
+				"RemoveButtonDisabledTexturePath",
+				"UndoButtonTexturePath",
+				"UndoButtonHoverTexturePath",
+				"UndoButtonPressedTexturePath",
+				"UndoButtonDisabledTexturePath"
+			}.Select(name => (string)typeof(HextechRuneSelectionScreen)
+				.GetField(name, BindingFlags.Static | BindingFlags.NonPublic)!
+				.GetRawConstantValue()!),
+			"enemy remove and undo button state textures");
+		Equal(
+			"res://HextechRunes/images/ui/hextechUndoButtonDisabled.png",
+			HextechRuneSelectionScreen.ResolveEnemyHexRemovalButtonTexture(undo: true, disabled: true, pressed: false, highlighted: false),
+			"disabled undo texture");
+		Equal(
+			"res://HextechRunes/images/ui/hextechUndoButtonPressed.png",
+			HextechRuneSelectionScreen.ResolveEnemyHexRemovalButtonTexture(undo: true, disabled: false, pressed: true, highlighted: true),
+			"pressed undo texture");
+		Equal(
+			"res://HextechRunes/images/ui/hextechRemoveButtonHover.png",
+			HextechRuneSelectionScreen.ResolveEnemyHexRemovalButtonTexture(undo: false, disabled: false, pressed: false, highlighted: true),
+			"hovered remove texture");
+
+		MethodInfo previewRow = typeof(HextechRuneSelectionScreen).GetMethod(
+			"CreateEnemyPreviewRow",
+			BindingFlags.Instance | BindingFlags.NonPublic)
+			?? throw new MissingMethodException(nameof(HextechRuneSelectionScreen), "CreateEnemyPreviewRow");
+		Expect(
+			PatchProcessor.GetOriginalInstructions(previewRow)
+				.Select(static instruction => instruction.operand)
+				.OfType<MethodInfo>()
+				.All(static method => method.Name != "set_TooltipText"),
+			"enemy reroll and remove buttons should not show hover text");
+
+		MethodInfo remove = typeof(HextechRuneSelectionScreen).GetMethod(
+			"OnEnemyHexRemovePressed",
+			BindingFlags.Instance | BindingFlags.NonPublic)
+			?? throw new MissingMethodException(nameof(HextechRuneSelectionScreen), "OnEnemyHexRemovePressed");
+		Expect(
+			PatchProcessor.GetOriginalInstructions(remove)
+				.Select(static instruction => instruction.operand)
+				.OfType<MethodInfo>()
+				.Any(static method => method.Name == "PlayButtonClickSfx"),
+			"enemy remove and undo actions should play the standard UI click sound");
+	}
+
+	private static void CollapsedEnemyHexPanelFollowsTopBarButtonLifecycle()
+	{
+		MethodInfo ensureButton = typeof(HextechEnemyHexCollapseView).GetMethod(
+			"EnsureButton",
+			BindingFlags.Static | BindingFlags.NonPublic)
+			?? throw new MissingMethodException(nameof(HextechEnemyHexCollapseView), "EnsureButton");
+		Expect(
+			PatchProcessor.GetOriginalInstructions(ensureButton)
+				.Select(static instruction => instruction.operand)
+				.OfType<MethodInfo>()
+				.Any(static method => method.Name == "add_TreeExiting"),
+			"collapsed enemy hex button should own a tree-exit cleanup hook");
+
+		MethodInfo cleanup = typeof(HextechEnemyHexCollapseView).GetMethod(
+			"OnButtonTreeExiting",
+			BindingFlags.Static | BindingFlags.NonPublic)
+			?? throw new MissingMethodException(nameof(HextechEnemyHexCollapseView), "OnButtonTreeExiting");
+		Expect(
+			PatchProcessor.GetOriginalInstructions(cleanup)
+				.Select(static instruction => instruction.operand)
+				.OfType<MethodInfo>()
+				.Any(static method => method.Name == "QueueFreeIfValid"),
+			"top bar exit should release the globally hosted collapsed enemy hex panel");
+	}
+
 	private static void DestructivePickupRunesAreExcludedFromRandomRewards()
 	{
 		Type[] destructiveTypes =
@@ -2127,6 +2335,26 @@ internal static partial class Program
 		Equal(1.5m, GiantSlayerRune.ResolveDamageMultiplier(9999), "multiplier remains capped");
 	}
 
+	private static void SomethingForNothingDrawsAtZeroAndDiscountsFirstPaidCard()
+	{
+		Expect(SomethingForNothingRune.IsZeroCostPlay(0m), "zero-cost cards should draw");
+		Expect(SomethingForNothingRune.IsZeroCostPlay(-1m), "negative sentinel costs should remain in the zero-cost branch");
+		Expect(!SomethingForNothingRune.IsZeroCostPlay(1m), "positive-cost cards should use the discount branch");
+		Equal(0, SomethingForNothingRune.ReduceCost(0, 1), "combat discount should not make costs negative");
+		Equal(1, SomethingForNothingRune.ReduceCost(2, 1), "combat discount should reduce the card by one");
+		Equal(2, SomethingForNothingRune.ReduceCost(2, -1), "negative reductions should be ignored");
+
+		PlayerRuneRegistration registration = HextechPlayerRuneRegistry.Registrations.Single(
+			registration => registration.Type == typeof(SomethingForNothingRune));
+		Equal(HextechRarityTier.Prismatic, registration.Rarity, "Something for Nothing rarity");
+		Equal("RESOURCE", registration.TagKey, "Something for Nothing tag");
+		Expect(
+			typeof(SomethingForNothingRune).GetMethod(
+				nameof(SomethingForNothingRune.BeforeSideTurnStart),
+				BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly) != null,
+			"Something for Nothing should reset its paid-card trigger each turn");
+	}
+
 	private static void MagicMissileUsesThreeTwoPercentHits()
 	{
 		Equal(3, MagicMissileRune.MissileCount, "Magic Missile hit count");
@@ -2166,6 +2394,63 @@ internal static partial class Program
 				"PlayTwinFlamesMissile",
 				BindingFlags.Static | BindingFlags.NonPublic) != null,
 			"Twin Flames should expose its blue-yellow projectile VFX path");
+	}
+
+	private static void EchoAddsItsCopyWithoutRecursingThroughGenerationHooks()
+	{
+		MethodInfo hook = typeof(EchoRune).GetMethod(
+			nameof(EchoRune.AfterCardGeneratedForCombat),
+			BindingFlags.Instance | BindingFlags.Public)
+			?? throw new MissingMethodException(nameof(EchoRune), nameof(EchoRune.AfterCardGeneratedForCombat));
+		MethodInfo[] calls = PatchProcessor.GetOriginalInstructions(GetAsyncStateMachineMoveNext(hook))
+			.Select(static instruction => instruction.operand)
+			.OfType<MethodInfo>()
+			.ToArray();
+		Expect(
+			calls.Any(static method => method.DeclaringType == typeof(CardPileCmd) && method.Name == nameof(CardPileCmd.Add)),
+			"Echo should add its already-cloned copy directly to the destination pile");
+		Expect(
+			calls.All(static method => method.DeclaringType != typeof(HextechCardGeneration)),
+			"Echo copies must not recursively enter the generated-card hook chain");
+	}
+
+	private static void TwinFlamesKeepsMultiplayerDamageInsideCardAction()
+	{
+		MethodInfo afterCardPlayed = typeof(TwinFlamesRune).GetMethod(
+			nameof(TwinFlamesRune.AfterCardPlayed),
+			BindingFlags.Instance | BindingFlags.Public)
+			?? throw new MissingMethodException(nameof(TwinFlamesRune), nameof(TwinFlamesRune.AfterCardPlayed));
+		MethodInfo[] calls = PatchProcessor.GetOriginalInstructions(afterCardPlayed)
+			.Select(static instruction => instruction.operand)
+			.OfType<MethodInfo>()
+			.ToArray();
+		Expect(
+			calls.Any(static method => method.DeclaringType == typeof(HextechPlayerContextHelper) && method.Name == nameof(HextechPlayerContextHelper.IsNetworkMultiplayerRun)),
+			"Twin Flames should use its multiplayer lockstep path in network runs");
+		Expect(
+			calls.Any(static method => method.Name == "ResolveVolleyDamageInLockstepAsync"),
+			"Twin Flames multiplayer damage should be returned to the current card action");
+	}
+
+	private static void ProjectileRunesKeepMultiplayerDamageInsideCardAction()
+	{
+		foreach (Type runeType in new[] { typeof(MagicMissileRune), typeof(TwinFlamesRune), typeof(LightEmUpRune) })
+		{
+			MethodInfo afterCardPlayed = runeType.GetMethod(
+				nameof(HextechRelicBase.AfterCardPlayed),
+				BindingFlags.Instance | BindingFlags.Public)
+				?? throw new MissingMethodException(runeType.Name, nameof(HextechRelicBase.AfterCardPlayed));
+			MethodInfo[] calls = PatchProcessor.GetOriginalInstructions(afterCardPlayed)
+				.Select(static instruction => instruction.operand)
+				.OfType<MethodInfo>()
+				.ToArray();
+			Expect(
+				calls.Any(static method => method.DeclaringType == typeof(HextechPlayerContextHelper) && method.Name == nameof(HextechPlayerContextHelper.IsNetworkMultiplayerRun)),
+				$"{runeType.Name} should select a multiplayer lockstep path");
+			Expect(
+				calls.Any(static method => method.Name == "ResolveVolleyDamageInLockstepAsync"),
+				$"{runeType.Name} should return its multiplayer damage task to the card action");
+		}
 	}
 
 	private static void LightEmUpUsesFiveEnergyScaledTwinFlameMissiles()
@@ -2317,6 +2602,21 @@ internal static partial class Program
 
 		Expect(declaredMethods.Any(method => method.Name == "AfterShuffle"), "Myriad Swords should trigger after the owner's draw pile is shuffled");
 		Expect(declaredMethods.All(method => method.Name != "BeforeTurnEnd"), "Myriad Swords should no longer trigger at turn end");
+	}
+
+	private static void MyriadSwordsExplicitlyClosesAStalePlayPile()
+	{
+		MethodInfo afterShuffle = typeof(MyriadSwordsRune).GetMethod(
+			"AfterShuffle",
+			BindingFlags.Instance | BindingFlags.Public)
+			?? throw new MissingMethodException(nameof(MyriadSwordsRune), "AfterShuffle");
+		MethodInfo[] calls = PatchProcessor.GetOriginalInstructions(GetAsyncStateMachineMoveNext(afterShuffle))
+			.Select(static instruction => instruction.operand)
+			.OfType<MethodInfo>()
+			.ToArray();
+		Expect(
+			calls.Any(static method => method.DeclaringType == typeof(CardPileCmd) && method.Name == nameof(CardPileCmd.Add)),
+			"Myriad Swords should explicitly move a lethal autoplay card out of the Play pile");
 	}
 
 	private static void SovereignBladeVfxSyncUsesVanillaForgeScale()
@@ -2758,7 +3058,7 @@ internal static partial class Program
 		SequenceEqual(new[] { 1, 1, 1 }, snapshot.PlayerHexCountsByAct, "default player act counts");
 		SequenceEqual(new[] { 1, 2, 3 }, snapshot.EnemyHexCountsByAct, "default enemy act counts");
 		Equal(1, snapshot.PlayerRuneRerollLimit, "default player reroll limit");
-		Equal(HextechRuneConfiguration.InfiniteRerollLimit, snapshot.MonsterHexRerollLimit, "default monster reroll limit");
+		Equal(1, snapshot.MonsterHexRerollLimit, "default monster reroll limit");
 		SequenceEqual(
 			new[]
 			{

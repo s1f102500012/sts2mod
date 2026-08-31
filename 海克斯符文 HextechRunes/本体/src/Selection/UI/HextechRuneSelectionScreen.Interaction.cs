@@ -72,6 +72,9 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			return;
 		}
 
+		bool restoreControllerFocus = slotIndex >= 0
+			&& slotIndex < _rerollButtons.Count
+			&& _rerollButtons[slotIndex].HasFocus();
 		bool goldenRerollWasActive = _goldenRerollSession?.IsActive == true;
 		IReadOnlyList<RelicModel> rerolled = _rerollFunc(_relics, slotIndex, _rerollHistory.Count);
 		if (rerolled.Count != _relics.Count)
@@ -102,6 +105,10 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		// 手柄确认键或键盘重复输入落到新生成的卡片上，表现为“刷新后直接跳过”。
 		RestartSelectionConfirmGuard();
 		RebuildCards();
+		if (restoreControllerFocus)
+		{
+			RestorePlayerRerollFocus(slotIndex);
+		}
 	}
 
 	internal bool ActivateGoldenRerollForDebug()
@@ -132,6 +139,8 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			return;
 		}
 
+		bool restoreControllerFocus = slotIndex < _enemyHexRerollButtons.Count
+			&& _enemyHexRerollButtons[slotIndex].HasFocus();
 		MonsterHexKind? currentHex = _monsterHexKinds[slotIndex];
 		if (!currentHex.HasValue)
 		{
@@ -144,11 +153,16 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			return;
 		}
 
+		PlayRerollSfx();
 		_monsterHexKinds[slotIndex] = rerolled;
 		_enemyHexRerollCounts[slotIndex]++;
 		HextechLog.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.OnEnemyHexRerollPressed: slot={slotIndex} hex={rerolled} count={_enemyHexRerollCounts[slotIndex]}");
 		NotifyEnemyHexChanged();
 		RebuildEnemyPreview();
+		if (restoreControllerFocus)
+		{
+			RestoreEnemyRerollFocus(slotIndex);
+		}
 	}
 
 	private void OnEnemyHexRemovePressed(int slotIndex)
@@ -158,21 +172,60 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			return;
 		}
 
-		if (!_monsterHexKinds[slotIndex].HasValue)
+		bool restoreControllerFocus = slotIndex < _enemyHexRemoveButtons.Count
+			&& _enemyHexRemoveButtons[slotIndex].HasFocus();
+		bool wasRemoved = !_monsterHexKinds[slotIndex].HasValue;
+		MonsterHexKind? previous = wasRemoved
+			? GetMonsterHexBeforeRemovalSlot(slotIndex)
+			: _monsterHexKinds[slotIndex];
+		if (!ToggleEnemyHexRemoval(_monsterHexKinds, _monsterHexBeforeRemoval, slotIndex))
 		{
-			_monsterHexKinds[slotIndex] = _monsterHexBeforeRemoval[slotIndex];
-			_monsterHexBeforeRemoval[slotIndex] = null;
-			HextechLog.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.OnEnemyHexRemovePressed: undo slot={slotIndex} hex={_monsterHexKinds[slotIndex]}");
+			return;
+		}
+
+		PlayButtonClickSfx();
+		if (wasRemoved)
+		{
+			HextechLog.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.OnEnemyHexRemovePressed: undo slot={slotIndex} hex={previous}");
 		}
 		else
 		{
-			_monsterHexBeforeRemoval[slotIndex] = _monsterHexKinds[slotIndex];
-			_monsterHexKinds[slotIndex] = null;
-			HextechLog.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.OnEnemyHexRemovePressed: remove slot={slotIndex} previous={_monsterHexBeforeRemoval[slotIndex]}");
+			HextechLog.Info($"[{ModInfo.Id}][Mayhem] SelectionScreen.OnEnemyHexRemovePressed: remove slot={slotIndex} previous={previous}");
 		}
 
 		NotifyEnemyHexChanged();
 		RebuildEnemyPreview();
+		if (restoreControllerFocus)
+		{
+			RestoreEnemyRemoveFocus(slotIndex);
+		}
+	}
+
+	internal static bool ToggleEnemyHexRemoval(
+		IList<MonsterHexKind?> monsterHexes,
+		IList<MonsterHexKind?> monsterHexesBeforeRemoval,
+		int slotIndex)
+	{
+		if (slotIndex < 0 || slotIndex >= monsterHexes.Count || slotIndex >= monsterHexesBeforeRemoval.Count)
+		{
+			return false;
+		}
+
+		if (monsterHexes[slotIndex].HasValue)
+		{
+			monsterHexesBeforeRemoval[slotIndex] = monsterHexes[slotIndex];
+			monsterHexes[slotIndex] = null;
+			return true;
+		}
+
+		if (!monsterHexesBeforeRemoval[slotIndex].HasValue)
+		{
+			return false;
+		}
+
+		monsterHexes[slotIndex] = monsterHexesBeforeRemoval[slotIndex];
+		monsterHexesBeforeRemoval[slotIndex] = null;
+		return true;
 	}
 
 	public void ApplyEnemyHexAdjustment(MonsterHexKind? monsterHex, bool removed, int rerollCount)

@@ -9,7 +9,6 @@ using MegaCrit.Sts2.Core.Entities.Enchantments;
 using MegaCrit.Sts2.Core.Entities.Players;
 using MegaCrit.Sts2.Core.Entities.RestSite;
 using MegaCrit.Sts2.Core.Logging;
-using MegaCrit.Sts2.Core.Modding;
 using MegaCrit.Sts2.Core.Models;
 using MegaCrit.Sts2.Core.Models.Enchantments;
 using MegaCrit.Sts2.Core.Models.Monsters;
@@ -25,8 +24,8 @@ internal static partial class BuiltInRepeatableEnchantments
 {
 	private const string LogPrefix = "[HextechRunesSponsorPack][RepeatableEnchantments]";
 	private const string HarmonyId = "Natsuki.HextechRunesSponsorPack.RepeatableEnchantments";
-	private const string OriginalModId = "RepeatableEnchantments";
-	private const string OriginalAssemblyName = "RepeatableEnchantments";
+	private const string LegacyRepeatableAssemblyName = "RepeatableEnchantments";
+	private const string MultiEnchantmentAssemblyName = "MultiEnchantmentMod";
 	private static readonly bool VerboseLog = false;
 
 	private static readonly HashSet<Type> LayeredEnchantmentTypes =
@@ -102,13 +101,6 @@ internal static partial class BuiltInRepeatableEnchantments
 				return;
 			}
 
-			if (IsOriginalRepeatableEnchantmentsPresent())
-			{
-				_initialized = true;
-				Log.Info($"{LogPrefix} Original {OriginalModId} mod detected; built-in hooks are disabled to avoid duplicate patching.");
-				return;
-			}
-
 			Harmony harmony = _harmony ??= new Harmony(HarmonyId);
 			try
 			{
@@ -147,6 +139,7 @@ internal static partial class BuiltInRepeatableEnchantments
 			postfix: new HarmonyMethod(typeof(BuiltInRepeatableEnchantments), nameof(GetDescriptionForPilePostfix)));
 		harmony.Patch(getDescriptionForUpgradePreview,
 			postfix: new HarmonyMethod(typeof(BuiltInRepeatableEnchantments), nameof(GetDescriptionForUpgradePreviewPostfix)));
+		InstallHookListenerExpansion(harmony);
 	}
 
 	private static void TryInstallUiHooks()
@@ -225,7 +218,7 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	private static bool CanEnchantPrefix(EnchantmentModel __instance, CardModel card, ref bool __result)
 	{
-		if (IsOriginalRepeatableEnchantmentsActive())
+		if (IsExternalMultiEnchantmentProviderActive())
 		{
 			return true;
 		}
@@ -267,12 +260,26 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	private static bool EnchantPrefix(EnchantmentModel enchantment, CardModel card, decimal amount, ref EnchantmentModel? __result)
 	{
-		if (IsOriginalRepeatableEnchantmentsActive() || !CanUseBuiltInRepeatableEnchantments(card))
+		if (IsExternalMultiEnchantmentProviderActive())
 		{
 			return true;
 		}
 
 		enchantment.AssertMutable();
+		if (enchantment is SponsorCompositeEnchantment incomingComposite && card.Enchantment == null)
+		{
+			card.EnchantInternal(incomingComposite, amount);
+			incomingComposite.ModifyCard();
+			card.FinalizeUpgradeInternal();
+			RecordEnchantmentHistory(card, incomingComposite.Id);
+			__result = incomingComposite;
+			return false;
+		}
+		if (!CanUseBuiltInRepeatableEnchantments(card))
+		{
+			return true;
+		}
+
 		Type enchantmentType = enchantment.GetType();
 		DebugLog("Enchant", $"Request card={DescribeCard(card)} existing={DescribeEnchantment(card.Enchantment)} new={enchantment.Id.Entry} amount={amount}.");
 		if (!enchantment.CanEnchant(card))
@@ -294,7 +301,7 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	private static bool CloneRestSiteOnSelectPrefix(CloneRestSiteOption __instance, ref Task<bool> __result)
 	{
-		if (IsOriginalRepeatableEnchantmentsActive())
+		if (IsExternalMultiEnchantmentProviderActive())
 		{
 			return true;
 		}
@@ -410,12 +417,12 @@ internal static partial class BuiltInRepeatableEnchantments
 
 	internal static bool HasEnchantmentType(CardModel card, Type enchantmentType)
 	{
-		return EnchantmentCompositionAdapter.Contains(card.Enchantment, enchantmentType);
+		return EnchantmentCompositionAdapter.Contains(card, enchantmentType);
 	}
 
 	private static EnchantmentModel? FindExistingEnchantment(CardModel card, Type enchantmentType)
 	{
-		return EnchantmentCompositionAdapter.Find(card.Enchantment, enchantmentType);
+		return EnchantmentCompositionAdapter.Find(card, enchantmentType);
 	}
 
 	private static bool IsLayeredEnchantmentType(Type enchantmentType)
@@ -437,28 +444,11 @@ internal static partial class BuiltInRepeatableEnchantments
 		}
 	}
 
-	private static bool IsOriginalRepeatableEnchantmentsPresent()
-	{
-		if (IsOriginalRepeatableEnchantmentsActive())
-		{
-			return true;
-		}
-
-		try
-		{
-			return ModManager.Mods.Any(static mod =>
-				string.Equals(mod.manifest?.id, OriginalModId, StringComparison.OrdinalIgnoreCase));
-		}
-		catch
-		{
-			return false;
-		}
-	}
-
-	private static bool IsOriginalRepeatableEnchantmentsActive()
+	private static bool IsExternalMultiEnchantmentProviderActive()
 	{
 		return AppDomain.CurrentDomain.GetAssemblies().Any(static assembly =>
-			string.Equals(assembly.GetName().Name, OriginalAssemblyName, StringComparison.Ordinal));
+			string.Equals(assembly.GetName().Name, LegacyRepeatableAssemblyName, StringComparison.Ordinal)
+			|| string.Equals(assembly.GetName().Name, MultiEnchantmentAssemblyName, StringComparison.Ordinal));
 	}
 
 	private static FieldInfo RequireField(Type type, string name)

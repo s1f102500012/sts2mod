@@ -41,9 +41,11 @@ public sealed class Evolution : EnchantmentModel
 		}
 
 		ApplyOneEvolutionGrowth(Card, this);
-		if (Card.DeckVersion?.Enchantment is Evolution deckEvolution && !ReferenceEquals(Card.DeckVersion, Card))
+		if (Card.DeckVersion is { } deckCard
+			&& !ReferenceEquals(deckCard, Card)
+			&& EnchantmentCompositionAdapter.Find(deckCard, typeof(Evolution)) is Evolution deckEvolution)
 		{
-			ApplyOneEvolutionGrowth(Card.DeckVersion, deckEvolution);
+			ApplyOneEvolutionGrowth(deckCard, deckEvolution);
 		}
 
 		return Task.CompletedTask;

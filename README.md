@@ -16,7 +16,8 @@ This is a collection of Slay the Spire 2 mods made and maintained by Natsuki. Ea
 
 | 目录 | 模组 ID | 版本 | 最低游戏版本 | 简介 |
 | --- | --- | --- | --- | --- |
-| `海克斯符文 HextechRunes` | `HextechRunes` | `0.8.8` | `0.107.1` | 海克斯大乱斗（ARAM: Mayhem）：每幕选择海克斯符文、敌人同步获得敌方海克斯的大型玩法拓展，300+ 符文、属性锻造器、新卡牌与联机同步。`本体` 为主模组，`拓展包` 为赞助者额外内容（ARAM: Mayhem: Extra Expansion Pack）。 |
+| `海克斯符文 HextechRunes/本体` | `HextechRunes` | `0.9.1` | `0.107.1` | 海克斯大乱斗（ARAM: Mayhem）：每幕选择海克斯符文、敌人同步获得敌方海克斯的大型玩法拓展，300+ 符文、属性锻造器、新卡牌与联机同步。 |
+| `海克斯符文 HextechRunes/拓展包` | `HextechRunesSponsorPack` | `0.9.1` | `0.107.1` | 海克斯大乱斗的额外拓展包，收录风格更独立的赞助者海克斯、附魔与属性锻造器内容。 |
 | `集成战略事件 IntegratedStrategyEvents` | `IntegratedStrategyEvents` | `0.5.4` | `0.107.1` | 集成战略风格的事件拓展：先古防线、树洞、秘密节点等大量自定义事件与遭遇；同一模组包兼容游戏 `0.107.1` 与 `0.109.0`。 |
 | `俄洛伊 Illaoi` | `Illaoi` | `0.2.0` | `0.107.1` | 新角色模组，围绕生长、触手、灵魂与信仰机制构建。 |
 | `我路过 WoLuGuo` | `WoLuGuo` | `1.0.2` | `0.107.1` | 为事件增加离开选项，可以不执行事件专属操作而直接跳过事件。 |

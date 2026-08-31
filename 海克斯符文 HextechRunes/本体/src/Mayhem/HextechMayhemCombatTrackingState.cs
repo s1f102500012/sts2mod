@@ -76,6 +76,9 @@ internal sealed partial class HextechMayhemCombatTrackingState
 	public readonly HashSet<ulong> EightPennyGatePlayersTriggeredSecondThisTurn = new();
 	[CombatTrackingClear(CombatTrackingClearPhase.PlayerTurnStart)]
 	public readonly Dictionary<ulong, int> InspectExtraDrawsPreventedThisTurn = new();
+	// 原版的玩家回合判定从回合开始 hook 起即为 true；单独记录进入出牌阶段前的窗口。
+	[CombatTrackingTransient]
+	public readonly HashSet<ulong> PlayersAwaitingPlayPhase = new();
 	[CombatTrackingClear(CombatTrackingClearPhase.PlayerTurnStart)]
 	public readonly HashSet<ulong> GripPlayersTriggeredThisTurn = new();
 	[CombatTrackingClear(CombatTrackingClearPhase.PlayerTurnStart | CombatTrackingClearPhase.PlayerTurnEnd)]
@@ -98,6 +101,23 @@ internal sealed partial class HextechMayhemCombatTrackingState
 	public void PreparePlayerSideTurnStart()
 	{
 		HextechMayhemCombatTrackingSerializer.ClearPhase(this, CombatTrackingClearPhase.PlayerTurnStart);
+		PlayersAwaitingPlayPhase.Clear();
+	}
+
+	public void BeginPlayerTurnStart(IEnumerable<ulong> playerIds)
+	{
+		PlayersAwaitingPlayPhase.Clear();
+		PlayersAwaitingPlayPhase.UnionWith(playerIds);
+	}
+
+	public void EnterPlayerPlayPhase(ulong playerId)
+	{
+		PlayersAwaitingPlayPhase.Remove(playerId);
+	}
+
+	public bool IsPlayerTurnStart(ulong playerId)
+	{
+		return PlayersAwaitingPlayPhase.Contains(playerId);
 	}
 
 	public void PreparePlayerSideTurnEnd()
@@ -109,6 +129,7 @@ internal sealed partial class HextechMayhemCombatTrackingState
 	{
 		// 自增计数器无法用清空标注表达,保留显式;其余字段按 EnemyTurnStart 标注反射清空。
 		EnemyProtectiveVeilTurnCounter++;
+		PlayersAwaitingPlayPhase.Clear();
 		HextechMayhemCombatTrackingSerializer.ClearPhase(this, CombatTrackingClearPhase.EnemyTurnStart);
 	}
 

@@ -1406,5 +1406,8 @@
   "DEATH_WARRANT_RUNE.flavor": "На восьмой шелест яд приходит за долгом.",
   "PIERCING_THREAD_RUNE.title": "Вдеть нитку в иголку",
   "PIERCING_THREAD_RUNE.description": "[blue]{PiercingPercent}%[/blue] наносимого вами урона игнорирует Блок врагов.",
-  "PIERCING_THREAD_RUNE.flavor": "Даже самой узкой щели достаточно для безупречного удара."
+  "PIERCING_THREAD_RUNE.flavor": "Даже самой узкой щели достаточно для безупречного удара.",
+  "SOMETHING_FOR_NOTHING_RUNE.title": "Прибыль без вложений",
+  "SOMETHING_FOR_NOTHING_RUNE.description": "Каждый раз, когда вы разыгрываете карту стоимостью [blue]0[/blue] энергии, возьмите [blue]{Cards}[/blue] карту. В первый раз за ход, когда вы разыгрываете карту стоимостью больше [blue]0[/blue] энергии, уменьшите её стоимость энергии на [blue]{Energy}[/blue] до конца боя.",
+  "SOMETHING_FOR_NOTHING_RUNE.flavor": "Лучшая прибыль не требует вложений."
 }

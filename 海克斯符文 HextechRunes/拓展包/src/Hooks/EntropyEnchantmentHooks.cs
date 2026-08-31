@@ -6,7 +6,6 @@ using MegaCrit.Sts2.Core.Entities.Cards;
 using MegaCrit.Sts2.Core.Hooks;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Rooms;
 using MegaCrit.Sts2.Core.Runs;
 
@@ -15,7 +14,7 @@ namespace HextechRunesSponsorPack;
 internal static class EntropyEnchantmentHooks
 {
 	private const string HarmonyId = "Natsuki.HextechRunesSponsorPack.EntropyEnchantments";
-	private static readonly AsyncLocal<int> SkipNextCardAddModification = new();
+	private static readonly AsyncLocal<int> SuppressCardAddModificationDepth = new();
 	private static readonly object InstallLock = new();
 	private static Harmony? _harmony;
 	private static bool _installed;
@@ -29,30 +28,6 @@ internal static class EntropyEnchantmentHooks
 				return;
 			}
 
-#if STS2_109_OR_NEWER
-			Type[] addCardsParameterTypes =
-			[
-				typeof(IEnumerable<CardModel>),
-				typeof(CardPile),
-				typeof(CardPilePosition),
-				typeof(AbstractModel),
-				typeof(bool),
-				typeof(bool)
-			];
-#else
-			Type[] addCardsParameterTypes =
-			[
-				typeof(IEnumerable<CardModel>),
-				typeof(CardPile),
-				typeof(CardPilePosition),
-				typeof(AbstractModel),
-				typeof(bool)
-			];
-#endif
-			MethodInfo addCards = AccessTools.Method(
-				typeof(CardPileCmd),
-				nameof(CardPileCmd.Add),
-				addCardsParameterTypes) ?? throw new MissingMethodException(typeof(CardPileCmd).FullName, nameof(CardPileCmd.Add));
 			MethodInfo afterCombatEnd = AccessTools.Method(
 				typeof(Hook),
 				nameof(Hook.AfterCombatEnd),
@@ -66,10 +41,6 @@ internal static class EntropyEnchantmentHooks
 			Harmony harmony = _harmony ??= new Harmony(HarmonyId);
 			try
 			{
-				harmony.Patch(
-					addCards,
-					prefix: new HarmonyMethod(typeof(EntropyEnchantmentHooks), nameof(AddCardsPrefix)),
-					postfix: new HarmonyMethod(typeof(EntropyEnchantmentHooks), nameof(AddCardsPostfix)));
 				harmony.Patch(
 					afterCombatEnd,
 					prefix: new HarmonyMethod(typeof(EntropyEnchantmentHooks), nameof(AfterCombatEndPrefix)),
@@ -95,82 +66,30 @@ internal static class EntropyEnchantmentHooks
 		ref CardModel __result,
 		ref List<AbstractModel> modifyingModels)
 	{
-		if (SkipNextCardAddModification.Value <= 0)
+		if (SuppressCardAddModificationDepth.Value <= 0)
 		{
 			return true;
 		}
 
-		SkipNextCardAddModification.Value--;
 		__result = card;
 		modifyingModels = [];
 		return false;
 	}
 
-	private static void AddCardsPrefix(CardPile newPile, out IReadOnlyList<CardModel> __state)
+	internal static bool IsTransformingEntropyCard => SuppressCardAddModificationDepth.Value > 0;
+
+	internal static async Task<T> TransformWithoutDeckModification<T>(Func<Task<T>> transform)
 	{
-		__state = newPile.Type == PileType.Deck
-			? newPile.Cards
-				.Where(static card => EnchantmentCompositionAdapter.Find(card.Enchantment, typeof(EntropyIncrease)) != null)
-				.ToArray()
-			: [];
-	}
-
-	private static void AddCardsPostfix(
-		CardPile newPile,
-		IReadOnlyList<CardModel> __state,
-		ref Task<IReadOnlyList<CardPileAddResult>> __result)
-	{
-		if (__state.Count > 0 && newPile.Type == PileType.Deck)
+		ArgumentNullException.ThrowIfNull(transform);
+		SuppressCardAddModificationDepth.Value++;
+		try
 		{
-			__result = ResolveEntropyIncrease(__result, newPile, __state);
+			return await transform();
 		}
-	}
-
-	private static async Task<IReadOnlyList<CardPileAddResult>> ResolveEntropyIncrease(
-		Task<IReadOnlyList<CardPileAddResult>> originalTask,
-		CardPile deck,
-		IReadOnlyList<CardModel> entropyCards)
-	{
-		IReadOnlyList<CardPileAddResult> results = await originalTask;
-		CardPileAddResult? obtainedResult = results.FirstOrDefault(static result =>
-			result.success && result.oldPile == null);
-		CardModel? obtainedCard = obtainedResult?.cardAdded;
-		if (obtainedCard == null)
+		finally
 		{
-			return results;
+			SuppressCardAddModificationDepth.Value--;
 		}
-
-		foreach (CardModel entropyCard in entropyCards)
-		{
-			if (entropyCard.Pile != deck
-				|| EnchantmentCompositionAdapter.Find(entropyCard.Enchantment, typeof(EntropyIncrease)) == null)
-			{
-				continue;
-			}
-
-			CardModel replacement = entropyCard.Owner.RunState.CloneCard(obtainedCard);
-			CardPileAddResult? transformResult;
-			SkipNextCardAddModification.Value = 1;
-			try
-			{
-				transformResult = await CardCmd.Transform(
-					entropyCard,
-					replacement,
-					CardPreviewStyle.HorizontalLayout);
-			}
-			finally
-			{
-				SkipNextCardAddModification.Value = 0;
-			}
-			if (transformResult.HasValue && transformResult.Value.success)
-			{
-				Log.Info(
-					$"[{ModInfo.Id}][EntropyIncrease] Transformed {entropyCard.Id.Entry} into "
-					+ $"{transformResult.Value.cardAdded.Id.Entry} after obtaining {obtainedCard.Id.Entry}.");
-			}
-		}
-
-		return results;
 	}
 
 	private static void AfterCombatEndPrefix(
@@ -188,10 +107,10 @@ internal static class EntropyEnchantmentHooks
 	}
 
 	private static void AfterCombatEndPostfix(
-		IReadOnlyList<CardModel> __state,
+		IReadOnlyList<CardModel>? __state,
 		ref Task __result)
 	{
-		if (__state.Count > 0)
+		if (__state is { Count: > 0 })
 		{
 			__result = RemoveEntropyDecreaseCards(__result, __state);
 		}
@@ -205,7 +124,7 @@ internal static class EntropyEnchantmentHooks
 		IReadOnlyList<CardModel> cardsToRemove = pendingCards
 			.Where(static card =>
 				card.Pile?.Type == PileType.Deck
-				&& (EnchantmentCompositionAdapter.Find(card.Enchantment, typeof(EntropyDecrease)) as EntropyDecrease)?.PendingRemoval == true)
+				&& (EnchantmentCompositionAdapter.Find(card, typeof(EntropyDecrease)) as EntropyDecrease)?.PendingRemoval == true)
 			.ToArray();
 		if (cardsToRemove.Count == 0)
 		{

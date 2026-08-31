@@ -132,8 +132,28 @@ internal static partial class HextechRuneConfigMenuHooks
 		ConfigureNativeMenuLabel(configButton);
 		ConfigureNativeMenuButton(configButton, settingsButton);
 		ConfigureNativeMenuFocus(mainMenu, configButton);
+		ConfigureNativeMenuNeighbors(buttonHost, configButton, settingsButton);
 		ConnectNativeMenuButton(configButton);
 		return true;
+	}
+
+	private static void ConfigureNativeMenuNeighbors(Control buttonHost, NMainMenuTextButton configButton, NMainMenuTextButton settingsButton)
+	{
+		Control configControl = configButton;
+		Control settingsControl = settingsButton;
+		configControl.FocusNeighborTop = settingsControl.GetPath();
+		settingsControl.FocusNeighborBottom = configControl.GetPath();
+
+		int nextIndex = configButton.GetIndex() + 1;
+		if (nextIndex < buttonHost.GetChildCount() && buttonHost.GetChild(nextIndex) is Control nextControl)
+		{
+			configControl.FocusNeighborBottom = nextControl.GetPath();
+			nextControl.FocusNeighborTop = configControl.GetPath();
+		}
+		else
+		{
+			configControl.FocusNeighborBottom = configControl.GetPath();
+		}
 	}
 
 	private static void ConfigureNativeMenuLabel(NMainMenuTextButton configButton)
@@ -202,6 +222,12 @@ internal static partial class HextechRuneConfigMenuHooks
 		RemoveExistingOverlay(root);
 		Control overlay = CreateOverlay(out RuneConfigOverlayState state);
 		root.AddChild(overlay);
+		if (overlay is HextechControllerOverlay controllerOverlay)
+		{
+			controllerOverlay.InitialFocus = state.InitialFocus;
+		}
+		ConfigureHorizontalFocus(state.TabButtons);
+		WireControllerFocusScrolling(overlay);
 		TaskHelper.RunSafely(PopulateRuneIconsAsync(overlay, state));
 		TaskHelper.RunSafely(AnimateOverlayInAsync(overlay));
 	}
@@ -272,12 +298,15 @@ internal static partial class HextechRuneConfigMenuHooks
 
 	private static Control CreateOverlay(out RuneConfigOverlayState state)
 	{
-		Control overlay = new()
+		HextechControllerOverlay overlay = new()
 		{
 			Name = OverlayName,
 			MouseFilter = Control.MouseFilterEnum.Stop,
+			FocusMode = Control.FocusModeEnum.All,
+			FocusBehaviorRecursive = Control.FocusBehaviorRecursiveEnum.Enabled,
 			ZIndex = OverlayZIndex
 		};
+		overlay.CancelRequested = () => CloseWithoutSaving(overlay);
 		overlay.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.FullRect);
 
 		ColorRect shade = new()
@@ -549,6 +578,8 @@ internal static partial class HextechRuneConfigMenuHooks
 			playerIconBindings,
 			enemyIconBindings,
 			forgeIconBindings,
+			tabButtons[0],
+			tabButtons,
 			updateSummary);
 		return overlay;
 	}
@@ -1785,6 +1816,7 @@ internal static partial class HextechRuneConfigMenuHooks
 		Button button = new()
 		{
 			Text = string.Empty,
+			FocusMode = Control.FocusModeEnum.All,
 			CustomMinimumSize = compactLayout ? new Vector2(34f, 32f) : new Vector2(38f, 34f),
 			MouseDefaultCursorShape = Control.CursorShape.PointingHand
 		};
@@ -1946,6 +1978,8 @@ internal static partial class HextechRuneConfigMenuHooks
 		ApplyRuneIconState(binding, !pendingDisabledIds.Contains(entry.Id));
 		AttachRuneToggleInput(root, entry, binding, pendingDisabledIds, updateSummary);
 		AttachRelicHoverTips(root, entry.Relic, GetEnemyHexKind(entry));
+		root.FocusEntered += () => root.SelfModulate = new Color(1.12f, 1.12f, 1.12f, 1f);
+		root.FocusExited += () => root.SelfModulate = Colors.White;
 		return binding;
 	}
 
@@ -1991,6 +2025,7 @@ internal static partial class HextechRuneConfigMenuHooks
 				state.ForgeIconBindings.Add(binding);
 			}
 			target.Grid.AddChild(binding.Root);
+			WireControllerFocusScrolling(binding.Root);
 
 			loadedThisFrame++;
 			if (loadedThisFrame < RuneConfigIconsPerFrame)
@@ -2034,6 +2069,13 @@ internal static partial class HextechRuneConfigMenuHooks
 
 		root.GuiInput += inputEvent =>
 		{
+			if (inputEvent.IsActionPressed("ui_accept"))
+			{
+				root.GetViewport()?.SetInputAsHandled();
+				ToggleRune(entry.Id, binding, pendingDisabledIds, updateSummary);
+				return;
+			}
+
 			switch (inputEvent)
 			{
 				case InputEventMouseButton { ButtonIndex: MouseButton.Left } mouseButton:
@@ -2148,6 +2190,7 @@ internal static partial class HextechRuneConfigMenuHooks
 		Button button = new()
 		{
 			Text = string.Empty,
+			FocusMode = Control.FocusModeEnum.All,
 			CustomMinimumSize = compactLayout ? new Vector2(112f, 34f) : new Vector2(132f, 38f),
 			MouseDefaultCursorShape = Control.CursorShape.PointingHand
 		};
@@ -2223,7 +2266,35 @@ internal static partial class HextechRuneConfigMenuHooks
 	{
 		holder.MouseEntered += () => ShowRelicHoverTips(holder, relic, monsterHex);
 		holder.MouseExited += () => NHoverTipSet.Remove(holder);
+		holder.FocusEntered += () => ShowRelicHoverTips(holder, relic, monsterHex);
+		holder.FocusExited += () => NHoverTipSet.Remove(holder);
 		holder.TreeExiting += () => NHoverTipSet.Remove(holder);
+	}
+
+	private static void ConfigureHorizontalFocus(IReadOnlyList<Button> buttons)
+	{
+		for (int i = 0; i < buttons.Count; i++)
+		{
+			buttons[i].FocusNeighborLeft = buttons[Math.Max(0, i - 1)].GetPath();
+			buttons[i].FocusNeighborRight = buttons[Math.Min(buttons.Count - 1, i + 1)].GetPath();
+		}
+	}
+
+	private static void WireControllerFocusScrolling(Node node)
+	{
+		if (node is Control control && control.FocusMode != Control.FocusModeEnum.None && !control.HasMeta("hextech_focus_scroll"))
+		{
+			control.SetMeta("hextech_focus_scroll", true);
+			control.FocusEntered += () =>
+			{
+				FindAncestor<ScrollContainer>(control)?.EnsureControlVisible(control);
+			};
+		}
+
+		foreach (Node child in node.GetChildren())
+		{
+			WireControllerFocusScrolling(child);
+		}
 	}
 
 	private static void ShowRelicHoverTips(Control holder, RelicModel relic, MonsterHexKind? monsterHex = null)
@@ -2743,6 +2814,8 @@ internal static partial class HextechRuneConfigMenuHooks
 		List<RuneIconBinding> PlayerIconBindings,
 		List<RuneIconBinding> EnemyIconBindings,
 		List<RuneIconBinding> ForgeIconBindings,
+		Control InitialFocus,
+		IReadOnlyList<Button> TabButtons,
 		Action UpdateSummary);
 
 	private sealed record RuneIconBinding(

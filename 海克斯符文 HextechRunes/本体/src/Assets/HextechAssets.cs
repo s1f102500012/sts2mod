@@ -94,6 +94,11 @@ internal static class HextechAssets
 			return $"res://{ModInfo.Id}/images/relics/eightPennyGateRune.png";
 		}
 
+		if (relic is SomethingForNothingRune)
+		{
+			return $"res://{ModInfo.Id}/images/relics/acceleratingSorceryRune.png";
+		}
+
 		if (HextechCatalog.IsHextechEnemyHexIconRelic(relic))
 		{
 			ModelId id = relic.CanonicalInstance?.Id ?? relic.Id;

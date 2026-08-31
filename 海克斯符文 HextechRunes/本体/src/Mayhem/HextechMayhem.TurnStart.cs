@@ -5,6 +5,7 @@ internal sealed partial class HextechMayhemModifier
 	private async Task BeforePlayerSideTurnStart(HextechCombatState combatState, IReadOnlyList<Creature> players)
 	{
 		_combatTracking.PreparePlayerSideTurnStart();
+		_combatTracking.BeginPlayerTurnStart(combatState.Players.Select(static player => player.NetId));
 		RefreshPlayerAttackCostDoublingPreviews(players);
 
 		await ApplyToCurrentEnemiesIfNeeded();

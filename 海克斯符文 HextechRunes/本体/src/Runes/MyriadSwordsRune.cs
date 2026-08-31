@@ -53,7 +53,6 @@ public sealed class MyriadSwordsRune : HextechRelicBase
 		{
 			Flash();
 			HextechMyriadSwordsVfx.Play(Owner.Creature);
-			PlayerChoiceContext autoChoiceContext = new BlockingPlayerChoiceContext();
 			foreach (SovereignBlade blade in blades)
 			{
 				if (CombatManager.Instance.IsOverOrEnding || Owner.Creature.IsDead)
@@ -63,14 +62,28 @@ public sealed class MyriadSwordsRune : HextechRelicBase
 
 				// 目标与瓦库代打同口径:单体取首个可命中敌人(两端确定),全体(寻锋刃)传 null。
 				Creature? target = blade.TargetType == TargetType.AnyEnemy
-					? Owner.Creature.CombatState.HittableEnemies.FirstOrDefault()
+					? Owner.Creature.CombatState.HittableEnemies
+						.OrderBy(static enemy => enemy.CombatId ?? uint.MaxValue)
+						.FirstOrDefault()
 					: null;
 				if (blade.TargetType == TargetType.AnyEnemy && target == null)
 				{
 					break;
 				}
 
-				await HextechAutoPlayHelper.AutoPlayOrMoveToResultPile(autoChoiceContext, blade, target, skipXCapture: true);
+				try
+				{
+					await HextechAutoPlayHelper.AutoPlayOrMoveToResultPile(choiceContext, blade, target, skipXCapture: true);
+				}
+				finally
+				{
+					if (blade.Pile?.Type == PileType.Play)
+					{
+						// 致死一击会提前结束战斗；原版自动打牌收尾偶尔因此把主机的牌留在 Play，
+						// 而客机已按本海克斯规则送入 Exhaust。即使自动打牌被取消也要收敛结果堆。
+						await CardPileCmd.Add(blade, PileType.Exhaust, CardPilePosition.Bottom, this);
+					}
+				}
 				HextechSovereignBladeVfxSync.Reconcile(Owner);
 			}
 		}

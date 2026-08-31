@@ -91,7 +91,7 @@ internal static partial class HextechRuneSelectionCoordinator
 				RemoveRunesFromGrabBags(player);
 			}
 
-			(HextechRarityTier rarity, MonsterHexKind? monsterHex) = await ResolveActRoll(runState, modifier, actIndex);
+			(HextechRarityTier rarity, MonsterHexKind? monsterHex, int playerHexCount) = await ResolveActRoll(runState, modifier, actIndex);
 			HextechLog.Info($"[{ModInfo.Id}][Mayhem] HandleHextechActSelection rarity: act={actIndex} rarity={rarity}");
 			HextechLog.Info($"[{ModInfo.Id}][Mayhem] HandleHextechActSelection monsterHex: act={actIndex} hex={monsterHex}");
 			IReadOnlyList<MonsterHexKind> previousMonsterHexes = modifier.GetActiveMonsterHexesBeforeAct(actIndex);
@@ -99,8 +99,6 @@ internal static partial class HextechRuneSelectionCoordinator
 			IReadOnlyList<MonsterHexKind> finalMonsterHexes = CombineMonsterHexes(previousMonsterHexes, newMonsterHexes);
 			MonsterHexKind? visibleMonsterHex = FirstMonsterHexOrNull(newMonsterHexes);
 			RelicModel? monsterHexRelic = CreateMonsterHexRelic(visibleMonsterHex);
-			int playerHexCount = modifier.GetPlayerHexCountForAct(actIndex);
-
 			// 模组总开关:在 act-roll(已完成两端握手/房主同步)之后冻结本局值。禁用则不发放任何玩家符文、
 			// 不分配敌方海克斯——本局表现为原版。仍走到下方 SetMonsterHexesForAct(空)+SetActResolved(true) 正常收尾,
 			// 两端对称、不破坏联机同步。
@@ -136,6 +134,8 @@ internal static partial class HextechRuneSelectionCoordinator
 						}
 
 						HashSet<ModelId> enemyRerollExcludedIds = CreateEnemyHexRerollExcludedIds(options);
+						HashSet<MonsterHexKind> seenEnemyHexes = modifier.GetKnownMonsterHexes().ToHashSet();
+						seenEnemyHexes.UnionWith(newMonsterHexes);
 						HextechLog.Info($"[{ModInfo.Id}][Mayhem] HandleHextechActSelection options: player={player.NetId} ordinal={choiceOrdinal} count={options.Count} ids={string.Join(",", options.Select(o => (o.CanonicalInstance?.Id ?? o.Id).Entry))}");
 						// choiceOrdinal>0(!allowEnemyHexAdjustment):敌方 hex 已在第一次选择时定妥,后续玩家符文选择只读展示
 						// 【本幕新增】的敌方 hex(newMonsterHexes 在首次选择后已更新为调整后的结果),不给控件。
@@ -155,7 +155,8 @@ internal static partial class HextechRuneSelectionCoordinator
 										actIndex,
 										GetMonsterHexSlot(currentHexes, slotIndex),
 										rerollOrdinal,
-										CreateEnemyHexRerollExcludedIds(enemyRerollExcludedIds, currentHexes, slotIndex))
+										CreateEnemyHexRerollExcludedIds(enemyRerollExcludedIds, currentHexes, slotIndex),
+										seenEnemyHexes)
 									: null
 							}
 							: null;
