@@ -26,6 +26,21 @@ internal sealed class BackToBasicsEnemyHex : HextechEnemyHexEffect
 		return Task.CompletedTask;
 	}
 
+	// 达到本回合上限后其余牌不可再打出;只管玩家的手动出牌,自动打出不计也不拦。
+	internal override bool ShouldPlay(HextechEnemyHexContext context, CardModel card, AutoPlayType autoPlayType)
+	{
+		Player? owner = card.Owner;
+		if (autoPlayType != AutoPlayType.None
+			|| owner?.Creature.Side != CombatSide.Player
+			|| owner.Creature.CombatState?.RunState != context.RunState)
+		{
+			return true;
+		}
+
+		int limit = context.TierValue(MonsterHexKind.BackToBasics, TurnCardLimitTier1, TurnCardLimitTier2, TurnCardLimitTier3);
+		return context.Tracking.BackToBasicsCardsPlayedThisTurn.GetValueOrDefault(owner.NetId) < limit;
+	}
+
 	internal static int GetTurnCardLimit(HextechMayhemModifier modifier)
 	{
 		return new HextechEnemyHexContext(modifier)

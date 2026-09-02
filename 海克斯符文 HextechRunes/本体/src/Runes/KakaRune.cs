@@ -21,6 +21,12 @@ public sealed class KakaRune : HextechRelicBase
 			&& owner.Creature.CombatState?.RoundNumber == 1;
 	}
 
+	// 第 1 回合禁止攻击牌:走原版 Hook.ShouldPlay,CanPlay 会带上 BlockedByHook 与本遗物作为 preventer。
+	public override bool ShouldPlay(CardModel card, AutoPlayType autoPlayType)
+	{
+		return autoPlayType != AutoPlayType.None || card.Owner != Owner || !BlocksAttack(card);
+	}
+
 	public override async Task AfterPlayerTurnStart(PlayerChoiceContext choiceContext, Player player)
 	{
 		if (player != Owner || Owner == null || Owner.Creature.IsDead || Owner.Creature.CombatState?.RoundNumber != 2)

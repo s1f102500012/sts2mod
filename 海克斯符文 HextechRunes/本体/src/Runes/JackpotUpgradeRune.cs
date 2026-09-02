@@ -1,3 +1,6 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+using MegaCrit.Sts2.Core.Nodes.Combat;
+
 namespace HextechRunes;
 
 /// <summary>
@@ -48,6 +51,24 @@ public sealed class JackpotUpgradeRune : CardUpgradeRuneBase<Jackpot>
 
 			generatedCard.SetToFreeThisCombat();
 			await HextechCardGeneration.AddGeneratedCardToCombat(generatedCard, PileType.Hand, addedByPlayer: true);
+		}
+	}
+
+	[HarmonyPatch(typeof(Jackpot), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.jackpot", "升级大奖", Rune = typeof(JackpotUpgradeRune))]
+	private static class JackpotPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(Jackpot __instance, PlayerChoiceContext choiceContext, CardPlay cardPlay, ref Task __result)
+		{
+			if (!JackpotUpgradeRune.ShouldUseUpgradedPlay(__instance))
+			{
+				return true;
+			}
+
+			__result = JackpotUpgradeRune.OnPlayUpgraded(__instance, choiceContext, cardPlay);
+			return false;
 		}
 	}
 }

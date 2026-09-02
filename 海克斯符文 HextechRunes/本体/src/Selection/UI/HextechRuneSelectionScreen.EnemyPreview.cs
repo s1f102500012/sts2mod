@@ -241,8 +241,8 @@ internal sealed partial class HextechRuneSelectionScreen
 		{
 			string normalPath = undo ? UndoButtonTexturePath : RemoveButtonTexturePath;
 			string path = ResolveEnemyHexRemovalButtonTexture(undo, disabled, pressed, hovered || focused);
-			icon.Texture = HextechAssetHooks.LoadUiTexture(path)
-				?? HextechAssetHooks.LoadUiTexture(normalPath);
+			icon.Texture = HextechTextures.LoadUiTexture(path)
+				?? HextechTextures.LoadUiTexture(normalPath);
 		}
 
 		button.MouseEntered += () =>

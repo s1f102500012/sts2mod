@@ -11,8 +11,6 @@
   "HEXTECH_FORGE_CHOICE_REWARD": "选择一个属性锻造器",
   "HEXTECH_WAITING_FOR_PLAYERS": "等待其他玩家选择海克斯符文...",
   "HEXTECH_MAP_PREVIEW_HINT": "尚未选择海克斯，关闭地图后继续选择",
-  "HEXTECH_CONFIG_BUTTON": "海克斯符文配置",
-  "HEXTECH_CONFIG_BUTTON_TOOLTIP": "配置单机或作为主机联机时使用的海克斯、敌方海克斯和属性锻造器规则。",
   "HEXTECH_CONFIG_TITLE": "海克斯符文配置",
   "HEXTECH_CONFIG_TAB_COUNTS": "选择",
   "HEXTECH_CONFIG_TAB_RUNE_POOLS": "海克斯池",

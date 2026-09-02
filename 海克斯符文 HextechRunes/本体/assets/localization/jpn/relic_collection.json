@@ -11,8 +11,6 @@
   "HEXTECH_FORGE_CHOICE_REWARD": "ステータス鍛造器を選択してください",
   "HEXTECH_WAITING_FOR_PLAYERS": "他のプレイヤーが選択するのを待っています...",
   "HEXTECH_MAP_PREVIEW_HINT": "まだヘックスを選んでいません。マップを閉じると選択に戻ります。",
-  "HEXTECH_CONFIG_BUTTON": "ヘクステックルーン構成",
-  "HEXTECH_CONFIG_BUTTON_TOOLTIP": "ソロまたはマルチプレイのホスト時に使うヘクステック、敵Hex、ステータス鍛造器のルールを設定します。",
   "HEXTECH_CONFIG_TITLE": "ヘクステックルーン構成",
   "HEXTECH_CONFIG_TAB_COUNTS": "選択",
   "HEXTECH_CONFIG_TAB_RUNE_POOLS": "Hexプール",

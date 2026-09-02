@@ -33,87 +33,33 @@ internal static class HextechInspectHooks
 	private static readonly MethodInfo? EnergyIconHelperGetPrefixMethod = TryGetMethod(typeof(EnergyIconHelper), nameof(EnergyIconHelper.GetPrefix), BindingFlags.Static | BindingFlags.Public, typeof(AbstractModel));
 
 	private static bool _inspectScreenHooksInstalled;
+	private static bool? _inspectScreenHooksAvailable;
+
+	/// <summary>检视界面改写依赖 NInspectRelicScreen 的一批私有成员;任一缺失整体停用,只告警一次。</summary>
+	private static bool InspectScreenHooksAvailable
+	{
+		get
+		{
+			if (_inspectScreenHooksAvailable is bool cached)
+			{
+				return cached;
+			}
+
+			if (!HasInspectScreenMembers(out string missingMembers))
+			{
+				Log.Warn($"[{ModInfo.Id}][Mayhem] Inspect relic screen hooks disabled: missing {missingMembers}.");
+				_inspectScreenHooksAvailable = false;
+				return false;
+			}
+
+			_inspectScreenHooksInstalled = true;
+			_inspectScreenHooksAvailable = true;
+			return true;
+		}
+	}
 
 	private readonly record struct InspectOpenState(RelicModel? RequestedRelic);
 
-	public static void Install(Harmony harmony)
-	{
-		TryPatch(harmony, UnlockStateRelicsProperty?.GetMethod, "UnlockState.Relics", postfix: nameof(GetUnlockStateRelicsPostfix));
-		TryPatch(harmony, SaveManagerIsRelicSeenMethod, "SaveManager.IsRelicSeen", postfix: nameof(IsRelicSeenPostfix));
-		TryPatch(harmony, EnergyIconHelperGetPrefixMethod, "EnergyIconHelper.GetPrefix", postfix: nameof(EnergyIconHelperGetPrefixPostfix));
-
-		if (!HasInspectScreenMembers(out string missingMembers))
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Inspect relic screen hooks disabled: missing {missingMembers}.");
-			return;
-		}
-
-		_inspectScreenHooksInstalled = true;
-		TryPatch(
-			harmony,
-			InspectRelicScreenOpenMethod,
-			"NInspectRelicScreen.Open",
-			prefix: nameof(InspectRelicScreenOpenPrefix),
-			postfix: nameof(InspectRelicScreenOpenPostfix),
-			prefixPriority: Priority.Last,
-			postfixPriority: Priority.Last);
-		TryPatch(
-			harmony,
-			InspectRelicScreenUpdateRelicDisplayMethod,
-			"NInspectRelicScreen.UpdateRelicDisplay",
-			prefix: nameof(InspectRelicScreenUpdateRelicDisplayPrefix));
-	}
-
-	private static void GetUnlockStateRelicsPostfix(ref IEnumerable<RelicModel> __result)
-	{
-		__result = __result.Concat(HextechCatalog.GetCanonicalVisibleCustomRelics()).Distinct();
-	}
-
-	private static void IsRelicSeenPostfix(RelicModel relic, ref bool __result)
-	{
-		if (HextechCatalog.IsHextechCustomRelic(relic))
-		{
-			__result = true;
-		}
-	}
-
-	private static void InspectRelicScreenOpenPrefix(ref IReadOnlyList<RelicModel> relics, ref RelicModel relic, out InspectOpenState __state)
-	{
-		__state = default;
-		if (!_inspectScreenHooksInstalled || !ShouldHandleInspectRequest(relic))
-		{
-			return;
-		}
-
-		RelicModel requestedRelic = relic;
-		IReadOnlyList<RelicModel> correctedRelics = MergeRequestedInspectRelic(relics, requestedRelic, out int correctedIndex);
-		relics = correctedRelics;
-		relic = correctedRelics[correctedIndex];
-		__state = new InspectOpenState(requestedRelic);
-	}
-
-	private static void InspectRelicScreenOpenPostfix(NInspectRelicScreen __instance, InspectOpenState __state)
-	{
-		if (!_inspectScreenHooksInstalled
-			|| __state.RequestedRelic == null
-			|| InspectRelicScreenRelicsField?.GetValue(__instance) is not IReadOnlyList<RelicModel> finalRelics)
-		{
-			return;
-		}
-
-		IReadOnlyList<RelicModel> mergedRelics = MergeRequestedInspectRelic(
-			finalRelics,
-			__state.RequestedRelic,
-			out int requestedIndex);
-		EnsureInspectRelicsUnlocked(__instance, mergedRelics);
-		if (!ReferenceEquals(mergedRelics, finalRelics))
-		{
-			InspectRelicScreenRelicsField.SetValue(__instance, mergedRelics);
-		}
-
-		InspectRelicScreenSetRelicMethod?.Invoke(__instance, [requestedIndex]);
-		InspectRelicScreenUpdateRelicDisplayMethod?.Invoke(__instance, null);
-	}
 
 	internal static bool ShouldHandleInspectRequest(RelicModel relic)
 	{
@@ -142,36 +88,6 @@ internal static class HextechInspectHooks
 		return merged;
 	}
 
-	private static bool InspectRelicScreenUpdateRelicDisplayPrefix(NInspectRelicScreen __instance)
-	{
-		if (!_inspectScreenHooksInstalled)
-		{
-			return true;
-		}
-
-		if (InspectRelicScreenRelicsField?.GetValue(__instance) is IReadOnlyList<RelicModel> relics
-			&& InspectRelicScreenIndexField?.GetValue(__instance) is int index
-			&& index >= 0
-			&& index < relics.Count)
-		{
-			RelicModel relic = relics[index];
-			if (HextechCatalog.IsHextechCustomRelic(relic))
-			{
-				RenderHextechInspect(__instance, relic);
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	private static void EnergyIconHelperGetPrefixPostfix(AbstractModel model, ref string __result)
-	{
-		if (model is RelicModel relic && HextechCatalog.IsHextechCustomRelic(relic))
-		{
-			__result = "red";
-		}
-	}
 
 	private static void EnsureInspectRelicsUnlocked(NInspectRelicScreen screen, IReadOnlyList<RelicModel> relics)
 	{
@@ -264,48 +180,126 @@ internal static class HextechInspectHooks
 		}
 	}
 
-	private static void TryPatch(
-		Harmony harmony,
-		MethodBase? target,
-		string label,
-		string? prefix = null,
-		string? postfix = null,
-		int? prefixPriority = null,
-		int? postfixPriority = null)
-	{
-		if (target == null)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Inspect hook skipped: missing {label}.");
-			return;
-		}
 
-		try
+	[HarmonyPatch(typeof(UnlockState), nameof(UnlockState.Relics), MethodType.Getter)]
+	[HextechPatch("ui.inspect.unlock-state-relics", "遗物检视界面", Optional = true)]
+	private static class UnlockStateRelicsPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(ref IEnumerable<RelicModel> __result)
 		{
-			harmony.Patch(
-				target,
-				GetHarmonyMethod(prefix, prefixPriority),
-				GetHarmonyMethod(postfix, postfixPriority));
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Inspect hook skipped: {label}: {ex.GetType().Name}: {ex.Message}");
+			__result = __result.Concat(HextechCatalog.GetCanonicalVisibleCustomRelics()).Distinct();
 		}
 	}
 
-	private static HarmonyMethod? GetHarmonyMethod(string? methodName, int? priority = null)
+	[HarmonyPatch(typeof(SaveManager), nameof(SaveManager.IsRelicSeen), typeof(RelicModel))]
+	[HextechPatch("ui.inspect.relic-seen", "遗物检视界面", Optional = true)]
+	private static class IsRelicSeenPatch
 	{
-		if (methodName == null)
+		[HarmonyPostfix]
+		private static void Postfix(RelicModel relic, ref bool __result)
 		{
-			return null;
+			if (HextechCatalog.IsHextechCustomRelic(relic))
+			{
+				__result = true;
+			}
 		}
-
-		var harmonyMethod = new HarmonyMethod(typeof(HextechInspectHooks), methodName);
-		if (priority.HasValue)
-		{
-			harmonyMethod.priority = priority.Value;
-		}
-
-		return harmonyMethod;
 	}
 
+	[HarmonyPatch(typeof(EnergyIconHelper), nameof(EnergyIconHelper.GetPrefix), typeof(AbstractModel))]
+	[HextechPatch("ui.inspect.energy-icon-prefix", "遗物检视界面", Optional = true)]
+	private static class EnergyIconPrefixPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(AbstractModel model, ref string __result)
+		{
+			if (model is RelicModel relic && HextechCatalog.IsHextechCustomRelic(relic))
+			{
+				__result = "red";
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(NInspectRelicScreen), nameof(NInspectRelicScreen.Open), typeof(IReadOnlyList<RelicModel>), typeof(RelicModel))]
+	[HextechPatch("ui.inspect.open", "遗物检视界面", Optional = true)]
+	private static class OpenPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => InspectScreenHooksAvailable;
+
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Last)]
+		private static void Prefix(ref IReadOnlyList<RelicModel> relics, ref RelicModel relic, out InspectOpenState __state)
+		{
+			__state = default;
+			if (!_inspectScreenHooksInstalled || !ShouldHandleInspectRequest(relic))
+			{
+				return;
+			}
+
+			RelicModel requestedRelic = relic;
+			IReadOnlyList<RelicModel> correctedRelics = MergeRequestedInspectRelic(relics, requestedRelic, out int correctedIndex);
+			relics = correctedRelics;
+			relic = correctedRelics[correctedIndex];
+			__state = new InspectOpenState(requestedRelic);
+		}
+
+		[HarmonyPostfix]
+		[HarmonyPriority(Priority.Last)]
+		private static void Postfix(NInspectRelicScreen __instance, InspectOpenState __state)
+		{
+			if (!_inspectScreenHooksInstalled
+				|| __state.RequestedRelic == null
+				|| InspectRelicScreenRelicsField?.GetValue(__instance) is not IReadOnlyList<RelicModel> finalRelics)
+			{
+				return;
+			}
+
+			IReadOnlyList<RelicModel> mergedRelics = MergeRequestedInspectRelic(
+				finalRelics,
+				__state.RequestedRelic,
+				out int requestedIndex);
+			EnsureInspectRelicsUnlocked(__instance, mergedRelics);
+			if (!ReferenceEquals(mergedRelics, finalRelics))
+			{
+				InspectRelicScreenRelicsField.SetValue(__instance, mergedRelics);
+			}
+
+			InspectRelicScreenSetRelicMethod?.Invoke(__instance, [requestedIndex]);
+			InspectRelicScreenUpdateRelicDisplayMethod?.Invoke(__instance, null);
+		}
+	}
+
+	[HarmonyPatch(typeof(NInspectRelicScreen), "UpdateRelicDisplay")]
+	[HextechPatch("ui.inspect.update-display", "遗物检视界面", Optional = true)]
+	private static class UpdateRelicDisplayPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => InspectScreenHooksAvailable;
+
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(NInspectRelicScreen __instance)
+		{
+			if (!_inspectScreenHooksInstalled)
+			{
+				return true;
+			}
+
+			if (InspectRelicScreenRelicsField?.GetValue(__instance) is IReadOnlyList<RelicModel> relics
+				&& InspectRelicScreenIndexField?.GetValue(__instance) is int index
+				&& index >= 0
+				&& index < relics.Count)
+			{
+				RelicModel relic = relics[index];
+				if (HextechCatalog.IsHextechCustomRelic(relic))
+				{
+					RenderHextechInspect(__instance, relic);
+					return false;
+				}
+			}
+
+			return true;
+		}
+	}
 }

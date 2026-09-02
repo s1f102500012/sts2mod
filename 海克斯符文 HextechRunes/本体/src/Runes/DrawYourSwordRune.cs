@@ -1,3 +1,4 @@
+using HarmonyLib;
 namespace HextechRunes;
 
 public sealed class DrawYourSwordRune : AttributeConversionRelicBase
@@ -62,4 +63,29 @@ public sealed class DrawYourSwordRune : AttributeConversionRelicBase
 	}
 
 	private bool HasConflictingFocusConverter => Owner?.GetRelic<DexterityStrengthToFocusRune>() != null;
+
+	[HextechPatch("rune.draw-your-sword.evoke", "亮出你的剑", Rune = typeof(DrawYourSwordRune))]
+	private static class DrawYourSwordEvokePatch
+	{
+		private static void Apply(Harmony harmony)
+		{
+			Assembly coreAssembly = typeof(OrbModel).Assembly;
+			HarmonyMethod prefix = new(typeof(HextechPlayerRuneHooks), nameof(HextechPlayerRuneHooks.OrbEvokePrefix))
+			{
+				priority = Priority.First
+			};
+
+			foreach (MethodInfo method in HextechPlayerRuneHooks.FindLoadedOrbEvokeMethods())
+			{
+				try
+				{
+					harmony.Patch(method, prefix: prefix);
+				}
+				catch (Exception ex) when (method.DeclaringType?.Assembly != coreAssembly)
+				{
+					Log.Warn($"[{ModInfo.Id}][Compat] Could not replace evoke for external Orb {method.DeclaringType?.FullName}: {ex.Message}");
+				}
+			}
+		}
+	}
 }

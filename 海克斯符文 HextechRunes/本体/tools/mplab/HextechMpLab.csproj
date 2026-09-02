@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- 双客户端联机确定性实验驱动:只在本机 headless 联机实验里临时部署,不随模组发布。 -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>HextechMpLab</AssemblyName>
+    <RootNamespace>HextechMpLab</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <HextechSts2Target Condition="'$(HextechSts2Target)' == ''">0.111.0</HextechSts2Target>
+    <GameDataDir Condition="'$(GameDataDir)' == ''">$(MSBuildThisFileDirectory)../../versioned-dll-backups/$(HextechSts2Target)/game-refs</GameDataDir>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="MpLabDriver.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="sts2"><HintPath>$(GameDataDir)/sts2.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="GodotSharp"><HintPath>$(GameDataDir)/GodotSharp.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

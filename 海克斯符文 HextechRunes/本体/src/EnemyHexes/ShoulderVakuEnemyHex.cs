@@ -4,11 +4,7 @@ internal sealed class ShoulderVakuEnemyHex : HextechEnemyHexEffect
 {
 	internal override MonsterHexKind Kind => MonsterHexKind.ShoulderVaku;
 
-#if STS2_104_OR_NEWER
 	internal override Task AfterAutoPrePlayPhaseEnteredLate(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, Player player)
-#else
-	internal override Task BeforePlayPhaseStart(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		return TryControlSecondTurn(context, player);
 	}

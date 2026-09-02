@@ -16,25 +16,6 @@ internal static class HextechPlayerStatsHoverHooks
 	private static readonly FieldInfo PortraitHoverTipField = RequireField(typeof(NTopBarPortraitTip), "_hoverTip");
 	private static readonly FieldInfo HoverTipDescriptionField = RequireField(typeof(HoverTip), "<Description>k__BackingField");
 
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(NTopBarPortraitTip), "Initialize", BindingFlags.Instance | BindingFlags.Public, typeof(IRunState)),
-			postfix: new HarmonyMethod(typeof(HextechPlayerStatsHoverHooks), nameof(InitializePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NTopBarPortraitTip), "OnFocus", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic),
-			prefix: new HarmonyMethod(typeof(HextechPlayerStatsHoverHooks), nameof(OnFocusPrefix)));
-	}
-
-	private static void InitializePostfix(NTopBarPortraitTip __instance, IRunState runState)
-	{
-		UpdatePortraitTip(__instance, runState);
-	}
-
-	private static void OnFocusPrefix(NTopBarPortraitTip __instance)
-	{
-		UpdatePortraitTip(__instance, RunManager.Instance.DebugOnlyGetState());
-	}
 
 	private static void UpdatePortraitTip(NTopBarPortraitTip portraitTip, IRunState? runState)
 	{
@@ -99,5 +80,27 @@ internal static class HextechPlayerStatsHoverHooks
 			|| trimmed.StartsWith(DamageLabel, StringComparison.Ordinal)
 			|| trimmed.StartsWith(BlockLabel, StringComparison.Ordinal)
 			|| trimmed.StartsWith(HealingLabel, StringComparison.Ordinal);
+	}
+
+	[HarmonyPatch(typeof(NTopBarPortraitTip), "Initialize", typeof(IRunState))]
+	[HextechPatch("ui.player-stats-hover.init", "玩家属性悬浮")]
+	private static class InitializePatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(NTopBarPortraitTip __instance, IRunState runState)
+		{
+			UpdatePortraitTip(__instance, runState);
+		}
+	}
+
+	[HarmonyPatch(typeof(NTopBarPortraitTip), "OnFocus", new Type[0])]
+	[HextechPatch("ui.player-stats-hover.focus", "玩家属性悬浮")]
+	private static class OnFocusPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(NTopBarPortraitTip __instance)
+		{
+			UpdatePortraitTip(__instance, RunManager.Instance.DebugOnlyGetState());
+		}
 	}
 }

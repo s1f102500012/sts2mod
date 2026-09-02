@@ -14,23 +14,6 @@ internal static partial class HextechCombatHooks
 		}
 	}
 
-	private static void ActualDamageCommandPrefix(out long __state)
-	{
-		__state = Interlocked.Increment(ref _nextActualDamageCommandId);
-		long[] current = ActualDamageCommandIds.Value ?? [];
-		long[] next = new long[current.Length + 1];
-		Array.Copy(current, next, current.Length);
-		next[^1] = __state;
-		ActualDamageCommandIds.Value = next;
-	}
-
-	private static void ActualDamageCommandPostfix(long __state, ref Task<IEnumerable<DamageResult>> __result)
-	{
-		if (__state != 0L)
-		{
-			__result = CompleteWithActualDamageCommandReset(__result, __state);
-		}
-	}
 
 	private static async Task<T> CompleteWithActualDamageCommandReset<T>(Task<T> task, long commandId)
 	{
@@ -69,5 +52,34 @@ internal static partial class HextechCombatHooks
 		}
 
 		ActualDamageCommandIds.Value = next.Length == 0 ? null : next;
+	}
+
+	#if STS2_108_OR_NEWER
+	[HarmonyPatch(typeof(CreatureCmd), nameof(CreatureCmd.Damage), typeof(PlayerChoiceContext), typeof(IEnumerable<Creature>), typeof(decimal), typeof(ValueProp), typeof(Creature), typeof(CardModel), typeof(CardPlay))]
+	#else
+	[HarmonyPatch(typeof(CreatureCmd), nameof(CreatureCmd.Damage), typeof(PlayerChoiceContext), typeof(IEnumerable<Creature>), typeof(decimal), typeof(ValueProp), typeof(Creature), typeof(CardModel))]
+	#endif
+	[HextechPatch("combat.damage-command", "伤害命令作用域")]
+	private static class DamageCommandPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(out long __state)
+		{
+			__state = Interlocked.Increment(ref _nextActualDamageCommandId);
+			long[] current = ActualDamageCommandIds.Value ?? [];
+			long[] next = new long[current.Length + 1];
+			Array.Copy(current, next, current.Length);
+			next[^1] = __state;
+			ActualDamageCommandIds.Value = next;
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(long __state, ref Task<IEnumerable<DamageResult>> __result)
+		{
+			if (__state != 0L)
+			{
+				__result = CompleteWithActualDamageCommandReset(__result, __state);
+			}
+		}
 	}
 }

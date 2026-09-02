@@ -234,8 +234,8 @@ internal sealed partial class HextechRuneSelectionScreen
 			return null;
 		}
 
-		Texture2D? outerMask = HextechAssetHooks.LoadUiTexture(GoldenRerollOuterMaskPath);
-		Texture2D? fillMask = HextechAssetHooks.LoadUiTexture(GoldenRerollFillMaskPath);
+		Texture2D? outerMask = HextechTextures.LoadUiTexture(GoldenRerollOuterMaskPath);
+		Texture2D? fillMask = HextechTextures.LoadUiTexture(GoldenRerollFillMaskPath);
 		HextechGoldenRerollVisual? visual = HextechGoldenRerollVisual.Create(
 			outerMask,
 			fillMask,

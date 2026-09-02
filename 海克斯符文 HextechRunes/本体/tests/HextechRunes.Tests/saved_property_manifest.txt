@@ -22,6 +22,7 @@ SavedCountThisCombat
 SavedCounter
 SavedCurtainCallRetainMarker
 SavedDeathsThisCombat
+SavedDiceManiacForgeChanceOffset
 SavedEnemyHexCountsByAct
 SavedEnemyTezcatarasMercyCombatCounter
 SavedExhaustedCardsThisCombat
@@ -59,6 +60,7 @@ SavedPlayerRuneConfigDisabledIdsJson
 SavedProcsThisTurn
 SavedPurchaseCount
 SavedRarityByAct
+SavedRedEnvelopeForgeChanceOffset
 SavedRemovedPowerCardsJson
 SavedResolvedActs
 SavedRuneSelectionJournalJson

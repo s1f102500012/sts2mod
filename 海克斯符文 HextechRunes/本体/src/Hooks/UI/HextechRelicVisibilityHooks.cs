@@ -38,54 +38,6 @@ internal static partial class HextechRelicVisibilityHooks
 	private static NDrawPileButton? _drawPileAnchor;
 	private static ModUiConfig _config = new();
 
-	public static void Install(Harmony harmony)
-	{
-		if (_installed)
-		{
-			return;
-		}
-
-		_config = LoadOrCreateConfig();
-		harmony.Patch(
-			RequireMethod(typeof(NGlobalUi), nameof(NGlobalUi.Initialize), BindingFlags.Instance | BindingFlags.Public, typeof(RunState)),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NGlobalUiInitializePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatUi), nameof(NCombatUi._Ready), CombatUiFlags),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiVisiblePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatUi), "AnimIn", CombatUiFlags),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiVisiblePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatUi), nameof(NCombatUi.Enable), CombatUiFlags),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiVisiblePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatUi), "AnimOut", CombatUiFlags),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiHiddenPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatUi), nameof(NCombatUi.Disable), CombatUiFlags),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiHiddenPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatUi), nameof(NCombatUi._ExitTree), CombatUiFlags),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiHiddenPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NRelicInventory), nameof(NRelicInventory.Initialize), BindingFlags.Instance | BindingFlags.Public, typeof(RunState)),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryRefreshPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NRelicInventory), "Add", BindingFlags.Instance | BindingFlags.NonPublic, typeof(RelicModel), typeof(bool), typeof(int)),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryRefreshPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NRelicInventory), nameof(NRelicInventory.AnimShow), BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryRefreshPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NRelicInventory), nameof(NRelicInventory.ShowImmediately), BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryRefreshPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NRelicInventoryHolder), "DoFlash", BindingFlags.Instance | BindingFlags.NonPublic),
-			prefix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryHolderDoFlashPrefix)));
-
-		_installed = true;
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] UI visibility toggle loaded: hide_ui={_config.HideRelics}.");
-	}
 
 	private static void NGlobalUiInitializePostfix(NGlobalUi __instance)
 	{
@@ -251,5 +203,58 @@ internal static partial class HextechRelicVisibilityHooks
 	private static bool ShouldHideUi()
 	{
 		return _config.ShowHiddenRelicsToggle && _config.HideRelics;
+	}
+
+	[HextechPatch("ui.relic-visibility", "遗物栏隐藏开关")]
+	private static class VisibilityPatches
+	{
+		public static void Apply(Harmony harmony)
+		{
+			if (_installed)
+			{
+				return;
+			}
+
+			_config = LoadOrCreateConfig();
+			harmony.Patch(
+				RequireMethod(typeof(NGlobalUi), nameof(NGlobalUi.Initialize), BindingFlags.Instance | BindingFlags.Public, typeof(RunState)),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NGlobalUiInitializePostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NCombatUi), nameof(NCombatUi._Ready), CombatUiFlags),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiVisiblePostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NCombatUi), "AnimIn", CombatUiFlags),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiVisiblePostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NCombatUi), nameof(NCombatUi.Enable), CombatUiFlags),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiVisiblePostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NCombatUi), "AnimOut", CombatUiFlags),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiHiddenPostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NCombatUi), nameof(NCombatUi.Disable), CombatUiFlags),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiHiddenPostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NCombatUi), nameof(NCombatUi._ExitTree), CombatUiFlags),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NCombatUiHiddenPostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NRelicInventory), nameof(NRelicInventory.Initialize), BindingFlags.Instance | BindingFlags.Public, typeof(RunState)),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryRefreshPostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NRelicInventory), "Add", BindingFlags.Instance | BindingFlags.NonPublic, typeof(RelicModel), typeof(bool), typeof(int)),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryRefreshPostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NRelicInventory), nameof(NRelicInventory.AnimShow), BindingFlags.Instance | BindingFlags.Public),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryRefreshPostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NRelicInventory), nameof(NRelicInventory.ShowImmediately), BindingFlags.Instance | BindingFlags.Public),
+				postfix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryRefreshPostfix)));
+			harmony.Patch(
+				RequireMethod(typeof(NRelicInventoryHolder), "DoFlash", BindingFlags.Instance | BindingFlags.NonPublic),
+				prefix: new HarmonyMethod(typeof(HextechRelicVisibilityHooks), nameof(NRelicInventoryHolderDoFlashPrefix)));
+
+			_installed = true;
+			HextechLog.Info($"[{ModInfo.Id}][Mayhem] UI visibility toggle loaded: hide_ui={_config.HideRelics}.");
+		}
 	}
 }

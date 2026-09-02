@@ -1,3 +1,6 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+using MegaCrit.Sts2.Core.Nodes.Combat;
+
 namespace HextechRunes;
 
 public sealed class GrandFinaleUpgradeRune : CardUpgradeRuneBase<GrandFinale>
@@ -25,5 +28,38 @@ public sealed class GrandFinaleUpgradeRune : CardUpgradeRuneBase<GrandFinale>
 			.TargetingAllOpponents(combatState)
 			.WithHitFx(null, null, "blunt_attack.mp3")
 			.Execute(choiceContext);
+	}
+
+	// 升级压轴无视"抽牌堆为空"的出牌条件:只补这张牌自己的 IsPlayable,不碰全局 CanPlay。
+	[HarmonyPatch(typeof(GrandFinale), "IsPlayable", MethodType.Getter)]
+	[HextechPatch("rune.grand-finale.playable", "升级压轴", Rune = typeof(GrandFinaleUpgradeRune))]
+	private static class GrandFinalePlayablePatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(GrandFinale __instance, ref bool __result)
+		{
+			if (!__result && GrandFinaleUpgradeRune.AllowsPlaying(__instance))
+			{
+				__result = true;
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(GrandFinale), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.grand-finale", "升级压轴", Rune = typeof(GrandFinaleUpgradeRune))]
+	private static class GrandFinalePatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(GrandFinale __instance, PlayerChoiceContext choiceContext, CardPlay cardPlay, ref Task __result)
+		{
+			if (!GrandFinaleUpgradeRune.AllowsPlaying(__instance))
+			{
+				return true;
+			}
+
+			__result = GrandFinaleUpgradeRune.PlayUpgradedSafely(choiceContext, __instance);
+			return false;
+		}
 	}
 }

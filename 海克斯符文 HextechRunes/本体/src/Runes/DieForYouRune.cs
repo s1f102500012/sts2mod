@@ -37,11 +37,7 @@ public sealed class DieForYouRune : HextechRelicBase
 		return IsNecrobinderPlayer(player);
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPlayerTurnStart(PlayerChoiceContext choiceContext, Player player)
-#else
-	public override async Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		if (player != Owner || Owner.Creature.IsDead || !IsNecrobinderPlayer(player))
 		{

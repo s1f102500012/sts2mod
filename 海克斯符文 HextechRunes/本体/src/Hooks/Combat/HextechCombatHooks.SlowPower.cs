@@ -2,18 +2,6 @@ namespace HextechRunes;
 
 internal static partial class HextechCombatHooks
 {
-	private static bool PowerModelGetTypeForAmountPrefix(
-		PowerModel __instance,
-		ref PowerType __result)
-	{
-		if (!TryResolveNeutralPowerType(__instance, out PowerType resolvedType))
-		{
-			return true;
-		}
-
-		__result = resolvedType;
-		return false;
-	}
 
 	internal static bool TryResolveNeutralPowerType(PowerModel power, out PowerType powerType)
 	{
@@ -26,5 +14,25 @@ internal static partial class HextechCombatHooks
 
 		powerType = default;
 		return false;
+	}
+
+	[HarmonyPatch(typeof(PowerModel), nameof(PowerModel.GetTypeForAmount), typeof(decimal))]
+	[HextechPatch("combat.power-type-for-amount", "中性能力类型")]
+	private static class PowerTypeForAmountPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(
+			PowerModel __instance,
+			ref PowerType __result)
+		{
+			if (!TryResolveNeutralPowerType(__instance, out PowerType resolvedType))
+			{
+				return true;
+			}
+
+			__result = resolvedType;
+			return false;
+		}
 	}
 }

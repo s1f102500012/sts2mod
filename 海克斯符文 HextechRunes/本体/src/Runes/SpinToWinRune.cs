@@ -10,17 +10,10 @@ public sealed class SpinToWinRune : HextechRelicBase
 		HoverTipFactory.FromPower<StarNextTurnPower>()
 	];
 
-#if STS2_104_OR_NEWER
 	public override Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
 	{
 		return ConvertDelayedResource(choiceContext, power, amount);
 	}
-#else
-	public override Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-	{
-		return ConvertDelayedResource(new BlockingPlayerChoiceContext(), power, amount);
-	}
-#endif
 
 	internal static bool IsConvertiblePower(PowerModel power)
 	{

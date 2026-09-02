@@ -41,11 +41,7 @@ public sealed class TwilightVeilRune : HextechRelicBase
 		return new SuppressionScope();
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#else
-	public override async Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#endif
 	{
 		if (!_armed
 			|| _mirroring

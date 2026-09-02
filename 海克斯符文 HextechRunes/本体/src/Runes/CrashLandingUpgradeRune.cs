@@ -27,6 +27,7 @@ public sealed class CrashLandingUpgradeRune : CardUpgradeRuneBase<CrashLanding>
 		}
 
 		card.Owner.GetRelic<CrashLandingUpgradeRune>()?.Flash();
+		HextechLog.Info($"[{ModInfo.Id}][CrashLanding] Upgraded play for {card.Owner.NetId}: hand={CardPile.GetCards(card.Owner, PileType.Hand).Count()}/{CardPile.MaxCardsInHand}");
 		await DamageCmd.Attack(card.DynamicVars.Damage.BaseValue)
 			.FromCardCompat(card)
 			.TargetingAllOpponents(combatState)
@@ -47,5 +48,23 @@ public sealed class CrashLandingUpgradeRune : CardUpgradeRuneBase<CrashLanding>
 		}
 
 		await CardPileCmd.AddGeneratedCardsToCombat(collisionCourses, PileType.Hand, card.Owner);
+	}
+
+	[HarmonyPatch(typeof(CrashLanding), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.crash-landing", "升级迫降", Rune = typeof(CrashLandingUpgradeRune))]
+	private static class CrashLandingPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(CrashLanding __instance, PlayerChoiceContext choiceContext, ref Task __result)
+		{
+			if (!CrashLandingUpgradeRune.ShouldUseUpgradedPlay(__instance))
+			{
+				return true;
+			}
+
+			__result = CrashLandingUpgradeRune.PlayUpgraded(choiceContext, __instance);
+			return false;
+		}
 	}
 }

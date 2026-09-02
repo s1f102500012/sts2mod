@@ -4,7 +4,6 @@ namespace HextechRunes;
 
 internal static partial class HextechEnemyPowerScalingHooks
 {
-#if STS2_105_OR_NEWER
 	private static IEnumerable<MethodInfo> ResolveGetScaledAmountForMultiplayerTargets()
 	{
 		List<MethodInfo> targets = new();
@@ -78,5 +77,4 @@ internal static partial class HextechEnemyPowerScalingHooks
 
 		return false;
 	}
-#endif
 }

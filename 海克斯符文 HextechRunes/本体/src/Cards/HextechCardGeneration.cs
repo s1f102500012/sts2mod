@@ -17,20 +17,12 @@ internal static class HextechCardGeneration
 			return Array.Empty<CardPileAddResult>();
 		}
 
-#if STS2_104_OR_NEWER
 		Player? creator = addedByPlayer ? cardList.FirstOrDefault()?.Owner : null;
 		IReadOnlyList<CardPileAddResult> results = await CardPileCmd.AddGeneratedCardsToCombat(
 			cardList,
 			pileType,
 			creator,
 			position);
-#else
-		IReadOnlyList<CardPileAddResult> results = await CardPileCmd.AddGeneratedCardsToCombat(
-			cardList,
-			pileType,
-			addedByPlayer,
-			position);
-#endif
 		foreach (CardModel card in cardList)
 		{
 			SaveManager.Instance.MarkCardAsSeen(card);

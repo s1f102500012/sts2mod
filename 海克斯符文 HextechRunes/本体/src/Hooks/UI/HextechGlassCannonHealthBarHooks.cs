@@ -3,49 +3,8 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
-using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
-
-/// <summary>
-/// 玻璃大炮的「锁血」血条样式:在血条最右侧(治疗封顶以上、不可恢复的那段)盖一层灰色斜线阴影,
-/// 直观表明血量无法回到该点以上 —— 仿 LoL 中类似锁血的观感。仿轮询光环挂到每个 <see cref="NCreature"/>
-/// (敌我通用),带玻璃大炮封顶时显示、否则隐藏。只读遗物状态 + 操作血条 UI 节点,纯表现层。
-/// </summary>
-internal static class HextechGlassCannonHealthBarHooks
-{
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(NCombatRoom), "_Ready", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechGlassCannonHealthBarHooks), nameof(CombatRoomReadyPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatRoom), nameof(NCombatRoom.AddCreature), BindingFlags.Instance | BindingFlags.Public, typeof(Creature)),
-			postfix: new HarmonyMethod(typeof(HextechGlassCannonHealthBarHooks), nameof(AddCreaturePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCreature), "_Ready", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechGlassCannonHealthBarHooks), nameof(CreatureReadyPostfix)));
-		HextechLog.Info($"[{ModInfo.Id}][GlassCannon] Health bar hooks installed.");
-	}
-
-	private static void CombatRoomReadyPostfix(NCombatRoom __instance)
-	{
-		foreach (NCreature creature in __instance.CreatureNodes)
-		{
-			HextechGlassCannonHealthBarVisual.TryAttach(creature);
-		}
-	}
-
-	private static void AddCreaturePostfix(NCombatRoom __instance, Creature creature)
-	{
-		HextechGlassCannonHealthBarVisual.TryAttach(HextechCreatureNodeRegistry.SafeGetCreatureNode(__instance, creature));
-	}
-
-	private static void CreatureReadyPostfix(NCreature __instance)
-	{
-		HextechGlassCannonHealthBarVisual.TryAttach(__instance);
-	}
-}
 
 internal sealed class HextechGlassCannonHealthBarVisual
 {

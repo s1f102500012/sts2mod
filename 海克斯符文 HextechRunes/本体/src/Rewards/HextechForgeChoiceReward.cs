@@ -26,18 +26,10 @@ internal sealed class HextechForgeChoiceReward : Reward
 
 	internal ModelId ClaimedForgeId { get; private set; } = ModelId.none;
 
-#if STS2_105_OR_NEWER
 	public override void Populate()
 	{
 		MarkContentAsSeen();
 	}
-#else
-	public override Task Populate()
-	{
-		MarkContentAsSeen();
-		return Task.CompletedTask;
-	}
-#endif
 
 	protected override async Task<bool> OnSelect()
 	{

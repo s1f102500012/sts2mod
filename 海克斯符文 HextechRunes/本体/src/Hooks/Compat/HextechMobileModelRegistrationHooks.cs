@@ -5,27 +5,27 @@ namespace HextechRunes;
 
 internal static class HextechMobileModelRegistrationHooks
 {
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-#if STS2_109_OR_NEWER
-			// 0.109.0 起 Init 新增可选参数 Type[]? injectedModelTypes,按新签名精确匹配。
-			RequireMethod(typeof(ModelDb), nameof(ModelDb.Init), BindingFlags.Static | BindingFlags.Public, typeof(Type[])),
-#else
-			RequireMethod(typeof(ModelDb), nameof(ModelDb.Init), BindingFlags.Static | BindingFlags.Public),
-#endif
-			postfix: new HarmonyMethod(typeof(HextechMobileModelRegistrationHooks), nameof(ModelDbInitPostfix)));
-	}
 
-	private static void ModelDbInitPostfix()
+
+	#if STS2_109_OR_NEWER
+	[HarmonyPatch(typeof(ModelDb), nameof(ModelDb.Init), typeof(Type[]))]
+	#else
+	[HarmonyPatch(typeof(ModelDb), nameof(ModelDb.Init), new Type[0])]
+	#endif
+	[HextechPatch("compat.mobile-model-registration", "移动端模型注册兜底")]
+	private static class ModelDbInitPatch
 	{
-		try
+		[HarmonyPostfix]
+		private static void Postfix()
 		{
-			HextechModelBootstrap.CleanupMobileFirstModelRegistrationWorkaround();
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}] Android model registration workaround cleanup skipped: {ex.GetType().Name}: {ex.Message}");
+			try
+			{
+				HextechModelBootstrap.CleanupMobileFirstModelRegistrationWorkaround();
+			}
+			catch (Exception ex)
+			{
+				Log.Warn($"[{ModInfo.Id}] Android model registration workaround cleanup skipped: {ex.GetType().Name}: {ex.Message}");
+			}
 		}
 	}
 }

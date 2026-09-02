@@ -24,80 +24,6 @@ internal static class HextechEndlessModeCompatibilityHooks
 	private static bool _loggedMissingEndlessApi;
 	private static bool _loggedNormalizationFailure;
 
-	internal static void Install(Harmony harmony)
-	{
-		MethodInfo applyPower = RequireMethod(
-			typeof(MegaCrit.Sts2.Core.Commands.PowerCmd),
-			nameof(MegaCrit.Sts2.Core.Commands.PowerCmd.Apply),
-			BindingFlags.Public | BindingFlags.Static,
-			typeof(PlayerChoiceContext),
-			typeof(PowerModel),
-			typeof(Creature),
-			typeof(decimal),
-			typeof(Creature),
-			typeof(CardModel),
-			typeof(bool));
-		HarmonyMethod capturePrefix = new(typeof(HextechEndlessModeCompatibilityHooks), nameof(CaptureRawPowerAmountPrefix))
-		{
-			priority = Priority.First,
-			before = [HextechCombatHooks.EndlessModeHarmonyId]
-		};
-		harmony.Patch(applyPower, prefix: capturePrefix);
-
-		HarmonyMethod exoskeletonPostfix = new(typeof(HextechEndlessModeCompatibilityHooks), nameof(ExoskeletonAfterAddedToRoomPostfix))
-		{
-			priority = Priority.Last,
-			after = [HextechCombatHooks.EndlessModeHarmonyId, TemporarySyncFixHarmonyId]
-		};
-		harmony.Patch(
-			RequireMethod(typeof(Exoskeleton), nameof(Exoskeleton.AfterAddedToRoom), BindingFlags.Public | BindingFlags.Instance),
-			postfix: exoskeletonPostfix);
-
-		HarmonyMethod skulkingColonyPostfix = new(typeof(HextechEndlessModeCompatibilityHooks), nameof(SkulkingColonyAfterAddedToRoomPostfix))
-		{
-			priority = Priority.Last,
-			after = [HextechCombatHooks.EndlessModeHarmonyId, TemporarySyncFixHarmonyId]
-		};
-		harmony.Patch(
-			RequireMethod(typeof(SkulkingColony), nameof(SkulkingColony.AfterAddedToRoom), BindingFlags.Public | BindingFlags.Instance),
-			postfix: skulkingColonyPostfix);
-	}
-
-	private static void CaptureRawPowerAmountPrefix(PowerModel power, Creature target, decimal amount)
-	{
-		if (amount <= 0m || target.Side != CombatSide.Enemy)
-		{
-			return;
-		}
-
-		CapturedPowerAmounts captured;
-		if (target.Monster is Exoskeleton && power is HardToKillPower)
-		{
-			captured = CapturedAmounts.GetOrCreateValue(target);
-			lock (captured)
-			{
-				captured.HardToKill = amount;
-			}
-		}
-		else if (target.Monster is SkulkingColony && power is HardenedShellPower)
-		{
-			captured = CapturedAmounts.GetOrCreateValue(target);
-			lock (captured)
-			{
-				captured.HardenedShell = amount;
-			}
-		}
-	}
-
-	private static void ExoskeletonAfterAddedToRoomPostfix(Exoskeleton __instance, ref Task __result)
-	{
-		__result = NormalizeExoskeletonAfterOriginal(__result, __instance);
-	}
-
-	private static void SkulkingColonyAfterAddedToRoomPostfix(SkulkingColony __instance, ref Task __result)
-	{
-		__result = NormalizeSkulkingColonyAfterOriginal(__result, __instance);
-	}
 
 	private static async Task NormalizeExoskeletonAfterOriginal(Task original, Exoskeleton monster)
 	{
@@ -301,5 +227,65 @@ internal static class HextechEndlessModeCompatibilityHooks
 			? inner
 			: ex;
 		Log.Warn($"[{ModInfo.Id}][EndlessCompat] Monster power normalization failed: {cause.GetType().Name}: {cause.Message}");
+	}
+
+	[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Commands.PowerCmd), nameof(MegaCrit.Sts2.Core.Commands.PowerCmd.Apply), typeof(PlayerChoiceContext), typeof(PowerModel), typeof(Creature), typeof(decimal), typeof(Creature), typeof(CardModel), typeof(bool))]
+	[HextechPatch("compat.endless.apply-power", "无尽模式兼容")]
+	private static class ApplyPowerCapturePatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.First)]
+		[HarmonyBefore(HextechCombatHooks.EndlessModeHarmonyId)]
+		private static void Prefix(PowerModel power, Creature target, decimal amount)
+		{
+			if (amount <= 0m || target.Side != CombatSide.Enemy)
+			{
+				return;
+			}
+
+			CapturedPowerAmounts captured;
+			if (target.Monster is Exoskeleton && power is HardToKillPower)
+			{
+				captured = CapturedAmounts.GetOrCreateValue(target);
+				lock (captured)
+				{
+					captured.HardToKill = amount;
+				}
+			}
+			else if (target.Monster is SkulkingColony && power is HardenedShellPower)
+			{
+				captured = CapturedAmounts.GetOrCreateValue(target);
+				lock (captured)
+				{
+					captured.HardenedShell = amount;
+				}
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(Exoskeleton), nameof(Exoskeleton.AfterAddedToRoom), new Type[0])]
+	[HextechPatch("compat.endless.exoskeleton", "无尽模式兼容")]
+	private static class ExoskeletonPatch
+	{
+		[HarmonyPostfix]
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyAfter(HextechCombatHooks.EndlessModeHarmonyId, TemporarySyncFixHarmonyId)]
+		private static void Postfix(Exoskeleton __instance, ref Task __result)
+		{
+			__result = NormalizeExoskeletonAfterOriginal(__result, __instance);
+		}
+	}
+
+	[HarmonyPatch(typeof(SkulkingColony), nameof(SkulkingColony.AfterAddedToRoom), new Type[0])]
+	[HextechPatch("compat.endless.skulking-colony", "无尽模式兼容")]
+	private static class SkulkingColonyPatch
+	{
+		[HarmonyPostfix]
+		[HarmonyPriority(Priority.Last)]
+		[HarmonyAfter(HextechCombatHooks.EndlessModeHarmonyId, TemporarySyncFixHarmonyId)]
+		private static void Postfix(SkulkingColony __instance, ref Task __result)
+		{
+			__result = NormalizeSkulkingColonyAfterOriginal(__result, __instance);
+		}
 	}
 }

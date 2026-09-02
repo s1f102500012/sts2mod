@@ -232,6 +232,13 @@ public sealed class SilverProtectionForge : HextechForgeBase, IHextechSustainCoe
 
 public sealed class PocketForge : HextechForgeBase
 {
+	/// <summary>
+	/// 原版 SerializablePotion 只用 4 bit 写 SlotIndex(0~15),所以药水槽总数超过 16 之后,
+	/// 高槽位的药水在联机 SyncPlayerData 里会被截成槽 0、被主机丢弃,客户端本地却还留着,
+	/// 直接造成 player:potions 分叉(玩家反馈:袖珍锻炉堆到 9 层、22 槽)。总槽位封顶在 16。
+	/// </summary>
+	internal const int MaxSerializablePotionSlots = 16;
+
 	public override bool HasUponPickupEffect => true;
 
 	protected override IEnumerable<DynamicVar> CanonicalVars =>
@@ -247,8 +254,30 @@ public sealed class PocketForge : HextechForgeBase
 		}
 
 		Flash();
-		Owner.AddToMaxPotionCount(Math.Max(0, DynamicVars["PotionSlots"].IntValue));
+		int increase = ClampSlotIncrease(Owner.MaxPotionCount, DynamicVars["PotionSlots"].IntValue);
+		if (increase > 0)
+		{
+			Owner.AddToMaxPotionCount(increase);
+		}
+
 		return Task.CompletedTask;
+	}
+
+	// 旧存档里已经超过 16 槽的,在下一场战斗开始时收回超出部分:原版缩槽会把高槽位的药水挪进空的低槽位,
+	// 两端对称执行,不引入新的分叉点。
+	public override Task BeforeCombatStart()
+	{
+		if (Owner != null && Owner.MaxPotionCount > MaxSerializablePotionSlots)
+		{
+			Owner.SubtractFromMaxPotionCount(Owner.MaxPotionCount - MaxSerializablePotionSlots);
+		}
+
+		return Task.CompletedTask;
+	}
+
+	internal static int ClampSlotIncrease(int currentMaxPotionCount, int requestedIncrease)
+	{
+		return Math.Clamp(requestedIncrease, 0, Math.Max(0, MaxSerializablePotionSlots - currentMaxPotionCount));
 	}
 }
 
@@ -355,11 +384,7 @@ public sealed class NecrobinderForge : HextechForgeBase
 		return IsNecrobinderPlayer(player);
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPlayerTurnStart(PlayerChoiceContext choiceContext, Player player)
-#else
-	public override async Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		if (player != Owner
 			|| Owner == null

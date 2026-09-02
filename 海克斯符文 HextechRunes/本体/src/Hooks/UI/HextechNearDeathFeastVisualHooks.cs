@@ -3,49 +3,8 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
-using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
-
-/// <summary>
-/// 「濒死狂宴」(<see cref="NearDeathFeastRune"/>) 的我方专属特效。仿 <see cref="HandOfBaronAuraVisual"/>:
-/// 把可视节点挂到每个 <see cref="NCreature"/>,逐帧轮询符文的只读状态决定显隐与强度 —— 纯表现层,
-/// 不读写任何 gameplay/同步状态,各端独立渲染、不影响联机。
-/// </summary>
-internal static class HextechNearDeathFeastVisualHooks
-{
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(NCombatRoom), "_Ready", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechNearDeathFeastVisualHooks), nameof(CombatRoomReadyPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatRoom), nameof(NCombatRoom.AddCreature), BindingFlags.Instance | BindingFlags.Public, typeof(Creature)),
-			postfix: new HarmonyMethod(typeof(HextechNearDeathFeastVisualHooks), nameof(AddCreaturePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCreature), "_Ready", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechNearDeathFeastVisualHooks), nameof(CreatureReadyPostfix)));
-		HextechLog.Info($"[{ModInfo.Id}][NearDeathFeast] Visual hooks installed.");
-	}
-
-	private static void CombatRoomReadyPostfix(NCombatRoom __instance)
-	{
-		foreach (NCreature creature in __instance.CreatureNodes)
-		{
-			HextechNearDeathFeastVisual.TryAttach(creature);
-		}
-	}
-
-	private static void AddCreaturePostfix(NCombatRoom __instance, Creature creature)
-	{
-		HextechNearDeathFeastVisual.TryAttach(HextechCreatureNodeRegistry.SafeGetCreatureNode(__instance, creature));
-	}
-
-	private static void CreatureReadyPostfix(NCreature __instance)
-	{
-		HextechNearDeathFeastVisual.TryAttach(__instance);
-	}
-}
 
 internal sealed class HextechNearDeathFeastVisual
 {

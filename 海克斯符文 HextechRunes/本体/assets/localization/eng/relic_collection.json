@@ -11,8 +11,6 @@
   "HEXTECH_FORGE_CHOICE_REWARD": "Choose a Stat Forger",
   "HEXTECH_WAITING_FOR_PLAYERS": "Waiting for other players to choose...",
   "HEXTECH_MAP_PREVIEW_HINT": "Hex not selected yet — close the map to continue choosing.",
-  "HEXTECH_CONFIG_BUTTON": "Hextech Rune Config",
-  "HEXTECH_CONFIG_BUTTON_TOOLTIP": "Configure the Hextech, enemy hex, and stat forger rules used when playing solo or hosting multiplayer.",
   "HEXTECH_CONFIG_TITLE": "Hextech Rune Config",
   "HEXTECH_CONFIG_TAB_COUNTS": "Selection",
   "HEXTECH_CONFIG_TAB_RUNE_POOLS": "Hex Pools",

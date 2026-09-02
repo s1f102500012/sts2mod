@@ -2,6 +2,7 @@
 // 提升前用 sts2.dll 全类型表核对过无同名冲突;新增命名空间前先确认不会与 BCL/GodotSharp 产生歧义
 // (global using Godot 明确不可加:Environment/HttpClient/Range/Timer 与 BCL 冲突且有真实裸用)。
 global using System.Reflection;
+global using HarmonyLib;
 global using MegaCrit.Sts2.Core.HoverTips;
 global using MegaCrit.Sts2.Core.Localization.DynamicVars;
 global using MegaCrit.Sts2.Core.Logging;

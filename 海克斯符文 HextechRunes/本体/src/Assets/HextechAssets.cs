@@ -50,6 +50,9 @@ internal static class HextechAssets
 
 	public const string CloudDragonSoulPowerIconPath = "res://HextechRunes/images/powers/hextechCloudDragonSoulPower.png";
 
+	/// <summary>全透明描边:自定义遗物图标没有配套描边图,原版 NRelic 小图标模式会把 IconOutline 画在图标下层,给它一张空图即可。</summary>
+	public const string RelicOutlineEmptyPath = "res://HextechRunes/images/ui/relicOutlineEmpty.png";
+
 	public const string HandOfBaronAuraRunePath = "res://HextechRunes/images/effects/jungle_buff_baron.png";
 
 	public const string HandOfBaronAuraRingPath = "res://HextechRunes/images/effects/ring_soft_02.png";

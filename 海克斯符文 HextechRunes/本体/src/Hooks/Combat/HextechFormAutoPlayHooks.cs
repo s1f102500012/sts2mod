@@ -8,12 +8,17 @@ using static HextechRunes.HextechHookReflection;
 namespace HextechRunes;
 
 /// <summary>
-/// 将开局自动打出的多张同类"形态"牌合并为一个逻辑出牌批次:
-/// 普通形态牌与仅有克隆附魔的形态牌会合并成一次最终 Power 结算;其他附魔或未知负面附着等
-/// 无法证明等价的牌自动回退原版逐张路径。整批仅放行一次 Before/AfterCardPlayed,牌面从进入出牌区起就横向展开,
-/// 再并行播放一组能力牌飞行动画。虚空形态 OnPlay 自带的 EndTurn 同样在批次内压掉。
-/// 作用域仅覆盖本模组的自动打出窗口,手动出牌和嵌套打出的非批次牌不受影响。
+/// 将开局自动打出的多张同类"形态"牌合并为一个逻辑出牌批次。
 /// </summary>
+/// <remarks>
+/// 代表牌(有流电就选流电牌)完整走原版 <see cref="CardCmd.AutoPlay"/>:ShouldPlay、BeforeCardAutoPlayed、
+/// 出牌次数、结果位置、Before/AfterCardPlayed 全部原样,第三方监听器看到的就是一次真实出牌。
+/// 其余形态牌只允许裸牌或仅克隆附魔(克隆已折算进出牌次数),它们的贡献是纯数值,
+/// 汇总后用 <see cref="PowerCmd"/> 直接施加,再按官方 <c>ModifyCardPlayResultLocation</c> 逐张送去各自的结果堆。
+/// 含其他附魔或未知负面附着的批次回退到原版逐张自动打出,事件也逐张如实发出。
+/// 因此这里不再拦截任何 <c>Hook.*</c> 分发点;剩下的补丁只有:虚空形态自带的 EndTurn 在批次内压掉、
+/// 进场横向展开的落点偏移、以及用一组并行飞行动画代替逐张的内置动画。
+/// </remarks>
 internal static class HextechFormAutoPlayHooks
 {
 	private static readonly AsyncLocal<bool> SuppressEndTurn = new();
@@ -24,83 +29,6 @@ internal static class HextechFormAutoPlayHooks
 		BindingFlags.Instance | BindingFlags.NonPublic,
 		typeof(ICombatState),
 		typeof(Creature));
-
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(PlayerCmd), nameof(PlayerCmd.EndTurn), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(bool), typeof(Func<Task>)),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(EndTurnPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			RequireMethod(typeof(Hook), nameof(Hook.BeforeCardPlayed), BindingFlags.Public | BindingFlags.Static, typeof(ICombatState), typeof(CardPlay)),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(BeforeCardPlayedPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			RequireMethod(typeof(Hook), nameof(Hook.AfterCardPlayed), BindingFlags.Public | BindingFlags.Static, typeof(ICombatState), typeof(PlayerChoiceContext), typeof(CardPlay)),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(AfterCardPlayedPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			RequireMethod(typeof(Hook), nameof(Hook.AfterCardChangedPiles), BindingFlags.Public | BindingFlags.Static, typeof(IRunState), typeof(ICombatState), typeof(CardModel), typeof(PileType), typeof(AbstractModel)),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(AfterCardChangedPilesPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			GetPlayPowerCardFlyVfxMethod(),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(PlayPowerCardFlyVfxPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			RequireMethod(
-				typeof(PileTypeExtensions),
-				nameof(PileTypeExtensions.GetTargetPosition),
-				BindingFlags.Public | BindingFlags.Static,
-				typeof(PileType),
-				typeof(NCard)),
-			postfix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(GetTargetPositionPostfix)) { priority = Priority.Last });
-		harmony.Patch(
-			RequireMethod(
-				typeof(Hook),
-				nameof(Hook.ModifyCardPlayCount),
-				BindingFlags.Public | BindingFlags.Static,
-				typeof(ICombatState),
-				typeof(CardModel),
-				typeof(int),
-				typeof(Creature),
-				typeof(List<AbstractModel>).MakeByRefType()),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayCountPrefix)) { priority = Priority.First });
-#if STS2_109_OR_NEWER
-		harmony.Patch(
-			RequireMethod(
-				typeof(Hook),
-				nameof(Hook.ModifyCardPlayResultLocation),
-				BindingFlags.Public | BindingFlags.Static,
-				typeof(ICombatState),
-				typeof(CardModel),
-				typeof(bool),
-				typeof(ResourceInfo),
-				typeof(CardLocation),
-				typeof(IEnumerable<AbstractModel>).MakeByRefType()),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayResultLocationPrefix)) { priority = Priority.First });
-#else
-		harmony.Patch(
-			RequireMethod(
-				typeof(Hook),
-				nameof(Hook.ModifyCardPlayResultPileTypeAndPosition),
-				BindingFlags.Public | BindingFlags.Static,
-				typeof(ICombatState),
-				typeof(CardModel),
-				typeof(bool),
-				typeof(ResourceInfo),
-				typeof(PileType),
-				typeof(CardPilePosition),
-				typeof(IEnumerable<AbstractModel>).MakeByRefType()),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayResultPileTypeAndPositionPrefix)) { priority = Priority.First });
-#endif
-		foreach (Type formType in GetSupportedFormTypes())
-		{
-			harmony.Patch(
-				RequireMethod(
-					formType,
-					"OnPlay",
-					BindingFlags.Instance | BindingFlags.NonPublic,
-					typeof(PlayerChoiceContext),
-					typeof(CardPlay)),
-				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(FormOnPlayPrefix)) { priority = Priority.First });
-		}
-	}
 
 	internal static IDisposable BeginEndTurnSuppression()
 	{
@@ -154,6 +82,9 @@ internal static class HextechFormAutoPlayHooks
 		}
 	}
 
+	/// <summary>
+	/// 合并结算。返回 false 表示本批次不满足合并条件,调用方回退到逐张自动打出。
+	/// </summary>
 	internal static async Task<bool> TryPlayCombinedFinalEffect(
 		PlayerChoiceContext choiceContext,
 		IReadOnlyList<CardModel> cards)
@@ -183,183 +114,51 @@ internal static class HextechFormAutoPlayHooks
 		}
 
 		// 流电只在卡牌打出事件上工作,自身 OnPlay 为空;选它作为代表牌可保证整批仍只触发一次电击。
-		CardModel primary = cards.FirstOrDefault(card => card.Affliction is Galvanized) ?? cards[0];
-		ResourceInfo primaryResources = CreateAutoPlayResources(primary);
-		await Hook.BeforeCardAutoPlayed(combatState, primary, null, AutoPlayType.Default);
+		CardModel primary = SelectPrimary(cards);
+		List<CardModel> secondaries = cards.Where(card => !ReferenceEquals(card, primary)).ToList();
 
+		// 次要牌:先按官方 Hook 逐张解析结果位置,再按各自的出牌次数(含第三方修饰器)折算贡献。
 		Dictionary<CardModel, HextechFormCardResult> results = new(ReferenceEqualityComparer.Instance);
-		decimal combinedAmount = 0m;
-		foreach (CardModel card in cards)
+		List<(decimal Amount, int PlayCount)> contributions = [];
+		foreach (CardModel card in secondaries)
 		{
-			ResourceInfo resources = ReferenceEquals(card, primary)
-				? primaryResources
-				: CreateAutoPlayResources(card);
-			HextechFormCardResult result = await ResolveResultLocation(combatState, card, resources);
-			results.Add(card, result);
-
-			int playCount = await GeneratePlayCount(card, combatState);
-			if (playCount > 0)
-			{
-				combinedAmount += GetFormAmount(card) * playCount;
-			}
+			results.Add(card, await ResolveResultLocation(combatState, card, CreateAutoPlayResources(card)));
+			contributions.Add((GetFormAmount(card), await GeneratePlayCount(card, combatState)));
 		}
 
-		batch.PrepareCombinedResolution(
-			primary,
-			combinedAmount,
-			combinedAmount > 0m ? 1 : 0,
-			results[primary]);
-		try
+		decimal secondaryAmount = SumSecondaryContribution(contributions);
+		HextechLog.Info($"[{ModInfo.Id}][FormBatch] Combining {cards.Count}x {primary.GetType().Name}: primary plays via vanilla AutoPlay, secondary contribution={secondaryAmount}");
+
+		// 代表牌完整走原版自动打出:它自己的数值 × 自己的出牌次数由原版结算,事件只发这一次。
+		await CardCmd.AutoPlay(choiceContext, primary, target: null, AutoPlayType.Default, skipXCapture: false, skipCardPileVisuals: true);
+
+		if (secondaryAmount > 0m)
 		{
-			await primary.OnPlayWrapper(
-				choiceContext,
-				target: null,
-				isAutoPlay: true,
-				primaryResources,
-				skipCardPileVisuals: true);
-		}
-		finally
-		{
-			batch.FinishCombinedResolution();
+			await ApplySecondaryFormEffect(choiceContext, primary, secondaryAmount);
 		}
 
-		await MoveSecondaryCardsToResults(
-			choiceContext,
-			cards.Where(card => !ReferenceEquals(card, primary)),
-			results);
+		await MoveSecondaryCardsToResults(choiceContext, secondaries, results);
 		return true;
 	}
 
-	private static bool EndTurnPrefix()
+	internal static CardModel SelectPrimary(IReadOnlyList<CardModel> cards)
 	{
-		return !SuppressEndTurn.Value;
+		return cards.FirstOrDefault(card => card.Affliction is Galvanized) ?? cards[0];
 	}
 
-	private static bool BeforeCardPlayedPrefix(CardPlay cardPlay, ref Task __result)
+	/// <summary>次要牌贡献 = Σ(形态数值 × 出牌次数);出牌次数为 0 的牌不贡献。</summary>
+	internal static decimal SumSecondaryContribution(IEnumerable<(decimal Amount, int PlayCount)> contributions)
 	{
-		return ShouldRunCardPlayedHook(cardPlay, ref __result);
-	}
-
-	private static bool AfterCardPlayedPrefix(CardPlay cardPlay, ref Task __result)
-	{
-		return ShouldRunCardPlayedHook(cardPlay, ref __result);
-	}
-
-	private static bool ShouldRunCardPlayedHook(CardPlay cardPlay, ref Task result)
-	{
-		HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
-		if (batch == null || batch.ShouldDispatchCardPlayedHook(cardPlay))
+		decimal total = 0m;
+		foreach ((decimal amount, int playCount) in contributions)
 		{
-			return true;
+			if (playCount > 0)
+			{
+				total += amount * playCount;
+			}
 		}
 
-		result = Task.CompletedTask;
-		return false;
-	}
-
-	private static bool AfterCardChangedPilesPrefix(CardModel card, PileType oldPile, ref Task __result)
-	{
-		HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
-		if (batch == null || batch.ShouldDispatchCardChangedPilesHook(card, oldPile, card.Pile?.Type ?? PileType.None))
-		{
-			return true;
-		}
-
-		__result = Task.CompletedTask;
-		return false;
-	}
-
-	private static bool PlayPowerCardFlyVfxPrefix(CardModel __instance, ref Task __result)
-	{
-		HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
-		if (batch == null || batch.ShouldPlayPowerCardFlyVfx(__instance))
-		{
-			return true;
-		}
-
-		__result = Task.CompletedTask;
-		return false;
-	}
-
-	private static void GetTargetPositionPostfix(PileType pileType, NCard? node, ref Godot.Vector2 __result)
-	{
-		if (pileType != PileType.Play || node == null)
-		{
-			return;
-		}
-
-		HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
-		if (batch != null
-			&& node.Model != null
-			&& batch.TryGetHorizontalOffset(node.Model, out float offset))
-		{
-			__result.X += offset;
-		}
-	}
-
-	private static bool ModifyCardPlayCountPrefix(
-		CardModel card,
-		ref List<AbstractModel> modifyingModels,
-		ref int __result)
-	{
-		HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
-		if (batch == null || !batch.ShouldUsePreparedPlayCount(card))
-		{
-			return true;
-		}
-
-		modifyingModels = [];
-		__result = batch.PreparedPlayCount;
-		return false;
-	}
-
-#if STS2_109_OR_NEWER
-	private static bool ModifyCardPlayResultLocationPrefix(
-		CardModel card,
-		ref IEnumerable<AbstractModel> modifiers,
-		ref CardLocation __result)
-	{
-		HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
-		if (batch == null || !batch.TryGetPreparedResult(card, out HextechFormCardResult result))
-		{
-			return true;
-		}
-
-		modifiers = [];
-		__result = new CardLocation(result.Player, result.PileType, result.Position);
-		return false;
-	}
-#else
-	private static bool ModifyCardPlayResultPileTypeAndPositionPrefix(
-		CardModel card,
-		ref IEnumerable<AbstractModel> modifiers,
-		ref (PileType, CardPilePosition) __result)
-	{
-		HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
-		if (batch == null || !batch.TryGetPreparedResult(card, out HextechFormCardResult result))
-		{
-			return true;
-		}
-
-		modifiers = [];
-		__result = (result.PileType, result.Position);
-		return false;
-	}
-#endif
-
-	private static bool FormOnPlayPrefix(
-		CardModel __instance,
-		PlayerChoiceContext choiceContext,
-		ref Task __result)
-	{
-		HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
-		if (batch == null || !batch.TryGetCombinedAmount(__instance, out decimal amount))
-		{
-			return true;
-		}
-
-		__result = ApplyCombinedFormEffect(choiceContext, __instance, amount);
-		return false;
+		return total;
 	}
 
 	private static MethodInfo GetPlayPowerCardFlyVfxMethod()
@@ -416,7 +215,7 @@ internal static class HextechFormAutoPlayHooks
 			?? Task.FromResult(1));
 	}
 
-	private static decimal GetFormAmount(CardModel card)
+	internal static decimal GetFormAmount(CardModel card)
 	{
 		return card switch
 		{
@@ -429,35 +228,21 @@ internal static class HextechFormAutoPlayHooks
 		};
 	}
 
-	private static async Task ApplyCombinedFormEffect(
+	private static Task ApplySecondaryFormEffect(
 		PlayerChoiceContext choiceContext,
 		CardModel card,
 		decimal amount)
 	{
-		await CreatureCmd.TriggerAnim(
-			card.Owner.Creature,
-			"PowerUp",
-			card.Owner.Character.PowerUpAnimDelay);
-		switch (card)
+		Creature owner = card.Owner.Creature;
+		return card switch
 		{
-		case DemonForm:
-			await PowerCmd.Apply<DemonFormPower>(choiceContext, card.Owner.Creature, amount, card.Owner.Creature, card);
-			break;
-		case EchoForm:
-			await PowerCmd.Apply<EchoFormPower>(choiceContext, card.Owner.Creature, amount, card.Owner.Creature, card);
-			break;
-		case ReaperForm:
-			await PowerCmd.Apply<ReaperFormPower>(choiceContext, card.Owner.Creature, amount, card.Owner.Creature, card);
-			break;
-		case SerpentForm:
-			await PowerCmd.Apply<SerpentFormPower>(choiceContext, card.Owner.Creature, amount, card.Owner.Creature, card);
-			break;
-		case VoidForm:
-			await PowerCmd.Apply<VoidFormPower>(choiceContext, card.Owner.Creature, amount, card.Owner.Creature, card);
-			break;
-		default:
-			throw new InvalidOperationException($"Unsupported combined form card: {card.GetType().FullName}");
-		}
+			DemonForm => PowerCmd.Apply<DemonFormPower>(choiceContext, owner, amount, owner, card),
+			EchoForm => PowerCmd.Apply<EchoFormPower>(choiceContext, owner, amount, owner, card),
+			ReaperForm => PowerCmd.Apply<ReaperFormPower>(choiceContext, owner, amount, owner, card),
+			SerpentForm => PowerCmd.Apply<SerpentFormPower>(choiceContext, owner, amount, owner, card),
+			VoidForm => PowerCmd.Apply<VoidFormPower>(choiceContext, owner, amount, owner, card),
+			_ => throw new InvalidOperationException($"Unsupported combined form card: {card.GetType().FullName}")
+		};
 	}
 
 	private static async Task<HextechFormCardResult> ResolveResultLocation(
@@ -568,20 +353,71 @@ internal static class HextechFormAutoPlayHooks
 			ActiveBatch.Value = _previous;
 		}
 	}
+
+	// 虚空形态 OnPlay 自带 EndTurn;批次作用域内压掉,不吃掉首回合。作用域由 AsyncLocal 限定,手动出牌不受影响。
+	[HarmonyPatch(typeof(PlayerCmd), nameof(PlayerCmd.EndTurn), typeof(Player), typeof(bool), typeof(Func<Task>))]
+	[HextechPatch("combat.form-auto-play.end-turn", "形态开局自动打出批处理")]
+	private static class EndTurnPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix()
+		{
+			return !SuppressEndTurn.Value;
+		}
+	}
+
+	// 批次内的牌已经用一组并行飞行动画代替了逐张的内置动画。
+	[HarmonyPatch(typeof(CardModel), "PlayPowerCardFlyVfx")]
+	[HextechPatch("combat.form-auto-play.fly-vfx", "形态开局自动打出批处理")]
+	private static class PowerCardFlyVfxPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(CardModel __instance, ref Task __result)
+		{
+			HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
+			if (batch == null || batch.ShouldPlayPowerCardFlyVfx(__instance))
+			{
+				return true;
+			}
+
+			__result = Task.CompletedTask;
+			return false;
+		}
+	}
+
+	// 进场时把整批横向展开,落点在原版取目标坐标时叠加偏移。
+	[HarmonyPatch(typeof(PileTypeExtensions), nameof(PileTypeExtensions.GetTargetPosition), typeof(PileType), typeof(NCard))]
+	[HextechPatch("combat.form-auto-play.entry-offset", "形态开局自动打出批处理")]
+	private static class CardTargetPositionPatch
+	{
+		[HarmonyPostfix]
+		[HarmonyPriority(Priority.Last)]
+		private static void Postfix(PileType pileType, NCard? node, ref Godot.Vector2 __result)
+		{
+			if (pileType != PileType.Play || node == null)
+			{
+				return;
+			}
+
+			HextechFormAutoPlayBatchState? batch = ActiveBatch.Value;
+			if (batch != null
+				&& node.Model != null
+				&& batch.TryGetHorizontalOffset(node.Model, out float offset))
+			{
+				__result.X += offset;
+			}
+		}
+	}
 }
 
 internal sealed class HextechFormAutoPlayBatchState
 {
 	private readonly HashSet<CardModel> _cards;
 	private readonly Dictionary<CardModel, float> _horizontalOffsets = new(ReferenceEqualityComparer.Instance);
-	private CardPlay? _dispatchedCardPlay;
 	private readonly HashSet<CardModel> _batchVfxCards = new(ReferenceEqualityComparer.Instance);
 	private bool _isPlayingBatchVfx;
-	private CardModel? _combinedPrimary;
-	private decimal _combinedAmount;
-	private int _preparedPlayCount;
-	private HextechFormCardResult _combinedResult;
-	private bool _isResolvingCombinedEffect;
 
 	internal HextechFormAutoPlayBatchState(IEnumerable<CardModel> cards)
 	{
@@ -600,31 +436,11 @@ internal sealed class HextechFormAutoPlayBatchState
 		}
 	}
 
+	internal bool Contains(CardModel card) => _cards.Contains(card);
+
 	internal bool TryGetHorizontalOffset(CardModel card, out float offset)
 	{
 		return _horizontalOffsets.TryGetValue(card, out offset);
-	}
-
-	internal bool ShouldDispatchCardPlayedHook(CardPlay cardPlay)
-	{
-		if (!_cards.Contains(cardPlay.Card))
-		{
-			return true;
-		}
-
-		if (_dispatchedCardPlay == null)
-		{
-			_dispatchedCardPlay = cardPlay;
-		}
-
-		return ReferenceEquals(_dispatchedCardPlay, cardPlay);
-	}
-
-	internal bool ShouldDispatchCardChangedPilesHook(CardModel card, PileType oldPile, PileType newPile)
-	{
-		return !_cards.Contains(card)
-			|| oldPile != PileType.Play
-			|| newPile != PileType.Play;
 	}
 
 	internal bool ShouldPlayPowerCardFlyVfx(CardModel card)
@@ -645,58 +461,6 @@ internal sealed class HextechFormAutoPlayBatchState
 		}
 
 		return new PowerCardFlyVfxPreviewScope(this);
-	}
-
-	internal void PrepareCombinedResolution(
-		CardModel primary,
-		decimal amount,
-		int playCount,
-		HextechFormCardResult result)
-	{
-		_combinedPrimary = primary;
-		_combinedAmount = amount;
-		_preparedPlayCount = playCount;
-		_combinedResult = result;
-		_isResolvingCombinedEffect = true;
-	}
-
-	internal void FinishCombinedResolution()
-	{
-		_isResolvingCombinedEffect = false;
-		_combinedPrimary = null;
-		_combinedAmount = 0m;
-		_preparedPlayCount = 0;
-	}
-
-	internal int PreparedPlayCount => _preparedPlayCount;
-
-	internal bool ShouldUsePreparedPlayCount(CardModel card)
-	{
-		return _isResolvingCombinedEffect && ReferenceEquals(card, _combinedPrimary);
-	}
-
-	internal bool TryGetPreparedResult(CardModel card, out HextechFormCardResult result)
-	{
-		if (_isResolvingCombinedEffect && ReferenceEquals(card, _combinedPrimary))
-		{
-			result = _combinedResult;
-			return true;
-		}
-
-		result = default;
-		return false;
-	}
-
-	internal bool TryGetCombinedAmount(CardModel card, out decimal amount)
-	{
-		if (_isResolvingCombinedEffect && ReferenceEquals(card, _combinedPrimary))
-		{
-			amount = _combinedAmount;
-			return true;
-		}
-
-		amount = 0m;
-		return false;
 	}
 
 	private sealed class PowerCardFlyVfxPreviewScope : IDisposable

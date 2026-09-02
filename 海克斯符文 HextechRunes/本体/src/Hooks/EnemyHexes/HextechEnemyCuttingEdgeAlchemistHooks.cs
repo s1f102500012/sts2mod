@@ -12,40 +12,6 @@ internal static class HextechEnemyCuttingEdgeAlchemistHooks
 	private static readonly AccessTools.FieldRef<AbstractOdds, Rng> OddsRngRef =
 		AccessTools.FieldRefAccess<AbstractOdds, Rng>("_rng");
 
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(PotionRewardOdds), nameof(PotionRewardOdds.Roll), BindingFlags.Public | BindingFlags.Instance, typeof(Player), typeof(RoomType)),
-			prefix: new HarmonyMethod(typeof(HextechEnemyCuttingEdgeAlchemistHooks), nameof(RollPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechEnemyCuttingEdgeAlchemistHooks), nameof(RollPostfix)));
-	}
-
-	private static void RollPrefix(PotionRewardOdds __instance, Player player, out PotionRollState __state)
-	{
-		if (!CuttingEdgeAlchemistEnemyHex.IsActiveFor(player))
-		{
-			__state = default;
-			return;
-		}
-
-		__state = new PotionRollState(true, __instance.CurrentValue);
-	}
-
-	private static void RollPostfix(PotionRewardOdds __instance, ref bool __result, PotionRollState __state)
-	{
-		if (!__state.Active || !__result)
-		{
-			return;
-		}
-
-		bool wasForced = MathF.Abs(__instance.CurrentValue - __state.OriginalValue) <= FloatTolerance;
-		if (wasForced)
-		{
-			return;
-		}
-
-		__result = ShouldKeepRolledPotion(wasForced: false, OddsRngRef(__instance).NextFloat());
-	}
 
 	internal static bool ShouldKeepRolledPotion(bool wasForced, float secondaryRoll)
 	{
@@ -53,4 +19,43 @@ internal static class HextechEnemyCuttingEdgeAlchemistHooks
 	}
 
 	internal readonly record struct PotionRollState(bool Active, float OriginalValue);
+
+	// 0.107.1 的 Roll 多一个 AscensionManager 参数(重构前的两参声明在 0.107.1 上从未装上,由声明校验测试抓出)。
+#if STS2_107_1
+	[HarmonyPatch(typeof(PotionRewardOdds), nameof(PotionRewardOdds.Roll), typeof(Player), typeof(MegaCrit.Sts2.Core.Entities.Ascension.AscensionManager), typeof(RoomType))]
+#else
+	[HarmonyPatch(typeof(PotionRewardOdds), nameof(PotionRewardOdds.Roll), typeof(Player), typeof(RoomType))]
+#endif
+	[HextechPatch("enemy-hex.cutting-edge-alchemist", "敌方海克斯:尖端炼金术士")]
+	private static class RollPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(PotionRewardOdds __instance, Player player, out PotionRollState __state)
+		{
+			if (!CuttingEdgeAlchemistEnemyHex.IsActiveFor(player))
+			{
+				__state = default;
+				return;
+			}
+
+			__state = new PotionRollState(true, __instance.CurrentValue);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(PotionRewardOdds __instance, ref bool __result, PotionRollState __state)
+		{
+			if (!__state.Active || !__result)
+			{
+				return;
+			}
+
+			bool wasForced = MathF.Abs(__instance.CurrentValue - __state.OriginalValue) <= FloatTolerance;
+			if (wasForced)
+			{
+				return;
+			}
+
+			__result = ShouldKeepRolledPotion(wasForced: false, OddsRngRef(__instance).NextFloat());
+		}
+	}
 }

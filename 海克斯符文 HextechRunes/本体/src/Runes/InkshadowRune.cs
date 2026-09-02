@@ -1,3 +1,4 @@
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Models.Enchantments;
 
 namespace HextechRunes;
@@ -21,11 +22,7 @@ public sealed class InkshadowRune : HextechRelicBase
 			&& rune.TryApplyInkshadow(card, flash);
 	}
 
-#if STS2_104_OR_NEWER
 	public override Task AfterCardGeneratedForCombat(CardModel card, Player? creator)
-#else
-	public override Task AfterCardGeneratedForCombat(CardModel card, bool addedByPlayer)
-#endif
 	{
 		TryApplyInkshadow(card);
 		return Task.CompletedTask;
@@ -74,5 +71,25 @@ public sealed class InkshadowRune : HextechRelicBase
 		}
 
 		return true;
+	}
+
+	[HarmonyPatch(typeof(BladeOfInk), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.inkshadow", "墨影")]
+	private static class BladeOfInkPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(BladeOfInk __instance, PlayerChoiceContext choiceContext, ref Task __result)
+		{
+			if (__instance.Owner is not { } owner
+				|| __instance.CombatState is not { } combatState
+				|| owner.GetRelic<InkshadowRune>() == null)
+			{
+				return true;
+			}
+
+			__result = HextechInkshadowHooks.PlayWithGuardedEnchant(__instance, owner, combatState);
+			return false;
+		}
 	}
 }

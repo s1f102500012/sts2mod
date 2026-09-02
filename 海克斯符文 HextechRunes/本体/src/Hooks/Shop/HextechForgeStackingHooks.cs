@@ -7,31 +7,7 @@ namespace HextechRunes;
 
 internal static class HextechForgeStackingHooks
 {
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(RelicCmd), nameof(RelicCmd.Obtain), BindingFlags.Public | BindingFlags.Static, typeof(RelicModel), typeof(Player), typeof(int)),
-			prefix: new HarmonyMethod(typeof(HextechForgeStackingHooks), nameof(ObtainPrefix)) { priority = Priority.Low });
-	}
 
-	private static bool ObtainPrefix(RelicModel relic, Player player, ref Task<RelicModel> __result)
-	{
-		if (relic is HextechForgeBase
-			&& TryGetOwnedForge(player, relic, out HextechForgeBase? ownedForge)
-			&& ownedForge != null
-			&& !ReferenceEquals(ownedForge, relic))
-		{
-			player.RunState.CurrentMapPointHistoryEntry?
-				.GetEntry(player.NetId)
-				.RelicChoices
-				.Add(new ModelChoiceHistoryEntry(relic.Id, wasPicked: true));
-			SaveManager.Instance.MarkRelicAsSeen(relic);
-			__result = ObtainStackedForge(ownedForge);
-			return false;
-		}
-
-		return true;
-	}
 
 	private static async Task<RelicModel> ObtainStackedForge(HextechForgeBase ownedForge)
 	{
@@ -49,4 +25,30 @@ internal static class HextechForgeStackingHooks
 		return ownedForge != null;
 	}
 
+
+	[HarmonyPatch(typeof(RelicCmd), nameof(RelicCmd.Obtain), typeof(RelicModel), typeof(Player), typeof(int))]
+	[HextechPatch("forge.stacking", "锻造器叠层")]
+	private static class ObtainPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(RelicModel relic, Player player, ref Task<RelicModel> __result)
+		{
+			if (relic is HextechForgeBase
+				&& TryGetOwnedForge(player, relic, out HextechForgeBase? ownedForge)
+				&& ownedForge != null
+				&& !ReferenceEquals(ownedForge, relic))
+			{
+				player.RunState.CurrentMapPointHistoryEntry?
+					.GetEntry(player.NetId)
+					.RelicChoices
+					.Add(new ModelChoiceHistoryEntry(relic.Id, wasPicked: true));
+				SaveManager.Instance.MarkRelicAsSeen(relic);
+				__result = ObtainStackedForge(ownedForge);
+				return false;
+			}
+
+			return true;
+		}
+	}
 }

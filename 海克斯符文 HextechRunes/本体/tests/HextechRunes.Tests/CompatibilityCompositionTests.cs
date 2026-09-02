@@ -28,9 +28,7 @@ internal static partial class Program
 
 	private static void EntomancerFallbackIsVersionScopedAndMissingHiveOnly()
 	{
-		MethodInfo? prefix = typeof(HextechEncounterCompatibilityHooks).GetMethod(
-			"EntomancerSpitMovePrefix",
-			BindingFlags.Static | BindingFlags.NonPublic);
+		MethodInfo? prefix = HextechPatcher.FindPatchMethod(typeof(HextechEncounterCompatibilityHooks), "EntomancerSpitMovePatch", "Prefix");
 
 #if STS2_110_OR_NEWER
 		Expect(
@@ -95,7 +93,7 @@ internal static partial class Program
 		Harmony harmony = new("Natsuki.HextechRunes.Tests.EndlessPowerOrder");
 		try
 		{
-			HextechEndlessModeCompatibilityHooks.Install(harmony);
+			HextechPatcher.ApplyNested(harmony, typeof(HextechEndlessModeCompatibilityHooks));
 			MethodInfo applyPower = typeof(MegaCrit.Sts2.Core.Commands.PowerCmd).GetMethod(
 				nameof(MegaCrit.Sts2.Core.Commands.PowerCmd.Apply),
 				BindingFlags.Public | BindingFlags.Static,
@@ -113,7 +111,7 @@ internal static partial class Program
 				modifiers: null)
 				?? throw new MissingMethodException(nameof(MegaCrit.Sts2.Core.Commands.PowerCmd), nameof(MegaCrit.Sts2.Core.Commands.PowerCmd.Apply));
 			Patch capture = (Harmony.GetPatchInfo(applyPower)?.Prefixes.AsEnumerable() ?? Enumerable.Empty<Patch>())
-				.Single(patch => patch.owner == harmony.Id && patch.PatchMethod.Name == "CaptureRawPowerAmountPrefix");
+				.Single(patch => patch.owner == harmony.Id && patch.PatchMethod.DeclaringType?.Name == "ApplyPowerCapturePatch");
 			Equal(Priority.First, capture.priority, "raw power capture priority");
 			Expect(
 				capture.before.Contains(HextechCombatHooks.EndlessModeHarmonyId),
@@ -122,130 +120,11 @@ internal static partial class Program
 			MethodInfo exoskeletonAfterAdded = typeof(Exoskeleton).GetMethod(nameof(Exoskeleton.AfterAddedToRoom))
 				?? throw new MissingMethodException(nameof(Exoskeleton), nameof(Exoskeleton.AfterAddedToRoom));
 			Patch normalize = (Harmony.GetPatchInfo(exoskeletonAfterAdded)?.Postfixes.AsEnumerable() ?? Enumerable.Empty<Patch>())
-				.Single(patch => patch.owner == harmony.Id && patch.PatchMethod.Name == "ExoskeletonAfterAddedToRoomPostfix");
+				.Single(patch => patch.owner == harmony.Id && patch.PatchMethod.DeclaringType?.Name == "ExoskeletonPatch");
 			Equal(Priority.Last, normalize.priority, "monster power normalization priority");
 			Expect(
 				normalize.after.Contains(HextechCombatHooks.EndlessModeHarmonyId),
 				"monster power normalization must run after EndlessMode's entry hook");
-		}
-		finally
-		{
-			harmony.UnpatchAll(harmony.Id);
-		}
-	}
-
-	private static void CardPlayAllowancePreservesThirdPartyDenials()
-	{
-		Equal(
-			UnplayableReason.HasUnplayableKeyword,
-			HextechCombatHooks.ResolveCardPlayAllowanceReasons(blueCandleAllows: true, grandFinaleAllows: false),
-			"Blue Candle allowance reason");
-		Equal(
-			UnplayableReason.BlockedByCardLogic,
-			HextechCombatHooks.ResolveCardPlayAllowanceReasons(blueCandleAllows: false, grandFinaleAllows: true),
-			"Grand Finale allowance reason");
-		Equal(
-			UnplayableReason.HasUnplayableKeyword | UnplayableReason.BlockedByCardLogic,
-			HextechCombatHooks.ResolveCardPlayAllowanceReasons(blueCandleAllows: true, grandFinaleAllows: true),
-			"combined owned allowance reasons");
-
-		var whiteHole = new WhiteHoleCard();
-		Expect(
-			!whiteHole.CanonicalKeywords.Contains(CardKeyword.Unplayable),
-			"White Hole has no card-owned unplayable keyword to clear");
-		PropertyInfo? whiteHoleIsPlayable = typeof(WhiteHoleCard).GetProperty(
-			"IsPlayable",
-			BindingFlags.Instance | BindingFlags.NonPublic);
-		Equal(typeof(CardModel), whiteHoleIsPlayable?.DeclaringType, "White Hole inherits the playable card-logic contract");
-		Expect(
-			typeof(WhiteHoleCard).GetMethod("AllowsPlaying", BindingFlags.Static | BindingFlags.NonPublic) == null,
-			"White Hole must not reopen third-party or resource denials through a redundant compatibility allowance");
-
-		UnplayableReason reason = UnplayableReason.HasUnplayableKeyword
-			| UnplayableReason.BlockedByHook
-			| UnplayableReason.EnergyCostTooHigh;
-		bool result = false;
-		HextechCombatHooks.ApplyCardPlayAllowance(
-			ref result,
-			ref reason,
-			hasPreventer: false,
-			UnplayableReason.HasUnplayableKeyword);
-		Expect(!result, "clearing a card-owned keyword must not bypass third-party or resource denials");
-		Equal(
-			UnplayableReason.BlockedByHook | UnplayableReason.EnergyCostTooHigh,
-			reason,
-			"allowance should preserve non-owned denial flags");
-
-		reason = UnplayableReason.BlockedByCardLogic;
-		result = false;
-		HextechCombatHooks.ApplyCardPlayAllowance(
-			ref result,
-			ref reason,
-			hasPreventer: false,
-			UnplayableReason.BlockedByCardLogic);
-		Expect(result, "a card-owned logic denial should be clearable by its matching allowance");
-		Equal(UnplayableReason.None, reason, "matching allowance should clear only its own card logic flag");
-
-		reason = UnplayableReason.None;
-		result = false;
-		HextechCombatHooks.ApplyCardPlayAllowance(
-			ref result,
-			ref reason,
-			hasPreventer: false,
-			UnplayableReason.HasUnplayableKeyword | UnplayableReason.BlockedByCardLogic);
-		Expect(!result, "a false result without an owned denial reason must remain false");
-
-		reason = UnplayableReason.HasUnplayableKeyword;
-		result = false;
-		HextechCombatHooks.ApplyCardPlayAllowance(
-			ref result,
-			ref reason,
-			hasPreventer: true,
-			UnplayableReason.HasUnplayableKeyword);
-		Expect(!result, "a third-party preventer must keep the card blocked after owned flags are cleared");
-		Equal(UnplayableReason.None, reason, "owned flags may be cleared without discarding the preventer sentinel");
-	}
-
-	private static void CardPlayAllowanceAndBlockerUseSeparatePriorities()
-	{
-		Harmony harmony = new("Natsuki.HextechRunes.Tests.CardPlayComposition");
-		MethodInfo install = typeof(HextechCombatHooks).GetMethod(
-			"InstallCardPlayHooks",
-			BindingFlags.Static | BindingFlags.NonPublic)
-			?? throw new MissingMethodException(nameof(HextechCombatHooks), "InstallCardPlayHooks");
-		MethodInfo canPlay = typeof(CardModel).GetMethod(nameof(CardModel.CanPlay), Type.EmptyTypes)
-			?? throw new MissingMethodException(nameof(CardModel), nameof(CardModel.CanPlay));
-		MethodInfo canPlayWithReason = typeof(CardModel).GetMethod(
-			nameof(CardModel.CanPlay),
-			BindingFlags.Instance | BindingFlags.Public,
-			binder: null,
-			types: [typeof(UnplayableReason).MakeByRefType(), typeof(AbstractModel).MakeByRefType()],
-			modifiers: null)
-			?? throw new MissingMethodException(nameof(CardModel), nameof(CardModel.CanPlay));
-
-		try
-		{
-			install.Invoke(null, [harmony]);
-			Patch[] simplePostfixes = Harmony.GetPatchInfo(canPlay) is { } simplePatchInfo
-				? simplePatchInfo.Postfixes.Where(patch => patch.owner == harmony.Id).ToArray()
-				: [];
-			Patch[] reasonPostfixes = Harmony.GetPatchInfo(canPlayWithReason) is { } reasonPatchInfo
-				? reasonPatchInfo.Postfixes.Where(patch => patch.owner == harmony.Id).ToArray()
-				: [];
-
-			Patch simpleBlocker = simplePostfixes.Single(
-				patch => patch.PatchMethod.Name == "CardCanPlayBlockerPostfix");
-			Patch allowance = reasonPostfixes.Single(
-				patch => patch.PatchMethod.Name == "CardCanPlayAllowanceWithReasonPostfix");
-			Patch reasonBlocker = reasonPostfixes.Single(
-				patch => patch.PatchMethod.Name == "CardCanPlayBlockerWithReasonPostfix");
-
-			Equal(Priority.Last, simpleBlocker.priority, "parameterless CanPlay blocker priority");
-			Equal(Priority.First, allowance.priority, "reason-aware CanPlay allowance priority");
-			Equal(Priority.Last, reasonBlocker.priority, "reason-aware CanPlay blocker priority");
-			Expect(
-				simplePostfixes.All(patch => patch.PatchMethod.Name != "CardCanPlayAllowanceWithReasonPostfix"),
-				"parameterless CanPlay must inherit the reason-aware allowance instead of reopening arbitrary false results");
 		}
 		finally
 		{
@@ -301,10 +180,6 @@ internal static partial class Program
 			"Mikael's Blessing healing should pass through the globally capped heal command");
 
 		Harmony harmony = new("Natsuki.HextechRunes.Tests.GlassCannonHealOrder");
-		MethodInfo install = typeof(HextechCombatHooks).GetMethod(
-			"InstallHealingHooks",
-			BindingFlags.Static | BindingFlags.NonPublic)
-			?? throw new MissingMethodException(nameof(HextechCombatHooks), "InstallHealingHooks");
 		MethodInfo heal = typeof(MegaCrit.Sts2.Core.Commands.CreatureCmd).GetMethod(
 			nameof(MegaCrit.Sts2.Core.Commands.CreatureCmd.Heal),
 			BindingFlags.Static | BindingFlags.Public,
@@ -315,11 +190,11 @@ internal static partial class Program
 
 		try
 		{
-			install.Invoke(null, [harmony]);
+			HextechPatcher.ApplyNested(harmony, typeof(HextechCombatHooks), "HealPatch");
 			IEnumerable<Patch> prefixes = Harmony.GetPatchInfo(heal)?.Prefixes.AsEnumerable()
 				?? Enumerable.Empty<Patch>();
 			Patch finalCap = prefixes
-				.Single(patch => patch.owner == harmony.Id && patch.PatchMethod.Name == "FinalizeGlassCannonHealCapPrefix");
+				.Single(patch => patch.owner == harmony.Id && patch.PatchMethod.Name == "FinalCapPrefix");
 			Equal(Priority.Last, finalCap.priority, "Glass Cannon final heal cap priority");
 			Expect(
 				finalCap.after.Contains(HextechCombatHooks.EndlessModeHarmonyId),

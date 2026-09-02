@@ -13,20 +13,6 @@ internal static partial class HextechEnemyPowerScalingHooks
 
 	private static readonly AsyncLocal<ScalingOverride?> CurrentOverride = new();
 
-	public static void Install(Harmony harmony)
-	{
-#if STS2_105_OR_NEWER
-		HarmonyMethod scaledPrefix = new(typeof(HextechEnemyPowerScalingHooks), nameof(GetScaledAmountForMultiplayerPrefix))
-		{
-			priority = Priority.First
-		};
-
-		foreach (MethodInfo scaledTarget in ResolveGetScaledAmountForMultiplayerTargets())
-		{
-			harmony.Patch(scaledTarget, prefix: scaledPrefix);
-		}
-#endif
-	}
 
 	public static async Task<T?> Apply<T>(Creature target, decimal amount, Creature? applier, CardModel? cardSource, bool silent = false)
 		where T : PowerModel
@@ -71,7 +57,6 @@ internal static partial class HextechEnemyPowerScalingHooks
 		}
 	}
 
-#if STS2_105_OR_NEWER
 	private static bool GetScaledAmountForMultiplayerPrefix(
 		PowerModel __instance,
 		decimal amount,
@@ -89,7 +74,6 @@ internal static partial class HextechEnemyPowerScalingHooks
 		__result = ClampPowerOffsetForApply(__instance, target, amount);
 		return false;
 	}
-#endif
 
 	private static decimal CalculateFinalAmount(Creature target, decimal amount, Creature? applier, ScalingOverride scalingOverride)
 	{
@@ -139,11 +123,7 @@ internal static partial class HextechEnemyPowerScalingHooks
 
 	private static bool IsInstancedPower(PowerModel power)
 	{
-#if STS2_105_OR_NEWER
 		return power.InstanceType != PowerInstanceType.None;
-#else
-		return power.IsInstanced;
-#endif
 	}
 
 	private static bool ShouldClearSelfApplier(Creature target, Creature? applier)
@@ -153,4 +133,21 @@ internal static partial class HextechEnemyPowerScalingHooks
 			&& (target.IsPrimaryEnemy || target.IsSecondaryEnemy);
 	}
 
+
+	[HextechPatch("combat.enemy-power-scaling", "敌方能力联机缩放")]
+	private static class ScaledAmountPatch
+	{
+		public static void Apply(Harmony harmony)
+		{
+			HarmonyMethod scaledPrefix = new(typeof(HextechEnemyPowerScalingHooks), nameof(GetScaledAmountForMultiplayerPrefix))
+			{
+				priority = Priority.First
+			};
+
+			foreach (MethodInfo scaledTarget in ResolveGetScaledAmountForMultiplayerTargets())
+			{
+				harmony.Patch(scaledTarget, prefix: scaledPrefix);
+			}
+		}
+	}
 }

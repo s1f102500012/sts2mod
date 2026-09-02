@@ -5,18 +5,19 @@ namespace HextechRunes;
 
 internal static class HextechEnemyTezcatarasMercyHooks
 {
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(RelicCmd), nameof(RelicCmd.Obtain), BindingFlags.Public | BindingFlags.Static, typeof(RelicModel), typeof(Player), typeof(int)),
-			prefix: new HarmonyMethod(typeof(HextechEnemyTezcatarasMercyHooks), nameof(ObtainPrefix)));
-	}
 
-	private static void ObtainPrefix(RelicModel relic, Player player)
+
+	[HarmonyPatch(typeof(RelicCmd), nameof(RelicCmd.Obtain), typeof(RelicModel), typeof(Player), typeof(int))]
+	[HextechPatch("enemy-hex.tezcataras-mercy", "敌方海克斯:特斯卡塔拉的仁慈")]
+	private static class ObtainPatch
 	{
-		if (TezcatarasMercyEnemyHex.ShouldConvertRelic(player, relic))
+		[HarmonyPrefix]
+		private static void Prefix(RelicModel relic, Player player)
 		{
-			relic.IsWax = true;
+			if (TezcatarasMercyEnemyHex.ShouldConvertRelic(player, relic))
+			{
+				relic.IsWax = true;
+			}
 		}
 	}
 }

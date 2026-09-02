@@ -43,72 +43,58 @@ internal static partial class HextechCombatHooks
 #if STS2_110_OR_NEWER
 	// 0.110.0 将疫情从持续监听中毒施加的 OutbreakPower 重做为技能牌:
 	// 整个 OnPlay 内先施加中毒再主动触发。守卫覆盖这段完整响应链,维持即死与补偿的安全边界。
-	private static void OutbreakOnPlayPrefix(out bool __state)
+	[HarmonyPatch(typeof(Outbreak), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("combat.outbreak", "即死与补偿安全边界")]
+	private static class OutbreakPatch
 	{
-		__state = true;
-		OutbreakPowerPoisonResponseGuard.Enter();
-	}
-
-	private static void OutbreakOnPlayPostfix(bool __state, ref Task __result)
-	{
-		if (__state)
+		[HarmonyPrefix]
+		private static void Prefix(out bool __state)
 		{
-			__result = OutbreakPowerPoisonResponseGuard.WrapEnteredTask(
-				__result,
-				FlushPendingInstantDeathDoomKillsIfSafe);
+			__state = true;
+			OutbreakPowerPoisonResponseGuard.Enter();
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(bool __state, ref Task __result)
+		{
+			if (__state)
+			{
+				__result = OutbreakPowerPoisonResponseGuard.WrapEnteredTask(
+					__result,
+					FlushPendingInstantDeathDoomKillsIfSafe);
+			}
 		}
 	}
 #else
-	private static void OutbreakPowerAfterPowerAmountChangedPrefix(OutbreakPower __instance, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource, out bool __state)
+	[HarmonyPatch(typeof(OutbreakPower), nameof(OutbreakPower.AfterPowerAmountChanged), typeof(PlayerChoiceContext), typeof(PowerModel), typeof(decimal), typeof(Creature), typeof(CardModel))]
+	[HextechPatch("combat.outbreak", "即死与补偿安全边界")]
+	private static class OutbreakPatch
 	{
-		__state = amount > 0m
-			&& applier == __instance.Owner
-			&& power is PoisonPower;
-		if (__state)
+		[HarmonyPrefix]
+		private static void Prefix(OutbreakPower __instance, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource, out bool __state)
 		{
-			OutbreakPowerPoisonResponseGuard.Enter();
+			__state = amount > 0m
+				&& applier == __instance.Owner
+				&& power is PoisonPower;
+			if (__state)
+			{
+				OutbreakPowerPoisonResponseGuard.Enter();
+			}
 		}
-	}
 
-	private static void OutbreakPowerAfterPowerAmountChangedPostfix(bool __state, ref Task __result)
-	{
-		if (__state)
+		[HarmonyPostfix]
+		private static void Postfix(bool __state, ref Task __result)
 		{
-			__result = OutbreakPowerPoisonResponseGuard.WrapEnteredTask(
-				__result,
-				FlushPendingInstantDeathDoomKillsIfSafe);
+			if (__state)
+			{
+				__result = OutbreakPowerPoisonResponseGuard.WrapEnteredTask(
+					__result,
+					FlushPendingInstantDeathDoomKillsIfSafe);
+			}
 		}
 	}
 #endif
 
-	private static bool SleightOfFleshPowerAfterPowerAmountChangedPrefix(SleightOfFleshPower __instance, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource, ref Task __result, out bool __state)
-	{
-		__state = false;
-		bool wouldRespond = IsSleightOfFleshPowerDebuffResponse(__instance, power, amount, applier);
-		if (ShouldSuppressSleightOfFleshPowerDebuffResponse(wouldRespond))
-		{
-			__result = Task.CompletedTask;
-			return false;
-		}
-
-		if (wouldRespond)
-		{
-			__state = true;
-			SleightOfFleshPowerDebuffResponseGuard.Enter();
-		}
-
-		return true;
-	}
-
-	private static void SleightOfFleshPowerAfterPowerAmountChangedPostfix(bool __state, ref Task __result)
-	{
-		if (__state)
-		{
-			__result = SleightOfFleshPowerDebuffResponseGuard.WrapEnteredTask(
-				__result,
-				FlushPendingInstantDeathDoomKillsIfSafe);
-		}
-	}
 
 	private static bool IsSleightOfFleshPowerDebuffResponse(SleightOfFleshPower instance, PowerModel power, decimal amount, Creature? applier)
 	{
@@ -137,5 +123,42 @@ internal static partial class HextechCombatHooks
 	internal static Task RunWithSleightOfFleshPowerDebuffResponseGuard(Func<Task> action)
 	{
 		return SleightOfFleshPowerDebuffResponseGuard.RunAsync(action);
+	}
+
+	[HarmonyPatch(typeof(SleightOfFleshPower), nameof(SleightOfFleshPower.AfterPowerAmountChanged), typeof(PlayerChoiceContext), typeof(PowerModel), typeof(decimal), typeof(Creature), typeof(CardModel))]
+	[HextechPatch("combat.sleight-of-flesh", "即死与补偿安全边界")]
+	private static class SleightOfFleshPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(SleightOfFleshPower __instance, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource, ref Task __result, out bool __state)
+		{
+			__state = false;
+			bool wouldRespond = IsSleightOfFleshPowerDebuffResponse(__instance, power, amount, applier);
+			if (ShouldSuppressSleightOfFleshPowerDebuffResponse(wouldRespond))
+			{
+				__result = Task.CompletedTask;
+				return false;
+			}
+
+			if (wouldRespond)
+			{
+				__state = true;
+				SleightOfFleshPowerDebuffResponseGuard.Enter();
+			}
+
+			return true;
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(bool __state, ref Task __result)
+		{
+			if (__state)
+			{
+				__result = SleightOfFleshPowerDebuffResponseGuard.WrapEnteredTask(
+					__result,
+					FlushPendingInstantDeathDoomKillsIfSafe);
+			}
+		}
 	}
 }

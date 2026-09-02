@@ -170,21 +170,15 @@ python3 \
 	--mod-id "$FILE_STEM" \
 	--manifest-name "$VARIANT_MANIFEST_NAME"
 
-# 同包发布后，根 DLL 是稳定 loader；官方完整性指纹仍应记录实际执行的版本 DLL。
+# 更新检查只看 latestVersion;构建指纹校验已移除(2026-09)。
 if [[ "${HEXTECH_UPDATE_LATEST:-1}" != "0" ]]; then
-	for target in "${TARGETS[@]}"; do
-		python3 "$ROOT/tools/update_latest_version_hashes.py" \
-			--latest-json "$ROOT/server/hextech-telemetry/public/latest-version.json" \
-			--dist "$DIST" \
-			--mod-id "$FILE_STEM" \
-			--server-name "海克斯大乱斗" \
-			--server-identity "Natsuki.HextechRunes.official" \
-			--game-version "$target" \
-			--dll-path "$DIST/lib/$target/$FILE_STEM.dll" \
-			--output-fingerprint "$BUILD_ROOT/fingerprints/build-fingerprint-$target.json"
-	done
+	python3 "$ROOT/tools/update_latest_version.py" \
+		--latest-json "$ROOT/server/hextech-telemetry/public/latest-version.json" \
+		--dist "$DIST" \
+		--mod-id "$FILE_STEM" \
+		--server-name "海克斯大乱斗"
 else
-	echo "Skipped latest-version.json fingerprint update (HEXTECH_UPDATE_LATEST=0)."
+	echo "Skipped latest-version.json update (HEXTECH_UPDATE_LATEST=0)."
 fi
 
 if [[ "$HEXTECH_DEPLOY" != "0" ]]; then

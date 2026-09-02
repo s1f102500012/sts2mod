@@ -227,7 +227,7 @@ internal static class MonsterHexCatalog
 	private static Texture2D? GetEnemyHexHoverIcon(RelicModel relic)
 	{
 		string? path = HextechAssets.TryGetCustomRelicIconPath(relic);
-		return path == null ? null : HextechAssetHooks.LoadUiTexture(path);
+		return path == null ? null : HextechTextures.LoadUiTexture(path);
 	}
 
 	private static string GetEnemyHexDescriptionKey(RelicModel relic)

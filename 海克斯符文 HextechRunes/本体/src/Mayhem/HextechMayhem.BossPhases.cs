@@ -5,10 +5,6 @@ namespace HextechRunes;
 
 internal sealed partial class HextechMayhemModifier
 {
-#if !STS2_105_OR_NEWER
-	private const int DoormakerShellMaxHpThreshold = 1_000_000;
-	private static readonly FieldInfo DoormakerIsPortalOpenField = RequireField(typeof(Doormaker), "_isPortalOpen");
-#endif
 	private static readonly FieldInfo? TestSubjectRespawnsField = TryGetField(typeof(TestSubject), "_respawns");
 
 	public override async Task AfterOstyRevived(Creature osty)
@@ -96,40 +92,13 @@ internal sealed partial class HextechMayhemModifier
 
 	private static bool ShouldDeferInitialBossStartHexes(Creature creature)
 	{
-#if STS2_105_OR_NEWER
 		return false;
-#else
-		return IsDoormakerShell(creature);
-#endif
 	}
 
-#if STS2_105_OR_NEWER
 	private static bool IsDoormakerReadyForDeferredStart(Creature creature)
 	{
 		return false;
 	}
-#else
-	private static bool IsDoormakerShell(Creature creature)
-	{
-		return creature.Monster is Doormaker doormaker
-			&& (!IsDoormakerPortalOpen(doormaker)
-				|| creature.ShowsInfiniteHp
-				|| creature.MaxHp >= DoormakerShellMaxHpThreshold);
-	}
-
-	private static bool IsDoormakerReadyForDeferredStart(Creature creature)
-	{
-		return creature.Monster is Doormaker doormaker
-			&& IsDoormakerPortalOpen(doormaker)
-			&& !creature.ShowsInfiniteHp
-			&& creature.MaxHp < DoormakerShellMaxHpThreshold;
-	}
-
-	private static bool IsDoormakerPortalOpen(Doormaker doormaker)
-	{
-		return DoormakerIsPortalOpenField.GetValue(doormaker) is true;
-	}
-#endif
 
 	private static int GetTestSubjectRespawns(TestSubject testSubject)
 	{

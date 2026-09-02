@@ -196,23 +196,6 @@ internal static class UndyingEtherealKeywordPersistence
 
 internal static class HextechThoughtOverwriteKeywordPersistenceHooks
 {
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(CardModel), nameof(CardModel.ToSerializable), BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardToSerializablePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(CardModel), nameof(CardModel.FromSerializable), BindingFlags.Static | BindingFlags.Public, typeof(SerializableCard)),
-			postfix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardFromSerializablePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(CardModel), nameof(CardModel.DowngradeInternal), BindingFlags.Instance | BindingFlags.Public),
-			prefix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(CardModel), nameof(CardModel.FinalizeUpgradeInternal), BindingFlags.Instance | BindingFlags.Public),
-			prefix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechThoughtOverwriteKeywordPersistenceHooks), nameof(CardKeywordRebuildPostfix)));
-	}
 
 	private readonly struct KeywordPersistenceSnapshot
 	{
@@ -285,71 +268,6 @@ internal static class HextechThoughtOverwriteKeywordPersistenceHooks
 		}
 	}
 
-	private static void CardKeywordRebuildPrefix(CardModel __instance, out KeywordPersistenceSnapshot __state)
-	{
-		__state = KeywordPersistenceSnapshot.Capture(__instance);
-	}
-
-	private static void CardKeywordRebuildPostfix(CardModel __instance, KeywordPersistenceSnapshot __state)
-	{
-		__state.Restore(__instance);
-	}
-
-	private static void CardToSerializablePostfix(CardModel __instance, SerializableCard __result)
-	{
-		if (ThoughtOverwriteKeywordPersistence.ShouldPersist(__instance))
-		{
-			AddMarker(__result, ThoughtOverwriteRune.EtherealMarkerSavedPropertyName);
-		}
-
-		if (CurtainCallKeywordPersistence.ShouldPersist(__instance))
-		{
-			AddMarker(__result, CurtainCallRune.RetainMarkerSavedPropertyName);
-		}
-
-		if (CosplayInnateKeywordPersistence.ShouldPersist(__instance))
-		{
-			AddMarker(__result, HextechRunesApi.PersistentInnateMarkerSavedPropertyName);
-		}
-
-		if (CorruptedBranchInnateKeywordPersistence.ShouldPersist(__instance))
-		{
-			AddMarker(__result, CorruptedBranchRune.InnateMarkerSavedPropertyName);
-		}
-
-		if (UndyingEtherealKeywordPersistence.ShouldPersist(__instance))
-		{
-			AddMarker(__result, UndyingUpgradeRune.EtherealMarkerSavedPropertyName);
-		}
-	}
-
-	private static void CardFromSerializablePostfix(SerializableCard save, CardModel __result)
-	{
-		if (HasMarker(save.Props, ThoughtOverwriteRune.EtherealMarkerSavedPropertyName))
-		{
-			ThoughtOverwriteKeywordPersistence.Restore(__result);
-		}
-
-		if (HasMarker(save.Props, CurtainCallRune.RetainMarkerSavedPropertyName))
-		{
-			CurtainCallKeywordPersistence.Restore(__result);
-		}
-
-		if (HasMarker(save.Props, HextechRunesApi.PersistentInnateMarkerSavedPropertyName))
-		{
-			CosplayInnateKeywordPersistence.Restore(__result);
-		}
-
-		if (HasMarker(save.Props, CorruptedBranchRune.InnateMarkerSavedPropertyName))
-		{
-			CorruptedBranchInnateKeywordPersistence.Restore(__result);
-		}
-
-		if (HasMarker(save.Props, UndyingUpgradeRune.EtherealMarkerSavedPropertyName))
-		{
-			UndyingEtherealKeywordPersistence.Restore(__result);
-		}
-	}
 
 	private static void AddMarker(SerializableCard card, string markerSavedPropertyName)
 	{
@@ -370,5 +288,122 @@ internal static class HextechThoughtOverwriteKeywordPersistenceHooks
 		return props?.ints?.Any(property =>
 			property.name == markerSavedPropertyName
 			&& property.value != 0) == true;
+	}
+
+	// 原版克隆(DeepCloneFields)只按"有来源"的关键词重建 _keywords,思维覆写/谢幕/扮演/腐化枝/不死这类
+	// 运行期附加的关键词与追踪标记都会丢;镜中倒影、复视等复制整副牌组的路径拿到的副本因此没有虚无词条
+	// (玩家反馈)。牌组级克隆把源牌的持久化快照原样恢复到副本上,副本自己成为被追踪的牌组版本。
+	[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Runs.RunState), nameof(MegaCrit.Sts2.Core.Runs.RunState.CloneCard), typeof(CardModel))]
+	[HextechPatch("card.keyword-persistence.clone-deck", "关键词持久化")]
+	private static class RunStateCloneCardPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(CardModel mutableCard, CardModel __result)
+		{
+			KeywordPersistenceSnapshot.Capture(mutableCard).Restore(__result);
+		}
+	}
+
+	[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Combat.CombatState), nameof(MegaCrit.Sts2.Core.Combat.CombatState.CloneCard), typeof(CardModel))]
+	[HextechPatch("card.keyword-persistence.clone-combat", "关键词持久化")]
+	private static class CombatStateCloneCardPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(CardModel mutableCard, CardModel __result)
+		{
+			KeywordPersistenceSnapshot.Capture(mutableCard).Restore(__result);
+		}
+	}
+
+	[HarmonyPatch(typeof(CardModel), nameof(CardModel.ToSerializable), new Type[0])]
+	[HextechPatch("card.keyword-persistence.save", "关键词持久化")]
+	private static class ToSerializablePatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(CardModel __instance, SerializableCard __result)
+		{
+			if (ThoughtOverwriteKeywordPersistence.ShouldPersist(__instance))
+			{
+				AddMarker(__result, ThoughtOverwriteRune.EtherealMarkerSavedPropertyName);
+			}
+
+			if (CurtainCallKeywordPersistence.ShouldPersist(__instance))
+			{
+				AddMarker(__result, CurtainCallRune.RetainMarkerSavedPropertyName);
+			}
+
+			if (CosplayInnateKeywordPersistence.ShouldPersist(__instance))
+			{
+				AddMarker(__result, HextechRunesApi.PersistentInnateMarkerSavedPropertyName);
+			}
+
+			if (CorruptedBranchInnateKeywordPersistence.ShouldPersist(__instance))
+			{
+				AddMarker(__result, CorruptedBranchRune.InnateMarkerSavedPropertyName);
+			}
+
+			if (UndyingEtherealKeywordPersistence.ShouldPersist(__instance))
+			{
+				AddMarker(__result, UndyingUpgradeRune.EtherealMarkerSavedPropertyName);
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(CardModel), nameof(CardModel.FromSerializable), typeof(SerializableCard))]
+	[HextechPatch("card.keyword-persistence.load", "关键词持久化")]
+	private static class FromSerializablePatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(SerializableCard save, CardModel __result)
+		{
+			if (HasMarker(save.Props, ThoughtOverwriteRune.EtherealMarkerSavedPropertyName))
+			{
+				ThoughtOverwriteKeywordPersistence.Restore(__result);
+			}
+
+			if (HasMarker(save.Props, CurtainCallRune.RetainMarkerSavedPropertyName))
+			{
+				CurtainCallKeywordPersistence.Restore(__result);
+			}
+
+			if (HasMarker(save.Props, HextechRunesApi.PersistentInnateMarkerSavedPropertyName))
+			{
+				CosplayInnateKeywordPersistence.Restore(__result);
+			}
+
+			if (HasMarker(save.Props, CorruptedBranchRune.InnateMarkerSavedPropertyName))
+			{
+				CorruptedBranchInnateKeywordPersistence.Restore(__result);
+			}
+
+			if (HasMarker(save.Props, UndyingUpgradeRune.EtherealMarkerSavedPropertyName))
+			{
+				UndyingEtherealKeywordPersistence.Restore(__result);
+			}
+		}
+	}
+
+	[HarmonyPatch]
+	[HextechPatch("card.keyword-persistence.rebuild", "关键词持久化")]
+	private static class KeywordRebuildPatch
+	{
+		[HarmonyTargetMethods]
+		private static IEnumerable<MethodBase> TargetMethods()
+		{
+			yield return AccessTools.Method(typeof(CardModel), nameof(CardModel.DowngradeInternal), Type.EmptyTypes);
+			yield return AccessTools.Method(typeof(CardModel), nameof(CardModel.FinalizeUpgradeInternal), Type.EmptyTypes);
+		}
+
+		[HarmonyPrefix]
+		private static void Prefix(CardModel __instance, out KeywordPersistenceSnapshot __state)
+		{
+			__state = KeywordPersistenceSnapshot.Capture(__instance);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(CardModel __instance, KeywordPersistenceSnapshot __state)
+		{
+			__state.Restore(__instance);
+		}
 	}
 }

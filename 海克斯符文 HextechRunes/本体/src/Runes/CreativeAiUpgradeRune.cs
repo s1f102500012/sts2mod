@@ -1,3 +1,5 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 
 namespace HextechRunes;
@@ -59,5 +61,23 @@ public sealed class CreativeAiUpgradeRune : CardUpgradeRuneBase<CreativeAi>
 
 		CardCmd.Upgrade(card, CardPreviewStyle.None);
 		return true;
+	}
+
+	[HarmonyPatch(typeof(CreativeAiPower), nameof(CreativeAiPower.BeforeHandDraw), typeof(Player), typeof(PlayerChoiceContext), typeof(HextechCombatState))]
+	[HextechPatch("rune.creative-ai", "升级创意AI", Rune = typeof(CreativeAiUpgradeRune))]
+	private static class CreativeAiPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(CreativeAiPower __instance, Player player, ref Task __result)
+		{
+			if (!CreativeAiUpgradeRune.ShouldUseUpgradedGeneration(__instance, player))
+			{
+				return true;
+			}
+
+			__result = CreativeAiUpgradeRune.GenerateUpgradedPowerCards(__instance, player);
+			return false;
+		}
 	}
 }

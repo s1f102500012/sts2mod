@@ -1,0 +1,11 @@
+{
+  "id": "HextechMpLab",
+  "name": "海克斯联机实验驱动",
+  "author": "Natsuki",
+  "description": "本机双客户端联机确定性实验用的自动驾驶,不随模组发布。",
+  "version": "0.1.0",
+  "min_game_version": "0.111.0",
+  "has_pck": false,
+  "has_dll": true,
+  "affects_gameplay": true
+}

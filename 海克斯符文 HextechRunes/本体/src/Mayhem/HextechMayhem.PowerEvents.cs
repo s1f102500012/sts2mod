@@ -2,11 +2,7 @@ namespace HextechRunes;
 
 internal sealed partial class HextechMayhemModifier
 {
-#if STS2_104_OR_NEWER
 	public override async Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#else
-	public override async Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#endif
 	{
 		await HextechEnemyHexDispatcher.ForEachActive(
 			this,

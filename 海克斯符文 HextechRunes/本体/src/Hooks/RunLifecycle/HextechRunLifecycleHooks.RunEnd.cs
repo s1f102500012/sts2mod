@@ -5,19 +5,7 @@ namespace HextechRunes;
 
 internal static partial class HextechRunLifecycleHooks
 {
-	private static void RunEndedPrefix(RunManager __instance, bool isVictory, out RunState? __state)
-	{
-		EnsureCombatHistoryBeforeLossSave(__instance, isVictory);
-		__state = __instance.DebugOnlyGetState();
-	}
 
-	private static void RunEndedPostfix(RunState? __state, bool isVictory, SerializableRun __result)
-	{
-		HextechCombatHooks.ResetTransientCombatState();
-		HextechEnemyHexEffects.ResetAllRunScopedState();
-		HextechGoldrendSync.ClearRun(__state);
-		HextechTelemetry.OnRunEnded(__state, __result, isVictory);
-	}
 
 	private static void EnsureCombatHistoryBeforeLossSave(RunManager runManager, bool isVictory)
 	{
@@ -70,6 +58,27 @@ internal static partial class HextechRunLifecycleHooks
 		catch (Exception ex)
 		{
 			Log.Error($"[{ModInfo.Id}][Mayhem] Failed to sanitize combat history before loss save: {ex}");
+		}
+	}
+
+	[HarmonyPatch(typeof(RunManager), nameof(RunManager.OnEnded), typeof(bool))]
+	[HextechPatch("run.end", "跑局结束统计")]
+	private static class RunEndedPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(RunManager __instance, bool isVictory, out RunState? __state)
+		{
+			EnsureCombatHistoryBeforeLossSave(__instance, isVictory);
+			__state = __instance.DebugOnlyGetState();
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(RunState? __state, bool isVictory, SerializableRun __result)
+		{
+			HextechCombatHooks.ResetTransientCombatState();
+			HextechEnemyHexEffects.ResetAllRunScopedState();
+			HextechGoldrendSync.ClearRun(__state);
+			HextechTelemetry.OnRunEnded(__state, __result, isVictory);
 		}
 	}
 }

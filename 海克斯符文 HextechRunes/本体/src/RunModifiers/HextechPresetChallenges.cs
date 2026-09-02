@@ -153,45 +153,7 @@ internal static class HextechPresetChallengeRegistry
 
 internal static class HextechPresetChallengeHooks
 {
-	public static void Install(Harmony harmony)
-	{
-		MethodInfo? getAllModifiers = TryGetMethod(
-			typeof(NCustomRunModifiersList),
-			"GetAllModifiers",
-			BindingFlags.Instance | BindingFlags.NonPublic,
-			warnIfMissing: false);
-		if (getAllModifiers != null)
-		{
-			harmony.Patch(
-				getAllModifiers,
-				postfix: new HarmonyMethod(typeof(HextechPresetChallengeHooks), nameof(AppendPresetChallengesPostfix)));
-		}
-		else
-		{
-			Log.Warn($"[{ModInfo.Id}][CustomRun] Could not install preset challenge option; NCustomRunModifiersList.GetAllModifiers was not found.");
-		}
 
-		MethodInfo? untickMutuallyExclusive = TryGetMethod(
-			typeof(NCustomRunModifiersList),
-			"UntickMutuallyExclusiveModifiersForTickbox",
-			BindingFlags.Instance | BindingFlags.NonPublic,
-			typeof(NRunModifierTickbox));
-		if (untickMutuallyExclusive != null)
-		{
-			harmony.Patch(
-				untickMutuallyExclusive,
-				postfix: new HarmonyMethod(typeof(HextechPresetChallengeHooks), nameof(UntickOtherPresetChallengesPostfix)));
-		}
-		else
-		{
-			Log.Warn($"[{ModInfo.Id}][CustomRun] Could not install preset challenge exclusivity; NCustomRunModifiersList.UntickMutuallyExclusiveModifiersForTickbox was not found.");
-		}
-	}
-
-	private static void AppendPresetChallengesPostfix(ref IEnumerable<ModifierModel> __result)
-	{
-		__result = __result.Concat(CreatePresetChallenges());
-	}
 
 	private static IEnumerable<ModifierModel> CreatePresetChallenges()
 	{
@@ -202,27 +164,45 @@ internal static class HextechPresetChallengeHooks
 		yield return ModelDb.Modifier<ListlessChallengeModifier>().ToMutable();
 	}
 
-	private static void UntickOtherPresetChallengesPostfix(
-		NRunModifierTickbox tickbox,
-		List<NRunModifierTickbox> ____modifierTickboxes)
-	{
-		ModifierModel? selectedModifier = tickbox.Modifier;
-		if (!tickbox.IsTicked
-			|| selectedModifier == null
-			|| !HextechPresetChallengeRegistry.IsChallengeModifierType(selectedModifier.GetType()))
-		{
-			return;
-		}
 
-		foreach (NRunModifierTickbox otherTickbox in ____modifierTickboxes)
+	[HarmonyPatch(typeof(NCustomRunModifiersList), "GetAllModifiers")]
+	[HextechPatch("custom-run.preset-challenges.list", "预设挑战", Optional = true)]
+	private static class AllModifiersPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(ref IEnumerable<ModifierModel> __result)
 		{
-			ModifierModel? otherModifier = otherTickbox.Modifier;
-			if (otherModifier != null
-				&& HextechPresetChallengeRegistry.AreMutuallyExclusiveChallengeTypes(
-					selectedModifier.GetType(),
-					otherModifier.GetType()))
+			__result = __result.Concat(CreatePresetChallenges());
+		}
+	}
+
+	[HarmonyPatch(typeof(NCustomRunModifiersList), "UntickMutuallyExclusiveModifiersForTickbox", typeof(NRunModifierTickbox))]
+	[HextechPatch("custom-run.preset-challenges.exclusivity", "预设挑战", Optional = true)]
+	private static class ExclusivityPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(
+			NRunModifierTickbox tickbox,
+			List<NRunModifierTickbox> ____modifierTickboxes)
+		{
+			ModifierModel? selectedModifier = tickbox.Modifier;
+			if (!tickbox.IsTicked
+				|| selectedModifier == null
+				|| !HextechPresetChallengeRegistry.IsChallengeModifierType(selectedModifier.GetType()))
 			{
-				otherTickbox.IsTicked = false;
+				return;
+			}
+
+			foreach (NRunModifierTickbox otherTickbox in ____modifierTickboxes)
+			{
+				ModifierModel? otherModifier = otherTickbox.Modifier;
+				if (otherModifier != null
+					&& HextechPresetChallengeRegistry.AreMutuallyExclusiveChallengeTypes(
+						selectedModifier.GetType(),
+						otherModifier.GetType()))
+				{
+					otherTickbox.IsTicked = false;
+				}
 			}
 		}
 	}

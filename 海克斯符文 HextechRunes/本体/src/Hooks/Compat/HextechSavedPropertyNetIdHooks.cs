@@ -1,3 +1,4 @@
+#if STS2_107_1
 using HarmonyLib;
 using static HextechRunes.HextechHookReflection;
 
@@ -6,6 +7,7 @@ namespace HextechRunes;
 /// <summary>
 /// 把 <c>SavedPropertiesTypeCache</c> 的模组 net-id 布局规范化为确定性顺序,消除联机「1014 模组不匹配」的非确定性根因
 /// (运行时 SavedProperties net-id 因模组加载顺序在两端错位 → 抛异常 → 被断连兜底转成 ModMismatch)。
+/// 仅 0.107.1 需要:0.109 起 ModelIdSerializationCache.Init 由游戏自己做确定性排序与哈希。
 ///
 /// 时序:挂在 <c>OneTimeInitialization.ExecuteEssential</c> 的后缀。该方法是固定启动状态机里唯一一次、且在
 /// 所有 SavedProperty 注入完成之后(ModInitializer 阶段的自注入 + LocManager.Initialize 阶段 RitsuLib 的补注入)、
@@ -23,32 +25,6 @@ internal static class HextechSavedPropertyNetIdHooks
 	/// <summary>规范化是否已发生。此后再注入 SavedProperty 载体会绕过规范排序(见 HextechSavedPropertyBootstrap.InjectModelType 的告警)。</summary>
 	internal static bool IsCanonicalized => _canonicalized;
 
-	public static void Install(Harmony harmony)
-	{
-		if (_installed)
-		{
-			return;
-		}
-
-		_installed = true;
-
-		Type? oneTimeInit = AccessTools.TypeByName("MegaCrit.Sts2.Core.Helpers.OneTimeInitialization");
-		MethodInfo? essential = oneTimeInit == null ? null : AccessTools.Method(oneTimeInit, "ExecuteEssential");
-		if (essential == null)
-		{
-			Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] Could not patch OneTimeInitialization.ExecuteEssential; SavedProperty net-id canonicalization is disabled (multiplayer may desync with other SavedProperty mods such as RitsuLib).");
-			return;
-		}
-
-		try
-		{
-			harmony.Patch(essential, postfix: new HarmonyMethod(typeof(HextechSavedPropertyNetIdHooks), nameof(CanonicalizeNetIdMapPostfix)));
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] Skipped SavedProperty net-id canonicalization: {ex.GetType().Name}: {ex.Message}");
-		}
-	}
 
 	private static void CanonicalizeNetIdMapPostfix()
 	{
@@ -59,22 +35,6 @@ internal static class HextechSavedPropertyNetIdHooks
 
 		_canonicalized = true;
 
-#if STS2_109_OR_NEWER
-		// 0.109.0:ExecuteEssential 内游戏已用 ModelIdSerializationCache.Init() 做过确定性排序
-		// (ContentSorter)与位宽/哈希计算,规范化职责被官方收编,这里不再动表——只在表填充完成后
-		// 补跑载体自检(启动期 InjectCaches 阶段表还是空的,自检整体推迟到了这里)。
-		try
-		{
-			HextechSavedPropertyBootstrap.WarnOnUninjectedSavedPropertyCarriers();
-			FieldInfo? mapField = TryGetField(typeof(SavedPropertiesTypeCache), "_netIdToPropertyNameMap", StaticNonPublic);
-			int propertyNameCount = (mapField?.GetValue(null) as System.Collections.ICollection)?.Count ?? 0;
-			HextechLog.Info($"[{ModInfo.Id}][MultiplayerCompat] SavedProperty net-id map is game-canonical on 0.109+: total={propertyNameCount} bitSize={SavedPropertiesTypeCache.PropertyIdBitSize} hash={SavedPropertiesTypeCache.Hash:X8}.");
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] SavedProperty post-init audit failed: {ex.GetType().Name}: {ex.Message}");
-		}
-#else
 		try
 		{
 			IReadOnlySet<string>? vanillaNames = BuildVanillaPropertyNameSet();
@@ -120,10 +80,8 @@ internal static class HextechSavedPropertyNetIdHooks
 		{
 			Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] SavedProperty net-id canonicalization failed: {ex.GetType().Name}: {ex.Message}");
 		}
-#endif
 	}
 
-#if !STS2_109_OR_NEWER
 	/// <summary>
 	/// 重放原版种子:遍历 <c>AbstractModelSubtypes</c> 收集所有带 <c>[SavedProperty]</c> 的属性名。
 	/// 只需名字集合(用于把原版前缀与模组后缀区分开),不依赖游戏的排序细节,且随游戏版本自适应。
@@ -163,5 +121,36 @@ internal static class HextechSavedPropertyNetIdHooks
 
 		backing.SetValue(null, bitSize);
 	}
-#endif
+
+	[HextechPatch("compat.saved-property-net-id", "SavedProperty net-id 规范化")]
+	private static class CanonicalizePatch
+	{
+		public static void Apply(Harmony harmony)
+		{
+			if (_installed)
+			{
+				return;
+			}
+
+			_installed = true;
+
+			Type? oneTimeInit = AccessTools.TypeByName("MegaCrit.Sts2.Core.Helpers.OneTimeInitialization");
+			MethodInfo? essential = oneTimeInit == null ? null : AccessTools.Method(oneTimeInit, "ExecuteEssential");
+			if (essential == null)
+			{
+				Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] Could not patch OneTimeInitialization.ExecuteEssential; SavedProperty net-id canonicalization is disabled (multiplayer may desync with other SavedProperty mods such as RitsuLib).");
+				return;
+			}
+
+			try
+			{
+				harmony.Patch(essential, postfix: new HarmonyMethod(typeof(HextechSavedPropertyNetIdHooks), nameof(CanonicalizeNetIdMapPostfix)));
+			}
+			catch (Exception ex)
+			{
+				Log.Warn($"[{ModInfo.Id}][MultiplayerCompat] Skipped SavedProperty net-id canonicalization: {ex.GetType().Name}: {ex.Message}");
+			}
+		}
+	}
 }
+#endif

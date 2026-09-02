@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Models.Exceptions;
 
 namespace HextechRunes;
@@ -99,6 +100,8 @@ public sealed class FlyingKickRune : HextechRelicBase
 			// 处决表现:原版大斩击+本体色爆闪(即刻),半秒后治疗绿光弧线流回自身;
 			// 尸体横飞由 FlyingKickCorpseLaunchDriver 在 Kill 内接管,三段时序互补。
 			HextechCombatVfx.FlyingKickStrike(target, Owner.Creature);
+			// 收集者共享处决计数:真死亡判定要在 Kill 之前算,Kill 后怪物已移出战斗、CombatState 为空。
+			bool creditable = CollectorRune.IsCreditableDeath(target);
 			if (killTarget)
 			{
 				FlyingKickCorpseLaunchDriver.MarkPending(target);
@@ -109,7 +112,7 @@ public sealed class FlyingKickRune : HextechRelicBase
 				FlyingKickCorpseLaunchDriver.MarkPendingUntilConsumed(target);
 			}
 
-			Owner.GetRelic<CollectorRune>()?.RecordExecution(target);
+			Owner.GetRelic<CollectorRune>()?.RecordExecution(target, creditable);
 		}
 		finally
 		{
@@ -125,6 +128,55 @@ public sealed class FlyingKickRune : HextechRelicBase
 		{
 			decimal heal = Math.Max(1m, decimal.Floor(Owner.Creature.MaxHp * DynamicVars.Heal.BaseValue / 100m));
 			await CreatureCmd.Heal(Owner.Creature, heal);
+		}
+	}
+
+	[HarmonyPatch(typeof(RelicModel), nameof(RelicModel.DynamicDescription), MethodType.Getter)]
+	[HextechPatch("rune.flying-kick.description", "飞踢", Rune = typeof(FlyingKickRune))]
+	private static class FlyingKickDescriptionPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(RelicModel __instance)
+		{
+			if (__instance is FlyingKickRune flyingKickRune)
+			{
+				flyingKickRune.RefreshExecutePercentFromOwner();
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(NCreature), nameof(NCreature.StartDeathAnim), typeof(bool))]
+	[HextechPatch("rune.flying-kick.corpse-launch", "飞踢尸体击飞视觉")]
+	private static class FlyingKickCorpseLaunchPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare()
+		{
+			if (HextechRuntimeRuneCompatibility.IsAndroidRuntime)
+			{
+				Log.Warn($"[{ModInfo.Id}][Mayhem][Compat] Flying Kick corpse launch visual hook skipped on Android runtime.");
+				return false;
+			}
+
+			return true;
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(NCreature __instance, bool shouldRemove)
+		{
+			if (!FlyingKickCorpseLaunchDriver.TryConsumePending(__instance.Entity))
+			{
+				return;
+			}
+
+			if (!shouldRemove
+				|| __instance.Entity == null
+				|| !HextechMonsterInteractionPolicy.IsTrueCombatDeath(__instance.Entity))
+			{
+				return;
+			}
+
+			FlyingKickCorpseLaunchDriver.TryAttach(__instance);
 		}
 	}
 }

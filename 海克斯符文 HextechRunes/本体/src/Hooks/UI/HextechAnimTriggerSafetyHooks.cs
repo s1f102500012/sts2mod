@@ -13,25 +13,26 @@ namespace HextechRunes;
 /// </summary>
 internal static class HextechAnimTriggerSafetyHooks
 {
-	public static void Install(Harmony harmony)
+
+
+	[HarmonyPatch(typeof(NCreature), nameof(NCreature.SetAnimationTrigger), typeof(string))]
+	[HextechPatch("ui.anim-trigger-safety", "动画触发安全")]
+	private static class SetAnimationTriggerPatch
 	{
-		harmony.Patch(
-			RequireMethod(typeof(NCreature), nameof(NCreature.SetAnimationTrigger), BindingFlags.Instance | BindingFlags.Public, typeof(string)),
-			finalizer: new HarmonyMethod(typeof(HextechAnimTriggerSafetyHooks), nameof(SetAnimationTriggerFinalizer)));
-	}
-
-	private static Exception? SetAnimationTriggerFinalizer(Exception? __exception, string trigger)
-	{
-		if (__exception is not NullReferenceException)
+		[HarmonyFinalizer]
+		private static Exception? Finalizer(Exception? __exception, string trigger)
 		{
-			return __exception;
-		}
+			if (__exception is not NullReferenceException)
+			{
+				return __exception;
+			}
 
-		if (HextechRunLogBudget.TryConsume("ui.animation-trigger-nre", 5))
-		{
-			Log.Warn($"[{ModInfo.Id}][AnimSafety] Suppressed NullReferenceException in animation trigger '{trigger}' (likely a vanilla animator condition reading a removed power).");
-		}
+			if (HextechRunLogBudget.TryConsume("ui.animation-trigger-nre", 5))
+			{
+				Log.Warn($"[{ModInfo.Id}][AnimSafety] Suppressed NullReferenceException in animation trigger '{trigger}' (likely a vanilla animator condition reading a removed power).");
+			}
 
-		return null;
+			return null;
+		}
 	}
 }

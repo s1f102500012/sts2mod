@@ -1,10 +1,6 @@
 using MegaCrit.Sts2.Core.Combat.History;
 
-#if STS2_107_OR_NEWER
 using HextechCombatStateCompat = MegaCrit.Sts2.Core.Combat.ICombatState;
-#else
-using HextechCombatStateCompat = MegaCrit.Sts2.Core.Combat.CombatState;
-#endif
 
 namespace HextechRunes;
 
@@ -61,11 +57,7 @@ internal static class HextechCombatHistoryHelper
 
 	private static bool HappenedThisTurn(CombatHistoryEntry entry, HextechCombatStateCompat? combatState)
 	{
-#if STS2_107_OR_NEWER
 		return entry.HappenedThisTurn(combatState);
-#else
-		return entry.HappenedThisTurn(combatState as CombatState);
-#endif
 	}
 
 	public static int CountOwnedCardsDrawn(Player? owner)

@@ -199,6 +199,7 @@ public sealed class HextechPlayerSlowPower : HextechPowerBase
 public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPower
 {
 	private bool _shouldIgnoreNextInstance;
+	private int _appliedRound = -1;
 
 	public override PowerType Type => PowerType.None;
 
@@ -223,6 +224,7 @@ public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPowe
 
 	public override async Task BeforeApplied(Creature target, decimal amount, Creature? applier, CardModel? cardSource)
 	{
+		RememberAppliedRound(target);
 		if (_shouldIgnoreNextInstance)
 		{
 			_shouldIgnoreNextInstance = false;
@@ -232,17 +234,14 @@ public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPowe
 		await PowerCmd.Apply<HextechPlayerSlowPower>(target, amount, applier, cardSource, silent: true);
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#else
-	public override async Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#endif
 	{
 		if (power != this || amount == Amount)
 		{
 			return;
 		}
 
+		RememberAppliedRound(Owner);
 		if (_shouldIgnoreNextInstance)
 		{
 			_shouldIgnoreNextInstance = false;
@@ -254,7 +253,7 @@ public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPowe
 
 	public override async Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
 	{
-		if (!ShouldExpireAtSide(side))
+		if (!ShouldExpireAtSide(side, combatState.RoundNumber, _appliedRound))
 		{
 			return;
 		}
@@ -263,8 +262,22 @@ public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPowe
 		await PowerCmd.Apply<HextechPlayerSlowPower>(Owner, -Amount, Owner, null, silent: true);
 	}
 
-	internal static bool ShouldExpireAtSide(CombatSide side)
+	/// <summary>
+	/// 临时缓慢在玩家回合开始时到期,但施加于同一回合(RoundNumber 在切到玩家侧时先递增,回合开始的各个
+	/// hook 看到的是同一个回合号)的不算:冰霜幽灵符文在玩家回合开始给怪物挂缓慢,本 Power 的
+	/// AfterSideTurnStart 在同一回合开始序列里紧跟着跑,以前会把刚挂上的缓慢当场清掉,只闪一下
+	/// (玩家反馈)。腐蚀/敌方海克斯这类在回合中途施加的,下一回合开始照常清除,行为不变。
+	/// </summary>
+	internal static bool ShouldExpireAtSide(CombatSide side, int roundNumber, int appliedRound)
 	{
-		return side == CombatSide.Player;
+		return side == CombatSide.Player && roundNumber != appliedRound;
+	}
+
+	private void RememberAppliedRound(Creature? owner)
+	{
+		if (owner?.CombatState is { } combatState)
+		{
+			_appliedRound = combatState.RoundNumber;
+		}
 	}
 }

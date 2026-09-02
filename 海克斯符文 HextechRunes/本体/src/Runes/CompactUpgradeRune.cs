@@ -1,3 +1,5 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.CommonUi;
 
 namespace HextechRunes;
@@ -53,5 +55,23 @@ public sealed class CompactUpgradeRune : CardUpgradeRuneBase<Compact>
 
 		owner.GetRelic<CompactUpgradeRune>()?.Flash();
 		await CardCmd.Transform(transformations, null, CardPreviewStyle.None);
+	}
+
+	[HarmonyPatch(typeof(Compact), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.compact", "升级压缩", Rune = typeof(CompactUpgradeRune))]
+	private static class CompactPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(Compact __instance, PlayerChoiceContext choiceContext, CardPlay cardPlay, ref Task __result)
+		{
+			if (!CompactUpgradeRune.ShouldUseUpgradedPlay(__instance))
+			{
+				return true;
+			}
+
+			__result = CompactUpgradeRune.PlayUpgraded(choiceContext, __instance, cardPlay);
+			return false;
+		}
 	}
 }

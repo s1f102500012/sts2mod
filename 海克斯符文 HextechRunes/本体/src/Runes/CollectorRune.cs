@@ -53,7 +53,7 @@ public sealed class CollectorRune : HextechRelicBase
 
 		if (result.WasTargetKilled)
 		{
-			RecordExecution(target);
+			RecordExecution(target, IsCreditableDeath(target));
 			return;
 		}
 
@@ -63,16 +63,28 @@ public sealed class CollectorRune : HextechRelicBase
 			return;
 		}
 
+		// 真死亡判定要在 Kill 之前算:Kill 完成后怪物已从战斗移除、CombatState 置空,
+		// 事后再判会一律得到 false,处决就永远记不上金币(玩家反馈的"收集者不给钱")。
+		bool creditable = IsCreditableDeath(target);
 		_executing = true;
 		try
 		{
 			await CreatureCmd.Kill(target);
-			RecordExecution(target);
+			RecordExecution(target, creditable);
 		}
 		finally
 		{
 			_executing = false;
 		}
+	}
+
+	/// <summary>
+	/// 可计数的死亡:仍在战斗里就按真死亡规则判(排除 Boss 转阶段等);已被移出战斗(CombatState 为空)
+	/// 说明它确实死透了,直接计数。
+	/// </summary>
+	internal static bool IsCreditableDeath(Creature target)
+	{
+		return target.CombatState == null || HextechMonsterInteractionPolicy.IsTrueCombatDeath(target);
 	}
 
 	public override Task BeforeCombatStart()
@@ -92,11 +104,11 @@ public sealed class CollectorRune : HextechRelicBase
 		return Task.CompletedTask;
 	}
 
-	internal void RecordExecution(Creature target)
+	internal void RecordExecution(Creature target, bool? isCreditableDeath = null)
 	{
 		if (Owner == null
 			|| target.Side == Owner.Creature.Side
-			|| !HextechMonsterInteractionPolicy.IsTrueCombatDeath(target)
+			|| !(isCreditableDeath ?? IsCreditableDeath(target))
 			|| !_creditedExecutions.Add(target))
 		{
 			return;

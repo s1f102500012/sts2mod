@@ -20,44 +20,50 @@ internal static class HextechCardGridPreviewHooks
 	private static readonly FieldInfo? PreviewFlagField = typeof(NGridCardHolder).GetField("_isPreviewingUpgrade", BindingFlags.Instance | BindingFlags.NonPublic);
 	private static readonly FieldInfo? BaseCardField = typeof(NGridCardHolder).GetField("_baseCard", BindingFlags.Instance | BindingFlags.NonPublic);
 
-	public static void Install(Harmony harmony)
+
+	[HarmonyPatch(typeof(NCardGrid), nameof(NCardGrid.IsShowingUpgrades), MethodType.Setter)]
+	[HextechPatch("ui.card-grid-preview", "牌组升级预览还原")]
+	private static class ShowUpgradesPatch
 	{
-		if (CardRowsField == null || PreviewFlagField == null || BaseCardField == null)
+		[HarmonyPrepare]
+		private static bool Prepare()
 		{
-			throw new MissingFieldException("NCardGrid/NGridCardHolder preview fields not found in this runtime.");
-		}
-
-		harmony.Patch(
-			RequireMethod(typeof(NCardGrid), "set_IsShowingUpgrades", BindingFlags.Instance | BindingFlags.Public, typeof(bool)),
-			postfix: new HarmonyMethod(typeof(HextechCardGridPreviewHooks), nameof(SetIsShowingUpgradesPostfix)));
-	}
-
-	private static void SetIsShowingUpgradesPostfix(NCardGrid __instance, bool value)
-	{
-		if (value || CardRowsField!.GetValue(__instance) is not IEnumerable rows)
-		{
-			return;
-		}
-
-		foreach (object? rowObj in rows)
-		{
-			if (rowObj is not IEnumerable row)
+			if (CardRowsField == null || PreviewFlagField == null || BaseCardField == null)
 			{
-				continue;
+				throw new MissingFieldException("NCardGrid/NGridCardHolder preview fields not found in this runtime.");
 			}
 
-			foreach (NGridCardHolder holder in row.OfType<NGridCardHolder>())
+			return true;
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(NCardGrid __instance, bool value)
+		{
+			if (value || CardRowsField!.GetValue(__instance) is not IEnumerable rows)
 			{
-				if (PreviewFlagField!.GetValue(holder) is not true
-					|| BaseCardField!.GetValue(holder) is not CardModel baseCard
-					|| holder.CardNode == null)
+				return;
+			}
+
+			foreach (object? rowObj in rows)
+			{
+				if (rowObj is not IEnumerable row)
 				{
 					continue;
 				}
 
-				holder.CardNode.Model = baseCard;
-				holder.CardNode.UpdateVisuals(holder.CardNode.DisplayingPile, CardPreviewMode.Normal);
-				PreviewFlagField.SetValue(holder, false);
+				foreach (NGridCardHolder holder in row.OfType<NGridCardHolder>())
+				{
+					if (PreviewFlagField!.GetValue(holder) is not true
+						|| BaseCardField!.GetValue(holder) is not CardModel baseCard
+						|| holder.CardNode == null)
+					{
+						continue;
+					}
+
+					holder.CardNode.Model = baseCard;
+					holder.CardNode.UpdateVisuals(holder.CardNode.DisplayingPile, CardPreviewMode.Normal);
+					PreviewFlagField.SetValue(holder, false);
+				}
 			}
 		}
 	}

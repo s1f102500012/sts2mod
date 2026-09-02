@@ -37,16 +37,11 @@ internal sealed class StokeRestSiteOption : RestSiteOption
 
 	public override IEnumerable<string> AssetPaths => [];
 
-#if STS2_104_OR_NEWER
 	public override bool IsEnabled => CanRemoveCard;
-#endif
 
 	public StokeRestSiteOption(Player owner)
 		: base(owner)
 	{
-#if !STS2_104_OR_NEWER
-		IsEnabled = CanRemoveCard;
-#endif
 	}
 
 	public override async Task<bool> OnSelect()

@@ -49,12 +49,6 @@ internal static partial class HextechUpdateChecker
 				return null;
 			}
 
-			if (HextechIntegrityCheck.IsOfficialServerResponse(endpoint, root))
-			{
-				HextechIntegrityCheck.LogOfficialServerConnection(endpoint, latestVersion);
-				HextechIntegrityCheck.VerifyOfficialBuild(root);
-			}
-
 			return BuildVersionResult(latestVersion);
 		}
 		catch (Exception ex)

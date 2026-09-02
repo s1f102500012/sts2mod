@@ -4,43 +4,7 @@ namespace HextechRunes;
 
 internal static partial class HextechCombatHooks
 {
-	private static void InstallShrinkPowerCompatibilityHooks(Harmony harmony)
-	{
-		harmony.Patch(
-			HextechPowerCmdCompat.RequireModifyAmountMethod(),
-			prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(ShrinkPowerModifyAmountPrefix)));
-	}
 
-	private static bool ShrinkPowerModifyAmountPrefix(
-#if STS2_104_OR_NEWER
-		PlayerChoiceContext choiceContext,
-#endif
-		PowerModel power,
-		decimal offset,
-		Creature? applier,
-		CardModel? cardSource,
-		bool silent,
-		ref Task<int> __result)
-	{
-		if (!ShouldReplaceTemporaryShrinkWithPermanent(power, offset, applier))
-		{
-			return true;
-		}
-
-		object? effectiveChoiceContext = null;
-#if STS2_104_OR_NEWER
-		effectiveChoiceContext = choiceContext;
-#endif
-
-		__result = ReplaceTemporaryShrinkWithPermanent(
-			effectiveChoiceContext,
-			power,
-			offset,
-			applier,
-			cardSource,
-			silent);
-		return false;
-	}
 
 	private static bool ShouldReplaceTemporaryShrinkWithPermanent(PowerModel power, decimal offset, Creature? applier)
 	{
@@ -70,5 +34,39 @@ internal static partial class HextechCombatHooks
 			cardSource,
 			silent);
 		return permanentShrink?.Amount ?? 0;
+	}
+
+	[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Commands.PowerCmd), nameof(MegaCrit.Sts2.Core.Commands.PowerCmd.ModifyAmount), typeof(PlayerChoiceContext), typeof(PowerModel), typeof(decimal), typeof(Creature), typeof(CardModel), typeof(bool))]
+	[HextechPatch("combat.shrink-power", "缩小能力兼容")]
+	private static class ModifyAmountPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(
+			PlayerChoiceContext choiceContext,
+			PowerModel power,
+			decimal offset,
+			Creature? applier,
+			CardModel? cardSource,
+			bool silent,
+			ref Task<int> __result)
+		{
+			if (!ShouldReplaceTemporaryShrinkWithPermanent(power, offset, applier))
+			{
+				return true;
+			}
+
+			object? effectiveChoiceContext = null;
+			effectiveChoiceContext = choiceContext;
+
+			__result = ReplaceTemporaryShrinkWithPermanent(
+				effectiveChoiceContext,
+				power,
+				offset,
+				applier,
+				cardSource,
+				silent);
+			return false;
+		}
 	}
 }

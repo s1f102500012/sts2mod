@@ -1,3 +1,5 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.CardSelection;
 using MegaCrit.Sts2.Core.Localization;
 
@@ -41,5 +43,23 @@ public sealed class SurvivorUpgradeRune : CardUpgradeRuneBase<Survivor>
 		await CardCmd.Discard(choiceContext, cards);
 		await CreatureCmd.GainBlock(card.Owner.Creature, card.DynamicVars.Block.BaseValue * cards.Count, card.DynamicVars.Block.Props, cardPlay);
 		card.Owner.GetRelic<SurvivorUpgradeRune>()?.Flash();
+	}
+
+	[HarmonyPatch(typeof(Survivor), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.survivor", "升级幸存者", Rune = typeof(SurvivorUpgradeRune))]
+	private static class SurvivorPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.Low)]
+		private static bool Prefix(Survivor __instance, PlayerChoiceContext choiceContext, CardPlay cardPlay, ref Task __result)
+		{
+			if (!SurvivorUpgradeRune.ShouldUseUpgradedPlay(__instance))
+			{
+				return true;
+			}
+
+			__result = SurvivorUpgradeRune.PlayUpgraded(choiceContext, __instance, cardPlay);
+			return false;
+		}
 	}
 }

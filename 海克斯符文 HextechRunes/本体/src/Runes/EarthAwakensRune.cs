@@ -33,11 +33,7 @@ public sealed class EarthAwakensRune : HextechRelicBase
 		return Task.CompletedTask;
 	}
 
-#if STS2_104_OR_NEWER
 	public override Task AfterPlayerTurnStartLate(PlayerChoiceContext choiceContext, Player player)
-#else
-	public override Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		if (player != Owner || Owner == null || Owner.Creature.IsDead || _initialPowerAppliedThisCombat)
 		{

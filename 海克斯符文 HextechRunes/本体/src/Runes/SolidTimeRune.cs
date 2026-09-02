@@ -24,11 +24,7 @@ public sealed partial class SolidTimeRune : HextechRelicBase
 		return Task.CompletedTask;
 	}
 
-#if STS2_104_OR_NEWER
 	public override Task AfterPlayerTurnStartLate(PlayerChoiceContext choiceContext, Player player)
-#else
-	public override Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		return TriggerStoredPowersAtCombatStart(choiceContext, player);
 	}

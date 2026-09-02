@@ -104,9 +104,7 @@ internal sealed class ColorDiscoveryCardReward : CardReward
 #else
 		CardCreationOptions options = new([canonicalCard], source, rarityOdds);
 #endif
-#if STS2_105_OR_NEWER
 		options.WithFlags(CardCreationFlags.IsCardReward);
-#endif
 		return options;
 	}
 

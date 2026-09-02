@@ -30,23 +30,6 @@ internal static partial class HextechUpdateChecker
 
 	private sealed record UpdateCheckResult(string Text, bool Cacheable);
 
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(NMainMenu), nameof(NMainMenu._Ready), BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechUpdateChecker), nameof(MainMenuReadyPostfix)));
-	}
-
-	private static void MainMenuReadyPostfix(NMainMenu __instance)
-	{
-		// 由「配置-杂项」里的本地开关控制是否在主页左下角显示版本更新说明(默认开)。
-		if (!HextechRelicVisibilityHooks.GetShowUpdateNotice())
-		{
-			return;
-		}
-
-		_ = ShowNoticeWhenStatusLayerReadyAsync(__instance);
-	}
 
 	/// <summary>
 	/// 配置菜单保存后即时同步主页版本更新说明的显隐:开则(重新)挂上,关则移除现有提示。
@@ -412,4 +395,21 @@ internal static partial class HextechUpdateChecker
 		}
 	}
 
+
+	[HarmonyPatch(typeof(NMainMenu), nameof(NMainMenu._Ready), new Type[0])]
+	[HextechPatch("service.update-checker", "更新检查")]
+	private static class MainMenuReadyPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(NMainMenu __instance)
+		{
+			// 由「配置-杂项」里的本地开关控制是否在主页左下角显示版本更新说明(默认开)。
+			if (!HextechRelicVisibilityHooks.GetShowUpdateNotice())
+			{
+				return;
+			}
+
+			_ = ShowNoticeWhenStatusLayerReadyAsync(__instance);
+		}
+	}
 }
