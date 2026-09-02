@@ -4,26 +4,6 @@ namespace HextechRunes;
 
 internal static partial class HextechPlayerRuneHooks
 {
-	private static void InstallDrawYourSwordHooks(Harmony harmony)
-	{
-		Assembly coreAssembly = typeof(OrbModel).Assembly;
-		HarmonyMethod prefix = new(typeof(HextechPlayerRuneHooks), nameof(OrbEvokePrefix))
-		{
-			priority = Priority.First
-		};
-
-		foreach (MethodInfo method in FindLoadedOrbEvokeMethods())
-		{
-			try
-			{
-				harmony.Patch(method, prefix: prefix);
-			}
-			catch (Exception ex) when (method.DeclaringType?.Assembly != coreAssembly)
-			{
-				Log.Warn($"[{ModInfo.Id}][Compat] Could not replace evoke for external Orb {method.DeclaringType?.FullName}: {ex.Message}");
-			}
-		}
-	}
 
 	internal static IReadOnlyList<MethodInfo> FindLoadedOrbEvokeMethods()
 	{
@@ -73,7 +53,7 @@ internal static partial class HextechPlayerRuneHooks
 			.ToArray();
 	}
 
-	private static bool CanContainOrbModels(Assembly assembly, Assembly coreAssembly, string? coreAssemblyName)
+	internal static bool CanContainOrbModels(Assembly assembly, Assembly coreAssembly, string? coreAssemblyName)
 	{
 		if (assembly == coreAssembly)
 		{
@@ -91,7 +71,7 @@ internal static partial class HextechPlayerRuneHooks
 		}
 	}
 
-	private static IEnumerable<Type> GetLoadableTypes(Assembly assembly, Assembly coreAssembly)
+	internal static IEnumerable<Type> GetLoadableTypes(Assembly assembly, Assembly coreAssembly)
 	{
 		try
 		{
@@ -108,7 +88,7 @@ internal static partial class HextechPlayerRuneHooks
 		}
 	}
 
-	private static bool OrbEvokePrefix(OrbModel __instance, ref Task<IEnumerable<Creature>> __result)
+	internal static bool OrbEvokePrefix(OrbModel __instance, ref Task<IEnumerable<Creature>> __result)
 	{
 		DrawYourSwordRune? rune = __instance.Owner?.GetRelic<DrawYourSwordRune>();
 		if (rune == null || !rune.ShouldReplaceOrbEvoke(__instance))
@@ -119,4 +99,5 @@ internal static partial class HextechPlayerRuneHooks
 		__result = rune.ReplaceOrbEvoke();
 		return false;
 	}
+
 }

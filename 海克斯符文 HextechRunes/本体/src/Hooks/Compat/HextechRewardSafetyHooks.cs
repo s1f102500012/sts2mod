@@ -14,59 +14,6 @@ internal static class HextechRewardSafetyHooks
 	private const string PaelsWingSacrificeAlternativeId = "SACRIFICE";
 	private static readonly ConditionalWeakTable<CardReward, CardRewardCompatibilityState> CardRewardStates = new();
 
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(CardRewardAlternative), nameof(CardRewardAlternative.Generate), BindingFlags.Public | BindingFlags.Static, typeof(CardReward)),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(CardRewardAlternativeGeneratePrefix)));
-		harmony.Patch(
-			RequireMethod(typeof(Reward), nameof(Reward.FromSerializable), BindingFlags.Public | BindingFlags.Static, typeof(SerializableReward), typeof(Player)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RewardFromSerializablePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(Reward), nameof(Reward.SelectUnsynchronized), BindingFlags.Instance | BindingFlags.Public),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RewardSelectUnsynchronizedPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RewardSelectUnsynchronizedPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(EventOption), nameof(EventOption.Chosen), BindingFlags.Instance | BindingFlags.Public),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(EventOptionChosenPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(EventOptionChosenPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(DustyTome), nameof(DustyTome.AfterObtained), BindingFlags.Instance | BindingFlags.Public),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(DustyTomeAfterObtainedPrefix)));
-		harmony.Patch(
-			RequireMethod(typeof(CardReward), "OnSelect", BindingFlags.Instance | BindingFlags.NonPublic),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(CardRewardOnSelectPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(CardRewardOnSelectPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(SpecialCardReward), "OnSelect", BindingFlags.Instance | BindingFlags.NonPublic),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(SpecialCardRewardOnSelectPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(SpecialCardRewardOnSelectPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(RelicReward), "OnSelect", BindingFlags.Instance | BindingFlags.NonPublic),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RelicRewardOnSelectPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RelicRewardOnSelectPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(CardPileCmd), nameof(CardPileCmd.Add), BindingFlags.Public | BindingFlags.Static, typeof(CardModel), typeof(PileType), typeof(CardPilePosition), typeof(AbstractModel), typeof(bool)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(CardPileAddPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(RelicCmd), nameof(RelicCmd.Obtain), BindingFlags.Public | BindingFlags.Static, typeof(RelicModel), typeof(Player), typeof(int)),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RelicCmdObtainPrefix)) { priority = Priority.High },
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(RelicCmdObtainPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(PotionCmd), nameof(PotionCmd.TryToProcure), BindingFlags.Public | BindingFlags.Static, typeof(PotionModel), typeof(Player), typeof(int)),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(PotionCmdTryToProcurePrefix)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(PotionCmdTryToProcurePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(PlayerCmd), nameof(PlayerCmd.GainGold), BindingFlags.Public | BindingFlags.Static, typeof(decimal), typeof(Player), typeof(bool)),
-			prefix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(PlayerCmdGainGoldPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechRewardSafetyHooks), nameof(PlayerCmdGainGoldPostfix)));
-	}
-
-	private static bool CardRewardAlternativeGeneratePrefix(CardReward cardReward, ref IReadOnlyList<CardRewardAlternative> __result)
-	{
-		__result = GenerateCardRewardAlternativesWithoutVanillaLimit(cardReward);
-		return false;
-	}
 
 	private static IReadOnlyList<CardRewardAlternative> GenerateCardRewardAlternativesWithoutVanillaLimit(CardReward cardReward)
 	{
@@ -205,114 +152,10 @@ internal static class HextechRewardSafetyHooks
 		public int? RemainingDriftwoodRerolls { get; set; }
 	}
 
-	private static void RewardSelectUnsynchronizedPrefix(out object? __state)
-	{
-		__state = DoubleVisionRune.BeginRewardCommandSuppression();
-	}
-
-	private static void RewardSelectUnsynchronizedPostfix(object? __state)
-	{
-		DoubleVisionRune.CompleteRewardCommandSuppression(__state);
-	}
-
-	private static void EventOptionChosenPrefix(EventOption __instance, out object? __state)
-	{
-		__state = DoubleVisionRune.BeginEventOptionRelicTransaction(__instance);
-	}
-
-	private static void EventOptionChosenPostfix(object? __state, ref Task __result)
-	{
-		__result = DoubleVisionRune.CompleteEventOptionRelicTransactionAsync(__result, __state);
-	}
-
-	internal static bool DustyTomeAfterObtainedPrefix(DustyTome __instance, ref Task __result)
-	{
-		if (!DoubleVisionRune.ShouldSuppressDustyTomeAfterObtained(__instance))
-		{
-			return true;
-		}
-
-		__result = Task.CompletedTask;
-		return false;
-	}
 
 	// 承载 OnSelect 前后所需状态:DoubleVision 的追踪 scope + 进入 OnSelect 前的卡数(供禁忌魔典判别是否真选走了卡)。
 	private sealed record CardRewardOnSelectState(object? DoubleVisionScope, int CardCountBeforeSelect);
 
-	private static void CardRewardOnSelectPrefix(CardReward __instance, out object? __state)
-	{
-		__state = new CardRewardOnSelectState(
-			DoubleVisionRune.BeginCardRewardTracking(__instance.Player),
-			__instance.Cards.Count());
-	}
-
-	private static void CardRewardOnSelectPostfix(CardReward __instance, object? __state, ref Task<bool> __result)
-	{
-		CardRewardOnSelectState? state = __state as CardRewardOnSelectState;
-		Task<bool> result = __result;
-		if (ShouldApplyForbiddenGrimoire(__instance))
-		{
-			int cardCountBeforeSelect = state?.CardCountBeforeSelect ?? __instance.Cards.Count();
-			result = CompleteForbiddenGrimoireCardRewardAsync(__instance, result, cardCountBeforeSelect);
-		}
-
-		__result = DoubleVisionRune.CompleteCardRewardAsync(result, state?.DoubleVisionScope);
-	}
-
-	private static void SpecialCardRewardOnSelectPrefix(SpecialCardReward __instance, out object? __state)
-	{
-		__state = DoubleVisionRune.BeginCardRewardTracking(__instance.Player);
-	}
-
-	private static void SpecialCardRewardOnSelectPostfix(object? __state, ref Task<bool> __result)
-	{
-		__result = DoubleVisionRune.CompleteCardRewardAsync(__result, __state);
-	}
-
-	private static void RelicRewardOnSelectPrefix(RelicReward __instance, out object? __state)
-	{
-		__state = DoubleVisionRune.CaptureRewardDuplicationState(__instance.Player);
-	}
-
-	private static void RelicRewardOnSelectPostfix(RelicReward __instance, object? __state, ref Task<bool> __result)
-	{
-		__result = DoubleVisionRune.CompleteRelicRewardAsync(__instance, __result, __state);
-	}
-
-	private static void CardPileAddPostfix(CardModel card, PileType newPileType, AbstractModel? clonedBy, ref Task<CardPileAddResult> __result)
-	{
-		DoubleVisionRune.TrackCardPileAdd(card, newPileType, clonedBy, ref __result);
-	}
-
-	private static void RelicCmdObtainPrefix(RelicModel relic, Player player, out object? __state)
-	{
-		__state = DoubleVisionRune.BeginDirectRelicReward(relic, player);
-	}
-
-	private static void RelicCmdObtainPostfix(object? __state, ref Task<RelicModel> __result)
-	{
-		__result = DoubleVisionRune.CompleteDirectRelicRewardAsync(__result, __state);
-	}
-
-	private static void PotionCmdTryToProcurePrefix(Player player, out object? __state)
-	{
-		__state = DoubleVisionRune.BeginDirectPotionReward(player);
-	}
-
-	private static void PotionCmdTryToProcurePostfix(object? __state, ref Task<PotionProcureResult> __result)
-	{
-		__result = DoubleVisionRune.CompleteDirectPotionRewardAsync(__result, __state);
-	}
-
-	private static void PlayerCmdGainGoldPrefix(decimal amount, Player player, bool wasStolenBack, out object? __state)
-	{
-		__state = DoubleVisionRune.BeginDirectGoldReward(player, amount, wasStolenBack);
-	}
-
-	private static void PlayerCmdGainGoldPostfix(object? __state, ref Task __result)
-	{
-		__result = DoubleVisionRune.CompleteDirectGoldRewardAsync(__result, __state);
-	}
 
 	private static async Task<bool> CompleteForbiddenGrimoireCardRewardAsync(CardReward reward, Task<bool> originalTask, int cardCountBeforeSelect)
 	{
@@ -363,48 +206,6 @@ internal static class HextechRewardSafetyHooks
 			&& modifier.HasActiveMonsterHex(MonsterHexKind.ForbiddenGrimoire);
 	}
 
-	private static void RewardFromSerializablePostfix(SerializableReward save, Player player, ref Reward __result)
-	{
-		if (save.RewardType == RewardType.Gold && save.GoldAmount < 0 && __result is GoldReward)
-		{
-			__result = new GoldReward(0, player, save.WasGoldStolenBack);
-			Log.Warn($"[{ModInfo.Id}][Rewards] Repaired serialized gold reward with negative amount {save.GoldAmount}; defaulting to 0 gold.");
-			return;
-		}
-
-		if (save.RewardType == RewardType.Relic
-			&& save.WasGoldStolenBack
-			&& save.PredeterminedModelId != ModelId.none)
-		{
-			RelicModel relic = ModelDb.GetById<RelicModel>(save.PredeterminedModelId).ToMutable();
-			__result = new HextechWaxRelicReward(relic, player);
-			return;
-		}
-
-		if (save.RewardType == RewardType.Card
-			&& save.CustomDescriptionEncounterSourceId == ModelDb.GetId<ColorDiscoveryRune>()
-			&& save.PredeterminedModelId != ModelId.none)
-		{
-			__result = ColorDiscoveryCardReward.FromSavedReward(save, player);
-			return;
-		}
-
-		if (save.RewardType == RewardType.SpecialCard
-			&& save.PredeterminedModelId == ModelDb.GetId<ColorDiscoveryRune>()
-			&& save.SpecialCard != null
-			&& ColorDiscoveryCardReward.TryFromSavedSpecialCardReward(
-				save,
-				__result,
-				player,
-				out ColorDiscoveryCardReward? restoredColorDiscoveryReward)
-			&& restoredColorDiscoveryReward != null)
-		{
-			__result = restoredColorDiscoveryReward;
-			return;
-		}
-
-		TryRestoreForgeChoiceReward(save, player, ref __result);
-	}
 
 	internal static bool TryRestoreForgeChoiceReward(SerializableReward save, Player player, ref Reward result)
 	{
@@ -420,5 +221,241 @@ internal static class HextechRewardSafetyHooks
 
 		result = restored;
 		return true;
+	}
+
+	[HarmonyPatch(typeof(CardRewardAlternative), nameof(CardRewardAlternative.Generate), typeof(CardReward))]
+	[HextechPatch("reward.card-alternatives", "卡牌奖励备选项")]
+	private static class CardRewardAlternativesPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(CardReward cardReward, ref IReadOnlyList<CardRewardAlternative> __result)
+		{
+			__result = GenerateCardRewardAlternativesWithoutVanillaLimit(cardReward);
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(Reward), nameof(Reward.FromSerializable), typeof(SerializableReward), typeof(Player))]
+	[HextechPatch("reward.from-serializable", "奖励序列化恢复")]
+	private static class RewardFromSerializablePatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(SerializableReward save, Player player, ref Reward __result)
+		{
+			if (save.RewardType == RewardType.Gold && save.GoldAmount < 0 && __result is GoldReward)
+			{
+				__result = new GoldReward(0, player, save.WasGoldStolenBack);
+				Log.Warn($"[{ModInfo.Id}][Rewards] Repaired serialized gold reward with negative amount {save.GoldAmount}; defaulting to 0 gold.");
+				return;
+			}
+
+			if (save.RewardType == RewardType.Relic
+				&& save.WasGoldStolenBack
+				&& save.PredeterminedModelId != ModelId.none)
+			{
+				RelicModel relic = ModelDb.GetById<RelicModel>(save.PredeterminedModelId).ToMutable();
+				__result = new HextechWaxRelicReward(relic, player);
+				return;
+			}
+
+			if (save.RewardType == RewardType.Card
+				&& save.CustomDescriptionEncounterSourceId == ModelDb.GetId<ColorDiscoveryRune>()
+				&& save.PredeterminedModelId != ModelId.none)
+			{
+				__result = ColorDiscoveryCardReward.FromSavedReward(save, player);
+				return;
+			}
+
+			if (save.RewardType == RewardType.SpecialCard
+				&& save.PredeterminedModelId == ModelDb.GetId<ColorDiscoveryRune>()
+				&& save.SpecialCard != null
+				&& ColorDiscoveryCardReward.TryFromSavedSpecialCardReward(
+					save,
+					__result,
+					player,
+					out ColorDiscoveryCardReward? restoredColorDiscoveryReward)
+				&& restoredColorDiscoveryReward != null)
+			{
+				__result = restoredColorDiscoveryReward;
+				return;
+			}
+
+			TryRestoreForgeChoiceReward(save, player, ref __result);
+		}
+	}
+
+	[HarmonyPatch(typeof(Reward), nameof(Reward.SelectUnsynchronized), new Type[0])]
+	[HextechPatch("reward.select-unsynchronized", "复视奖励事务")]
+	private static class RewardSelectUnsynchronizedPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(out object? __state)
+		{
+			__state = DoubleVisionRune.BeginRewardCommandSuppression();
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(object? __state)
+		{
+			DoubleVisionRune.CompleteRewardCommandSuppression(__state);
+		}
+	}
+
+	[HarmonyPatch(typeof(EventOption), nameof(EventOption.Chosen), new Type[0])]
+	[HextechPatch("reward.event-option", "复视奖励事务")]
+	private static class EventOptionChosenPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(EventOption __instance, out object? __state)
+		{
+			__state = DoubleVisionRune.BeginEventOptionRelicTransaction(__instance);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(object? __state, ref Task __result)
+		{
+			__result = DoubleVisionRune.CompleteEventOptionRelicTransactionAsync(__result, __state);
+		}
+	}
+
+	[HarmonyPatch(typeof(DustyTome), nameof(DustyTome.AfterObtained), new Type[0])]
+	[HextechPatch("reward.dusty-tome", "复视奖励事务")]
+	internal static class DustyTomePatch
+	{
+		[HarmonyPrefix]
+		internal static bool Prefix(DustyTome __instance, ref Task __result)
+		{
+			if (!DoubleVisionRune.ShouldSuppressDustyTomeAfterObtained(__instance))
+			{
+				return true;
+			}
+
+			__result = Task.CompletedTask;
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(CardReward), "OnSelect")]
+	[HextechPatch("reward.card-select", "复视奖励事务")]
+	private static class CardRewardSelectPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(CardReward __instance, out object? __state)
+		{
+			__state = new CardRewardOnSelectState(
+				DoubleVisionRune.BeginCardRewardTracking(__instance.Player),
+				__instance.Cards.Count());
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(CardReward __instance, object? __state, ref Task<bool> __result)
+		{
+			CardRewardOnSelectState? state = __state as CardRewardOnSelectState;
+			Task<bool> result = __result;
+			if (ShouldApplyForbiddenGrimoire(__instance))
+			{
+				int cardCountBeforeSelect = state?.CardCountBeforeSelect ?? __instance.Cards.Count();
+				result = CompleteForbiddenGrimoireCardRewardAsync(__instance, result, cardCountBeforeSelect);
+			}
+
+			__result = DoubleVisionRune.CompleteCardRewardAsync(result, state?.DoubleVisionScope);
+		}
+	}
+
+	[HarmonyPatch(typeof(SpecialCardReward), "OnSelect")]
+	[HextechPatch("reward.special-card-select", "复视奖励事务")]
+	private static class SpecialCardRewardSelectPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(SpecialCardReward __instance, out object? __state)
+		{
+			__state = DoubleVisionRune.BeginCardRewardTracking(__instance.Player);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(object? __state, ref Task<bool> __result)
+		{
+			__result = DoubleVisionRune.CompleteCardRewardAsync(__result, __state);
+		}
+	}
+
+	[HarmonyPatch(typeof(RelicReward), "OnSelect")]
+	[HextechPatch("reward.relic-select", "复视奖励事务")]
+	private static class RelicRewardSelectPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(RelicReward __instance, out object? __state)
+		{
+			__state = DoubleVisionRune.CaptureRewardDuplicationState(__instance.Player);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(RelicReward __instance, object? __state, ref Task<bool> __result)
+		{
+			__result = DoubleVisionRune.CompleteRelicRewardAsync(__instance, __result, __state);
+		}
+	}
+
+	[HarmonyPatch(typeof(CardPileCmd), nameof(CardPileCmd.Add), typeof(CardModel), typeof(PileType), typeof(CardPilePosition), typeof(AbstractModel), typeof(bool))]
+	[HextechPatch("reward.card-pile-add", "复视奖励事务")]
+	private static class CardPileAddPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(CardModel card, PileType newPileType, AbstractModel? clonedBy, ref Task<CardPileAddResult> __result)
+		{
+			DoubleVisionRune.TrackCardPileAdd(card, newPileType, clonedBy, ref __result);
+		}
+	}
+
+	[HarmonyPatch(typeof(RelicCmd), nameof(RelicCmd.Obtain), typeof(RelicModel), typeof(Player), typeof(int))]
+	[HextechPatch("reward.relic-obtain", "复视奖励事务")]
+	private static class RelicObtainPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.High)]
+		private static void Prefix(RelicModel relic, Player player, out object? __state)
+		{
+			__state = DoubleVisionRune.BeginDirectRelicReward(relic, player);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(object? __state, ref Task<RelicModel> __result)
+		{
+			__result = DoubleVisionRune.CompleteDirectRelicRewardAsync(__result, __state);
+		}
+	}
+
+	[HarmonyPatch(typeof(PotionCmd), nameof(PotionCmd.TryToProcure), typeof(PotionModel), typeof(Player), typeof(int))]
+	[HextechPatch("reward.potion-procure", "复视奖励事务")]
+	private static class PotionProcurePatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(Player player, out object? __state)
+		{
+			__state = DoubleVisionRune.BeginDirectPotionReward(player);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(object? __state, ref Task<PotionProcureResult> __result)
+		{
+			__result = DoubleVisionRune.CompleteDirectPotionRewardAsync(__result, __state);
+		}
+	}
+
+	[HarmonyPatch(typeof(PlayerCmd), nameof(PlayerCmd.GainGold), typeof(decimal), typeof(Player), typeof(bool))]
+	[HextechPatch("reward.gain-gold", "复视奖励事务")]
+	private static class GainGoldPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(decimal amount, Player player, bool wasStolenBack, out object? __state)
+		{
+			__state = DoubleVisionRune.BeginDirectGoldReward(player, amount, wasStolenBack);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(object? __state, ref Task __result)
+		{
+			__result = DoubleVisionRune.CompleteDirectGoldRewardAsync(__result, __state);
+		}
 	}
 }

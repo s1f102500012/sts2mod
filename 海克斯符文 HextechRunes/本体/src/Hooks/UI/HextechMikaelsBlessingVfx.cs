@@ -243,7 +243,7 @@ internal static class HextechMikaelsBlessingVfx
 
 	private static Texture2D? LoadTextureOrWarn(string path)
 	{
-		Texture2D? texture = HextechAssetHooks.LoadUiTexture(path);
+		Texture2D? texture = HextechTextures.LoadUiTexture(path);
 		if (texture == null && LoggedMissingTexturePaths.Add(path))
 		{
 			Log.Warn($"[{ModInfo.Id}][MikaelsBlessingVfx] Texture not found: {path}");

@@ -23,66 +23,29 @@ internal static partial class HextechCombatHooks
 		TryGetField(typeof(MonsterModel), "_isPerformingMove");
 	private static readonly FieldInfo? KnowledgeDemonCurseCounterField =
 		TryGetField(typeof(KnowledgeDemon), "_curseOfKnowledgeCounter");
+	private static bool? _jeweledGauntletHooksAvailable;
 
-	private static void InstallJeweledGauntletHooks(Harmony harmony)
+	/// <summary>珠光护手依赖三个原版私有字段的类型契约;任一变化就整体停用并只告警一次。</summary>
+	private static bool JeweledGauntletHooksAvailable
 	{
-		if (!HasJeweledGauntletPrivateFieldContracts(
-			MoveStateIntentsField,
-			MonsterIsPerformingMoveField,
-			KnowledgeDemonCurseCounterField))
+		get
 		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] 珠光护手 hook 已禁用:所需私有字段缺失或签名变化。");
-			return;
-		}
-
-		try
-		{
-			harmony.Patch(
-				RequireMethod(typeof(MonsterModel), nameof(MonsterModel.PerformMove), BindingFlags.Instance | BindingFlags.Public),
-				prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(JeweledGauntletPerformMovePrefix)),
-				postfix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(JeweledGauntletPerformMovePostfix)));
-
-			harmony.Patch(
-				RequireMethod(
-					typeof(NCreature),
-					nameof(NCreature.UpdateIntent),
-					BindingFlags.Instance | BindingFlags.Public,
-					typeof(IEnumerable<Creature>)),
-				prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(JeweledGauntletUpdateIntentPrefix)),
-				postfix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(JeweledGauntletUpdateIntentPostfix)),
-				finalizer: new HarmonyMethod(typeof(HextechCombatHooks), nameof(JeweledGauntletUpdateIntentFinalizer)));
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] 珠光护手 hook 安装失败,行动重复或双重意图可能不会生效: {ex.GetType().Name}: {ex.Message}");
-		}
-	}
-
-	private static void JeweledGauntletPerformMovePrefix(
-		MonsterModel __instance,
-		out JeweledGauntletMoveRepeatState? __state)
-	{
-		__state = null;
-		try
-		{
-			if (ShouldRepeatJeweledGauntletMove(__instance, out MoveState? move) && move != null)
+			if (_jeweledGauntletHooksAvailable is bool cached)
 			{
-				__state = new JeweledGauntletMoveRepeatState(__instance, move);
+				return cached;
 			}
-		}
-		catch (Exception ex)
-		{
-			LogJeweledGauntletFailure(nameof(JeweledGauntletPerformMovePrefix), ex);
-		}
-	}
 
-	private static void JeweledGauntletPerformMovePostfix(
-		ref Task __result,
-		JeweledGauntletMoveRepeatState? __state)
-	{
-		if (__state != null)
-		{
-			__result = RepeatJeweledGauntletMoveAfterOriginal(__result, __state);
+			bool available = HasJeweledGauntletPrivateFieldContracts(
+				MoveStateIntentsField,
+				MonsterIsPerformingMoveField,
+				KnowledgeDemonCurseCounterField);
+			if (!available)
+			{
+				Log.Warn($"[{ModInfo.Id}][Mayhem] 珠光护手 hook 已禁用:所需私有字段缺失或签名变化。");
+			}
+
+			_jeweledGauntletHooksAvailable = available;
+			return available;
 		}
 	}
 
@@ -140,44 +103,6 @@ internal static partial class HextechCombatHooks
 		return ReferenceEquals(monster.NextMove, capturedMove);
 	}
 
-	private static void JeweledGauntletUpdateIntentPrefix(
-		NCreature __instance,
-		out JeweledGauntletIntentPatchState? __state)
-	{
-		__state = null;
-		try
-		{
-			MonsterModel? monster = __instance.Entity?.Monster;
-			if (monster == null
-				|| !ShouldRepeatJeweledGauntletMove(monster, out MoveState? move)
-				|| move == null)
-			{
-				return;
-			}
-
-			IReadOnlyList<AbstractIntent> originalIntents = move.Intents;
-			IReadOnlyList<AbstractIntent> displayedIntents = DuplicateJeweledGauntletIntentGroup(originalIntents);
-			MoveStateIntentsField!.SetValue(move, displayedIntents);
-			__state = new JeweledGauntletIntentPatchState(move, originalIntents, displayedIntents);
-		}
-		catch (Exception ex)
-		{
-			LogJeweledGauntletFailure(nameof(JeweledGauntletUpdateIntentPrefix), ex);
-		}
-	}
-
-	private static void JeweledGauntletUpdateIntentPostfix(JeweledGauntletIntentPatchState? __state)
-	{
-		RestoreJeweledGauntletIntents(__state);
-	}
-
-	private static Exception? JeweledGauntletUpdateIntentFinalizer(
-		Exception? __exception,
-		JeweledGauntletIntentPatchState? __state)
-	{
-		RestoreJeweledGauntletIntents(__state);
-		return __exception;
-	}
 
 	private static void RestoreJeweledGauntletIntents(JeweledGauntletIntentPatchState? state)
 	{
@@ -343,4 +268,92 @@ internal static partial class HextechCombatHooks
 		MoveState Move,
 		IReadOnlyList<AbstractIntent> OriginalIntents,
 		IReadOnlyList<AbstractIntent> DisplayedIntents);
+
+	[HarmonyPatch(typeof(MonsterModel), nameof(MonsterModel.PerformMove), new Type[0])]
+	[HextechPatch("combat.jeweled-gauntlet.perform-move", "珠光护手")]
+	private static class JeweledGauntletPerformMovePatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => JeweledGauntletHooksAvailable;
+
+		[HarmonyPrefix]
+		private static void Prefix(
+			MonsterModel __instance,
+			out JeweledGauntletMoveRepeatState? __state)
+		{
+			__state = null;
+			try
+			{
+				if (ShouldRepeatJeweledGauntletMove(__instance, out MoveState? move) && move != null)
+				{
+					__state = new JeweledGauntletMoveRepeatState(__instance, move);
+				}
+			}
+			catch (Exception ex)
+			{
+				LogJeweledGauntletFailure("JeweledGauntletPerformMovePatch.Prefix", ex);
+			}
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(
+			ref Task __result,
+			JeweledGauntletMoveRepeatState? __state)
+		{
+			if (__state != null)
+			{
+				__result = RepeatJeweledGauntletMoveAfterOriginal(__result, __state);
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(NCreature), nameof(NCreature.UpdateIntent), typeof(IEnumerable<Creature>))]
+	[HextechPatch("combat.jeweled-gauntlet.update-intent", "珠光护手")]
+	private static class JeweledGauntletUpdateIntentPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => JeweledGauntletHooksAvailable;
+
+		[HarmonyPrefix]
+		private static void Prefix(
+			NCreature __instance,
+			out JeweledGauntletIntentPatchState? __state)
+		{
+			__state = null;
+			try
+			{
+				MonsterModel? monster = __instance.Entity?.Monster;
+				if (monster == null
+					|| !ShouldRepeatJeweledGauntletMove(monster, out MoveState? move)
+					|| move == null)
+				{
+					return;
+				}
+
+				IReadOnlyList<AbstractIntent> originalIntents = move.Intents;
+				IReadOnlyList<AbstractIntent> displayedIntents = DuplicateJeweledGauntletIntentGroup(originalIntents);
+				MoveStateIntentsField!.SetValue(move, displayedIntents);
+				__state = new JeweledGauntletIntentPatchState(move, originalIntents, displayedIntents);
+			}
+			catch (Exception ex)
+			{
+				LogJeweledGauntletFailure("JeweledGauntletUpdateIntentPatch.Prefix", ex);
+			}
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(JeweledGauntletIntentPatchState? __state)
+		{
+			RestoreJeweledGauntletIntents(__state);
+		}
+
+		[HarmonyFinalizer]
+		private static Exception? Finalizer(
+			Exception? __exception,
+			JeweledGauntletIntentPatchState? __state)
+		{
+			RestoreJeweledGauntletIntents(__state);
+			return __exception;
+		}
+	}
 }

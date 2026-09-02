@@ -25,11 +25,7 @@ public abstract class AutoPlayFormsAtCombatStartRuneBase<TCard> : CardUpgradeRun
 		return Task.CompletedTask;
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPlayerTurnStartLate(PlayerChoiceContext choiceContext, Player player)
-#else
-	public override async Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		if (_startedThisCombat
 			|| _autoPlaying

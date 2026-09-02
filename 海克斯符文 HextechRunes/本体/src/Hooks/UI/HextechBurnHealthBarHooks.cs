@@ -37,8 +37,14 @@ internal static class HextechBurnHealthBarHooks
 	private static PropertyInfo _maxFgWidthProp = null!;
 	private static MethodInfo _getFgWidthMethod = null!;
 
-	public static void Install(Harmony harmony)
+	/// <summary>解析血条私有成员;任一缺失即抛出,两个补丁类随之停用。</summary>
+	private static void EnsureMembers()
 	{
+		if (_getFgWidthMethod != null)
+		{
+			return;
+		}
+
 		_creatureField = RequireField("_creature");
 		_hpForegroundField = RequireField("_hpForeground");
 		_poisonForegroundField = RequireField("_poisonForeground");
@@ -48,14 +54,6 @@ internal static class HextechBurnHealthBarHooks
 			?? throw new MissingMemberException(nameof(NHealthBar), "MaxFgWidth");
 		_getFgWidthMethod = typeof(NHealthBar).GetMethod("GetFgWidth", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public, null, new[] { typeof(int) }, null)
 			?? throw new MissingMethodException(nameof(NHealthBar), "GetFgWidth");
-
-		MethodInfo foregroundTarget = typeof(NHealthBar).GetMethod("RefreshForeground", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-			?? throw new MissingMethodException(nameof(NHealthBar), "RefreshForeground");
-		harmony.Patch(foregroundTarget, prefix: new HarmonyMethod(typeof(HextechBurnHealthBarHooks), nameof(RefreshForegroundPrefix)));
-
-		MethodInfo textTarget = typeof(NHealthBar).GetMethod("RefreshText", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public)
-			?? throw new MissingMethodException(nameof(NHealthBar), "RefreshText");
-		harmony.Patch(textTarget, postfix: new HarmonyMethod(typeof(HextechBurnHealthBarHooks), nameof(RefreshTextPostfix)));
 	}
 
 	private static FieldInfo RequireField(string name)
@@ -68,86 +66,11 @@ internal static class HextechBurnHealthBarHooks
 	/// 整段替换 <c>RefreshForeground</c>。任意环节异常时返回 true 让原版方法照常执行，
 	/// 保证最坏情况只是不显示烧条、绝不破坏血条。
 	/// </summary>
-	private static bool RefreshForegroundPrefix(NHealthBar __instance)
-	{
-		try
-		{
-			return !TryRenderForeground(__instance);
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Burn health bar render failed; falling back to vanilla: {ex.GetType().Name}: {ex.Message}");
-			return true;
-		}
-	}
 
 	/// <summary>
 	/// 在原版给血条数字上色之后，仅当「灼烧」参与斩杀时覆盖字色，做出和毒(绿)/灾厄(紫)并列的斩杀提示。
 	/// 灼烧不影响结果时完全不动 vanilla 着色（含格挡色、无敌色）。
 	/// </summary>
-	private static void RefreshTextPostfix(NHealthBar __instance)
-	{
-		try
-		{
-			if (_creatureField.GetValue(__instance) is not Creature creature)
-			{
-				return;
-			}
-
-			int currentHp = creature.CurrentHp;
-			if (currentHp <= 0 || !creature.HpDisplay.ShowsNumbers() || creature.HpDisplay.IsInfinite())
-			{
-				return;
-			}
-
-			int burn = PredictBurnDamage(creature, currentHp);
-			if (burn <= 0)
-			{
-				// 没有灼烧：毒/灾厄/默认的着色完全交给 vanilla。
-				return;
-			}
-
-			int poison = creature.GetPower<PoisonPower>()?.CalculateTotalDamageNextTurn() ?? 0;
-			if (poison >= currentHp)
-			{
-				// 毒单独已致死：保留 vanilla 的绿色斩杀。
-				return;
-			}
-
-			int totalDot = poison + burn;
-			Color fontColor;
-			Color outlineColor;
-			if (totalDot >= currentHp)
-			{
-				// 毒+烧合计致死：灼烧斩杀色（琥珀黄）。
-				fontColor = BurnLethalFontColor;
-				outlineColor = BurnLethalOutlineColor;
-			}
-			else
-			{
-				int doom = creature.GetPowerAmount<DoomPower>();
-				bool doomLethalWithBurn = creature.HasPower<DoomPower>() && doom > 0 && doom >= currentHp - totalDot;
-				bool doomLethalVanilla = doom >= currentHp - poison;
-				if (!doomLethalWithBurn || doomLethalVanilla)
-				{
-					// 灼烧没有改变斩杀判定：维持 vanilla 着色。
-					return;
-				}
-
-				// 灼烧把「灾厄」推成致死：补上灾厄斩杀色（紫）。
-				fontColor = DoomLethalFontColor;
-				outlineColor = DoomLethalOutlineColor;
-			}
-
-			Control hpLabel = (Control)_hpLabelField.GetValue(__instance)!;
-			hpLabel.AddThemeColorOverride(FontColorOverride, fontColor);
-			hpLabel.AddThemeColorOverride(FontOutlineColorOverride, outlineColor);
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Burn health bar text recolor failed; leaving vanilla color: {ex.GetType().Name}: {ex.Message}");
-		}
-	}
 
 	private static bool TryRenderForeground(NHealthBar instance)
 	{
@@ -372,5 +295,108 @@ internal static class HextechBurnHealthBarHooks
 	private static float FgWidth(NHealthBar instance, int amount)
 	{
 		return (float)_getFgWidthMethod.Invoke(instance, new object[] { amount })!;
+	}
+
+	[HarmonyPatch(typeof(NHealthBar), "RefreshForeground")]
+	[HextechPatch("ui.burn-health-bar.foreground", "灼烧血条预测")]
+	private static class RefreshForegroundPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare()
+		{
+			EnsureMembers();
+			return true;
+		}
+
+		[HarmonyPrefix]
+		private static bool Prefix(NHealthBar __instance)
+		{
+			try
+			{
+				return !TryRenderForeground(__instance);
+			}
+			catch (Exception ex)
+			{
+				Log.Warn($"[{ModInfo.Id}][Mayhem] Burn health bar render failed; falling back to vanilla: {ex.GetType().Name}: {ex.Message}");
+				return true;
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(NHealthBar), "RefreshText")]
+	[HextechPatch("ui.burn-health-bar.text", "灼烧血条预测")]
+	private static class RefreshTextPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare()
+		{
+			EnsureMembers();
+			return true;
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(NHealthBar __instance)
+		{
+			try
+			{
+				if (_creatureField.GetValue(__instance) is not Creature creature)
+				{
+					return;
+				}
+
+				int currentHp = creature.CurrentHp;
+				if (currentHp <= 0 || !creature.HpDisplay.ShowsNumbers() || creature.HpDisplay.IsInfinite())
+				{
+					return;
+				}
+
+				int burn = PredictBurnDamage(creature, currentHp);
+				if (burn <= 0)
+				{
+					// 没有灼烧：毒/灾厄/默认的着色完全交给 vanilla。
+					return;
+				}
+
+				int poison = creature.GetPower<PoisonPower>()?.CalculateTotalDamageNextTurn() ?? 0;
+				if (poison >= currentHp)
+				{
+					// 毒单独已致死：保留 vanilla 的绿色斩杀。
+					return;
+				}
+
+				int totalDot = poison + burn;
+				Color fontColor;
+				Color outlineColor;
+				if (totalDot >= currentHp)
+				{
+					// 毒+烧合计致死：灼烧斩杀色（琥珀黄）。
+					fontColor = BurnLethalFontColor;
+					outlineColor = BurnLethalOutlineColor;
+				}
+				else
+				{
+					int doom = creature.GetPowerAmount<DoomPower>();
+					bool doomLethalWithBurn = creature.HasPower<DoomPower>() && doom > 0 && doom >= currentHp - totalDot;
+					bool doomLethalVanilla = doom >= currentHp - poison;
+					if (!doomLethalWithBurn || doomLethalVanilla)
+					{
+						// 灼烧没有改变斩杀判定：维持 vanilla 着色。
+						return;
+					}
+
+					// 灼烧把「灾厄」推成致死：补上灾厄斩杀色（紫）。
+					fontColor = DoomLethalFontColor;
+					outlineColor = DoomLethalOutlineColor;
+				}
+
+				Control hpLabel = (Control)_hpLabelField.GetValue(__instance)!;
+				hpLabel.AddThemeColorOverride(FontColorOverride, fontColor);
+				hpLabel.AddThemeColorOverride(FontOutlineColorOverride, outlineColor);
+			}
+			catch (Exception ex)
+			{
+				Log.Warn($"[{ModInfo.Id}][Mayhem] Burn health bar text recolor failed; leaving vanilla color: {ex.GetType().Name}: {ex.Message}");
+			}
+		}
 	}
 }

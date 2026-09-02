@@ -3,44 +3,8 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
-using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
-
-internal static class HextechBaronAuraHooks
-{
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(NCombatRoom), "_Ready", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechBaronAuraHooks), nameof(CombatRoomReadyPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatRoom), nameof(NCombatRoom.AddCreature), BindingFlags.Instance | BindingFlags.Public, typeof(Creature)),
-			postfix: new HarmonyMethod(typeof(HextechBaronAuraHooks), nameof(AddCreaturePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCreature), "_Ready", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechBaronAuraHooks), nameof(CreatureReadyPostfix)));
-		HextechLog.Info($"[{ModInfo.Id}][BaronAura] Hooks installed.");
-	}
-
-	private static void CombatRoomReadyPostfix(NCombatRoom __instance)
-	{
-		foreach (NCreature creature in __instance.CreatureNodes)
-		{
-			HandOfBaronAuraVisual.TryAttach(creature);
-		}
-	}
-
-	private static void AddCreaturePostfix(NCombatRoom __instance, Creature creature)
-	{
-		HandOfBaronAuraVisual.TryAttach(HextechCreatureNodeRegistry.SafeGetCreatureNode(__instance, creature));
-	}
-
-	private static void CreatureReadyPostfix(NCreature __instance)
-	{
-		HandOfBaronAuraVisual.TryAttach(__instance);
-	}
-}
 
 internal sealed class HandOfBaronAuraVisual
 {
@@ -348,7 +312,7 @@ internal sealed class HandOfBaronAuraVisual
 
 	private static Texture2D? LoadTextureOrWarn(string path)
 	{
-		Texture2D? texture = HextechAssetHooks.LoadUiTexture(path);
+		Texture2D? texture = HextechTextures.LoadUiTexture(path);
 		if (texture == null && LoggedMissingTexturePaths.Add(path))
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] Hand of Baron aura texture not found: {path}");

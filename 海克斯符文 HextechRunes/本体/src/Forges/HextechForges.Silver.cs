@@ -355,11 +355,7 @@ public sealed class NecrobinderForge : HextechForgeBase
 		return IsNecrobinderPlayer(player);
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPlayerTurnStart(PlayerChoiceContext choiceContext, Player player)
-#else
-	public override async Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		if (player != Owner
 			|| Owner == null

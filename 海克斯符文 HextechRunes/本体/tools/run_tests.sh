@@ -20,6 +20,9 @@ export DOTNET_SKIP_FIRST_TIME_EXPERIENCE="${DOTNET_SKIP_FIRST_TIME_EXPERIENCE:-1
 
 grep -Fq '<AssemblyName>HextechRunes.Loader</AssemblyName>' "$ROOT/loader/HextechRunes.Loader.csproj"
 grep -Fq '[ModInitializer(nameof(Initialize))]' "$ROOT/loader/LoaderBootstrap.cs"
+grep -Fq 'LinuxNativeDependencyBootstrap.EnsureHarmonyRuntimeDependenciesVisible();' "$ROOT/loader/LoaderBootstrap.cs"
+grep -Fq 'libgcc_s.so.1' "$ROOT/loader/LinuxNativeDependencyBootstrap.cs"
+grep -Fq 'RtldGlobal' "$ROOT/loader/LinuxNativeDependencyBootstrap.cs"
 grep -Fq "$VARIANT_MANIFEST_NAME" "$ROOT/loader/LoaderBootstrap.cs"
 grep -Fq 'AssociateAssemblyWithMod' "$ROOT/loader/LoaderBootstrap.cs"
 grep -Fq 'ReflectionHelperModTypesPostfix' "$ROOT/loader/LoaderBootstrap.cs"
@@ -29,6 +32,11 @@ grep -Fq 'CompatTargetMetadataKey = "HextechCompatibilityTarget"' "$ROOT/loader/
 grep -Fq '<AssemblyMetadata Include="HextechCompatibilityTarget"' "$ROOT/src/HextechRunes.csproj"
 grep -Fq 'TARGETS=(0.107.1 0.110.0 0.111.0)' "$ROOT/tools/build_and_deploy.sh"
 grep -Fq -- '--dll-path "$DIST/lib/$target/$FILE_STEM.dll"' "$ROOT/tools/build_and_deploy.sh"
+
+SPONSOR_ROOT="$ROOT/../HextechRunesSponsorPack"
+grep -Fq 'LinuxNativeDependencyBootstrap.EnsureHarmonyRuntimeDependenciesVisible();' "$SPONSOR_ROOT/loader/LoaderBootstrap.cs"
+grep -Fq 'libgcc_s.so.1' "$SPONSOR_ROOT/loader/LinuxNativeDependencyBootstrap.cs"
+grep -Fq 'RtldGlobal' "$SPONSOR_ROOT/loader/LinuxNativeDependencyBootstrap.cs"
 
 # 默认对各发布目标各跑一遍(引用目录存在才跑);显式设 HEXTECH_STS2_TARGET 则只跑该目标。
 if [[ -n "${HEXTECH_STS2_TARGET:-}" ]]; then

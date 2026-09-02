@@ -15,6 +15,18 @@ Platform/Hooks/Config/Localization/Telemetry
 
 多人同步和随机数属于横切能力，所有会影响联机一致性的选择结果都必须通过明确 payload 或稳定随机输入表达，不允许依赖“各端本地池子刚好一样”。
 
+## 补丁层（2026-09 重构后）
+
+所有 Harmony 补丁都是自描述的嵌套静态类，入口 `ModEntry.Initialize` 只做编排，不再有安装顺序契约：
+
+- 声明：`[HarmonyPatch(...)]` + `[HextechPatch(id, feature, Rune=/Runes=/Optional=)]`，由 `src/Patching/HextechPatcher.ApplyAll` 统一应用，逐条成败可见；`Optional=true` 的目标缺失只记 Info。目标需要运行时枚举时，类只带 `[HextechPatch]` 并声明 `static void Apply(Harmony)`。
+- 同一目标的执行序只由 `[HarmonyPriority]` / `[HarmonyAfter]` 决定，禁止依赖安装顺序。
+- 符文专属补丁内嵌在符文自己的文件里（如 `SurvivorUpgradeRune` 里的 `SurvivorPatch`）；`src/Hooks/**` 只放跨符文的横切补丁（战斗、UI、资源、商店、运行生命周期）与共享辅助。
+- 版本差异写成整文件 `#if` 的分部文件（`HextechSavedPropertyBootstrap.Legacy.cs` / `.Official.cs`），共享代码里不写 `#if`；剩余的 `#if` 只允许出现在原版虚方法签名随版本变化的覆写处。
+- 私有成员访问集中经 `HextechHookReflection`，缺失成员会在启动摘要里列出。
+
+三道护栏（`tests/HextechRunes.Tests/`，三编译目标各一份，用 `HEXTECH_WRITE_PATCH_MANIFEST=1` 重生成）：`patch_manifest.<target>.txt` 冻结补丁目标与优先级；`static_state_manifest.<target>.txt` 冻结可变静态字段清单；`tests/vanilla_copy_guard.0.111.0.txt` 冻结所有可跳过原方法的 bool 前缀目标的 IL 哈希，游戏更新后 headless 日志出现 `[VanillaCopyGuard] DRIFT` 即需复核。
+
 ## 当前 Selection 分层
 
 `src/Selection` 已按职责拆分为以下目录：

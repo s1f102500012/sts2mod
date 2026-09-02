@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.CardSelection;
 namespace HextechRunes;
 
 public sealed class WroughtInWarUpgradeRune : CardUpgradeRuneBase<WroughtInWar>
@@ -25,5 +26,26 @@ public sealed class WroughtInWarUpgradeRune : CardUpgradeRuneBase<WroughtInWar>
 	internal static int CalculateFisticuffsBlock(int totalDamage, int overkillDamage)
 	{
 		return totalDamage + overkillDamage;
+	}
+
+	[HarmonyPatch(typeof(WroughtInWar), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.wrought-in-war", "升级战火淬炼", Rune = typeof(WroughtInWarUpgradeRune))]
+	private static class WroughtInWarPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(
+			WroughtInWar __instance,
+			PlayerChoiceContext choiceContext,
+			CardPlay cardPlay,
+			ref Task __result)
+		{
+			if (__instance.Owner?.GetRelic<WroughtInWarUpgradeRune>() is not WroughtInWarUpgradeRune rune)
+			{
+				return true;
+			}
+
+			__result = rune.PlayUpgraded(choiceContext, __instance, cardPlay);
+			return false;
+		}
 	}
 }

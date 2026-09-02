@@ -12,15 +12,9 @@ public sealed class ByproductRune : HextechRelicBase
 		return IsDefectPlayer(player);
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterCardGeneratedForCombat(CardModel card, Player? creator)
-#else
-	public override async Task AfterCardGeneratedForCombat(CardModel card, bool addedByPlayer)
-#endif
 	{
-#if STS2_104_OR_NEWER
 		bool addedByPlayer = creator == Owner;
-#endif
 		if (!addedByPlayer || card.Owner != Owner || Owner == null || Owner.Creature.IsDead || card.Type != CardType.Status)
 		{
 			return;

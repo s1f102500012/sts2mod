@@ -51,6 +51,11 @@ internal abstract class HextechEnemyHexEffect
 		return true;
 	}
 
+	internal virtual bool ShouldPlay(HextechEnemyHexContext context, CardModel card, AutoPlayType autoPlayType)
+	{
+		return true;
+	}
+
 	internal virtual bool ShouldFlush(HextechEnemyHexContext context, Player player)
 	{
 		return true;
@@ -152,17 +157,10 @@ internal abstract class HextechEnemyHexEffect
 		return Task.CompletedTask;
 	}
 
-#if STS2_104_OR_NEWER
 	internal virtual Task AfterAutoPrePlayPhaseEnteredLate(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, Player player)
 	{
 		return Task.CompletedTask;
 	}
-#else
-	internal virtual Task BeforePlayPhaseStart(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, Player player)
-	{
-		return Task.CompletedTask;
-	}
-#endif
 
 	internal virtual Task BeforeTurnEnd(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, CombatSide side, CombatRoom? combatRoom)
 	{

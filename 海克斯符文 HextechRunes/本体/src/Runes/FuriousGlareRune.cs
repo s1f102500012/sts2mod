@@ -19,11 +19,7 @@ public sealed class FuriousGlareRune : HextechRelicBase
 		return IsIroncladPlayer(player);
 	}
 
-#if STS2_104_OR_NEWER
 	public override Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#else
-	public override Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#endif
 	{
 		if (Owner == null
 			|| Owner.Creature.IsDead

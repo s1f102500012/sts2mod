@@ -4,38 +4,7 @@ namespace HextechRunes;
 
 internal static partial class HextechCombatHooks
 {
-	private static bool StormBeforeCardPlayedPrefix(StormPower __instance, ref Task __result)
-	{
-		if (ShouldUseHextechStormHandling(__instance))
-		{
-			__result = Task.CompletedTask;
-			return false;
-		}
 
-		return true;
-	}
-
-	private static bool StormAfterCardPlayedPrefix(StormPower __instance, ref Task __result)
-	{
-		if (ShouldUseHextechStormHandling(__instance))
-		{
-			__result = Task.CompletedTask;
-			return false;
-		}
-
-		return true;
-	}
-
-	private static bool EntropyAfterPlayerTurnStartPrefix(EntropyPower __instance, PlayerChoiceContext choiceContext, Player player, ref Task __result)
-	{
-		if (__instance.Owner?.Player?.GetRelic<MysteryRune>() == null)
-		{
-			return true;
-		}
-
-		__result = SafeEntropyAfterPlayerTurnStart(__instance, choiceContext, player);
-		return false;
-	}
 
 	private static async Task SafeEntropyAfterPlayerTurnStart(EntropyPower entropyPower, PlayerChoiceContext choiceContext, Player player)
 	{
@@ -85,5 +54,56 @@ internal static partial class HextechCombatHooks
 	internal static bool ShouldUseHextechStormHandling(bool hasMayhemModifier, bool hasStormUpgradeRune)
 	{
 		return hasMayhemModifier && hasStormUpgradeRune;
+	}
+
+	[HarmonyPatch(typeof(StormPower), nameof(StormPower.BeforeCardPlayed), typeof(CardPlay))]
+	[HextechPatch("combat.storm.before-card-played", "升级雷暴")]
+	private static class StormBeforeCardPlayedPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(StormPower __instance, ref Task __result)
+		{
+			if (ShouldUseHextechStormHandling(__instance))
+			{
+				__result = Task.CompletedTask;
+				return false;
+			}
+
+			return true;
+		}
+	}
+
+	[HarmonyPatch(typeof(StormPower), nameof(StormPower.AfterCardPlayed), typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("combat.storm.after-card-played", "升级雷暴")]
+	private static class StormAfterCardPlayedPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(StormPower __instance, ref Task __result)
+		{
+			if (ShouldUseHextechStormHandling(__instance))
+			{
+				__result = Task.CompletedTask;
+				return false;
+			}
+
+			return true;
+		}
+	}
+
+	[HarmonyPatch(typeof(EntropyPower), nameof(EntropyPower.AfterPlayerTurnStart), typeof(PlayerChoiceContext), typeof(Player))]
+	[HextechPatch("combat.entropy.turn-start", "神秘符文")]
+	private static class EntropyTurnStartPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(EntropyPower __instance, PlayerChoiceContext choiceContext, Player player, ref Task __result)
+		{
+			if (__instance.Owner?.Player?.GetRelic<MysteryRune>() == null)
+			{
+				return true;
+			}
+
+			__result = SafeEntropyAfterPlayerTurnStart(__instance, choiceContext, player);
+			return false;
+		}
 	}
 }

@@ -94,7 +94,7 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 			return null;
 		}
 
-		Texture2D? texture = HextechAssetHooks.LoadUiTexture(path);
+		Texture2D? texture = HextechTextures.LoadUiTexture(path);
 		if (texture == null)
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] SelectionScreen.GetCardFrameTexture: failed to load frame path={path}");
@@ -110,13 +110,13 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		try
 		{
 			Texture2D? bigIcon = relic.BigIcon;
-			if (HextechAssetHooks.IsTextureUsable(bigIcon))
+			if (HextechTextures.IsTextureUsable(bigIcon))
 			{
 				return bigIcon;
 			}
 
 			Texture2D? icon = relic.Icon;
-			if (HextechAssetHooks.IsTextureUsable(icon))
+			if (HextechTextures.IsTextureUsable(icon))
 			{
 				return icon;
 			}
@@ -124,11 +124,11 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		catch (Exception ex)
 		{
 			WarnDisplayTextureFallbackOnce(id, ex.GetType().Name);
-			return HextechAssetHooks.GetMissingTexture();
+			return HextechTextures.GetMissingTexture();
 		}
 
 		WarnDisplayTextureFallbackOnce(id, "no usable icon");
-		return HextechAssetHooks.GetMissingTexture();
+		return HextechTextures.GetMissingTexture();
 	}
 
 	private static void WarnDisplayTextureFallbackOnce(ModelId id, string reason)
@@ -236,7 +236,7 @@ internal sealed partial class HextechRuneSelectionScreen : Control, IOverlayScre
 		string path = alreadyRerolled
 			? RerollButtonUsedTexturePath
 			: hovered ? RerollButtonHoverTexturePath : RerollButtonTexturePath;
-		icon.Texture = HextechAssetHooks.LoadUiTexture(path) ?? HextechAssetHooks.LoadUiTexture(RerollButtonTexturePath);
+		icon.Texture = HextechTextures.LoadUiTexture(path) ?? HextechTextures.LoadUiTexture(RerollButtonTexturePath);
 		button.Modulate = Colors.White;
 		icon.SelfModulate = Colors.White;
 	}

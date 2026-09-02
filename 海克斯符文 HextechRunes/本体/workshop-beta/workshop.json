@@ -1,0 +1,37 @@
+{
+  "title": "ARAM: Mayhem Beta",
+  "updateTitle": false,
+  "description": "[h1] Beta Edition [/h1]\nThis item only supports the [b]beta branch[/b] of Slay the Spire 2. If you play on the default (public) branch, please subscribe to the Public edition instead:\nhttps://steamcommunity.com/sharedfiles/filedetails/?id=3747501308\n\n[h1] Supported Languages [/h1]\nEnglish\n简体中文\n한국어 (Contributors: 我有幸福症, oatone, Nark)\nEspañol\n日本語\nPortuguês do Brasil (Contributor: floca)\nภาษาไทย\nРусский (Contributor: Dragon enjoyer)\n\n[h1] Introduction [/h1]\nThis mod adds a Hextech Rune system inspired by League of Legends to Slay the Spire 2. It is a popular large-scale expansion mod for Slay the Spire 2.\n\nThere are currently 300+ Hextech Runes with a wide variety of effects. On each floor, you choose one random Hextech Rune, while monsters also randomly gain a Hextech of the same rarity — both sides then fight under ever-changing rules.\n\nThe mod also adds character-specific Hextechs, stat forgers, brand-new cards, and statistics feedback, giving every run a different build direction and challenge pacing.\n\n[img]https://i.mji.rip/2026/06/19/7459c0449d26c3e1a35bd5b020bd3961.png[/img]\n[img]https://i.mji.rip/2026/06/19/a7431d3a5ca25b7c5fa80026a0ba2496.webp[/img]\n\nIf you enjoy my mod, you can support me on Afdian: https://ifdian.net/a/Lu-Ran\nGithub: https://github.com/s1f102500012/sts2mod\nQQ Group: 1077728669",
+  "updateDescription": true,
+  "visibility": "public",
+  "changeNote": "海斗 0.8.6 热修：\n- 修复打击/防御数值变成 3000+ 的恶性数值事故：升级：打击/防御的升级上限（999）会被部分第三方模组的「一口气升到满级」逻辑直接拉满（6+3×999=3003）。上限调整为 30 并加护栏，正常战后升级每场 +1 完全无感；已被拉爆的存档也能正常读回。\n- 修复卡牌图鉴/日志查看卡牌时布局炸裂（卡牌全部堆在左上角）：升级：打击/防御的升级上限钩子误对图鉴的 canonical 卡实例取持有者导致异常打断图鉴初始化，含第三方模组卡牌的场景同样中招。\n\n海斗0.8.6更新日志：\n0.8.6分别适配游戏0.109.0和0.107.1，请使用对应分支的模组。\n\n【新增】\n棱彩· 万剑归宗（储君）：你的君王之剑打出后被消耗；回合结束时打出消耗牌堆里的所有君王之剑。\n黄金· 薄暮法衣：敌人在战斗内获得增益时，你获得相同增益。\n黄金· 余威：战斗结束时随机保留一种增益至下场战斗开始。\n棱彩· 升级：打击 / 升级：防御（重做）：你的打击/防御可无限升级，战斗胜利后自动升级本场打出过的打击/防御。\n棱彩· 升级：灵魂（骨妹）：打出灵魂后获得1点能量。\n棱彩· 棱彩蛋：宝箱房遗物奖励替换为随机海克斯符文。\n\n【调整】\n默认禁用：你肩上的瓦库、豪猪、巨像的勇气、死亡收割、最终形态、乾坤一掷、枯木（可在配置里手动开回）；\n开悟改为费用最终结算封顶（例如开悟+溢流等组合恒为1费，不再受遗物获得顺序影响）；\n\n【修复】\n修复复视联机黑屏/不同步的bug；\n修复感受燃烧移除部分敌方buff时游戏锁死的bug；\n修复和优化了其他已知问题；",
+  "tags": [
+    "Gameplay",
+    "Modifiers",
+    "Relics"
+  ],
+  "dependencies": [],
+  "minBranch": "public-beta",
+  "maxBranch": "public-beta",
+  "localizedDescriptionFiles": {
+    "english": "descriptions/english.txt",
+    "schinese": "descriptions/schinese.txt",
+    "koreana": "descriptions/koreana.txt",
+    "japanese": "descriptions/japanese.txt",
+    "spanish": "descriptions/spanish.txt",
+    "brazilian": "descriptions/brazilian.txt",
+    "thai": "descriptions/thai.txt",
+    "russian": "descriptions/russian.txt"
+  },
+  "skipContent": false,
+  "localizedTitles": {
+    "english": "ARAM: Mayhem Beta",
+    "schinese": "海克斯大乱斗 Beta",
+    "koreana": "무작위 총력전: 아수라장 Beta",
+    "japanese": "ランダムミッド：メイヘム Beta",
+    "spanish": "ARAM: Caos Beta",
+    "brazilian": "ARAM: Desordem Beta",
+    "thai": "ARAM: Mayhem Beta",
+    "russian": "ARAM: Mayhem Beta"
+  }
+}

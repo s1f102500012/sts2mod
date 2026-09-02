@@ -25,82 +25,6 @@ internal static class HextechFormAutoPlayHooks
 		typeof(ICombatState),
 		typeof(Creature));
 
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(PlayerCmd), nameof(PlayerCmd.EndTurn), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(bool), typeof(Func<Task>)),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(EndTurnPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			RequireMethod(typeof(Hook), nameof(Hook.BeforeCardPlayed), BindingFlags.Public | BindingFlags.Static, typeof(ICombatState), typeof(CardPlay)),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(BeforeCardPlayedPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			RequireMethod(typeof(Hook), nameof(Hook.AfterCardPlayed), BindingFlags.Public | BindingFlags.Static, typeof(ICombatState), typeof(PlayerChoiceContext), typeof(CardPlay)),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(AfterCardPlayedPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			RequireMethod(typeof(Hook), nameof(Hook.AfterCardChangedPiles), BindingFlags.Public | BindingFlags.Static, typeof(IRunState), typeof(ICombatState), typeof(CardModel), typeof(PileType), typeof(AbstractModel)),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(AfterCardChangedPilesPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			GetPlayPowerCardFlyVfxMethod(),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(PlayPowerCardFlyVfxPrefix)) { priority = Priority.First });
-		harmony.Patch(
-			RequireMethod(
-				typeof(PileTypeExtensions),
-				nameof(PileTypeExtensions.GetTargetPosition),
-				BindingFlags.Public | BindingFlags.Static,
-				typeof(PileType),
-				typeof(NCard)),
-			postfix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(GetTargetPositionPostfix)) { priority = Priority.Last });
-		harmony.Patch(
-			RequireMethod(
-				typeof(Hook),
-				nameof(Hook.ModifyCardPlayCount),
-				BindingFlags.Public | BindingFlags.Static,
-				typeof(ICombatState),
-				typeof(CardModel),
-				typeof(int),
-				typeof(Creature),
-				typeof(List<AbstractModel>).MakeByRefType()),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayCountPrefix)) { priority = Priority.First });
-#if STS2_109_OR_NEWER
-		harmony.Patch(
-			RequireMethod(
-				typeof(Hook),
-				nameof(Hook.ModifyCardPlayResultLocation),
-				BindingFlags.Public | BindingFlags.Static,
-				typeof(ICombatState),
-				typeof(CardModel),
-				typeof(bool),
-				typeof(ResourceInfo),
-				typeof(CardLocation),
-				typeof(IEnumerable<AbstractModel>).MakeByRefType()),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayResultLocationPrefix)) { priority = Priority.First });
-#else
-		harmony.Patch(
-			RequireMethod(
-				typeof(Hook),
-				nameof(Hook.ModifyCardPlayResultPileTypeAndPosition),
-				BindingFlags.Public | BindingFlags.Static,
-				typeof(ICombatState),
-				typeof(CardModel),
-				typeof(bool),
-				typeof(ResourceInfo),
-				typeof(PileType),
-				typeof(CardPilePosition),
-				typeof(IEnumerable<AbstractModel>).MakeByRefType()),
-			prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayResultPileTypeAndPositionPrefix)) { priority = Priority.First });
-#endif
-		foreach (Type formType in GetSupportedFormTypes())
-		{
-			harmony.Patch(
-				RequireMethod(
-					formType,
-					"OnPlay",
-					BindingFlags.Instance | BindingFlags.NonPublic,
-					typeof(PlayerChoiceContext),
-					typeof(CardPlay)),
-				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(FormOnPlayPrefix)) { priority = Priority.First });
-		}
-	}
 
 	internal static IDisposable BeginEndTurnSuppression()
 	{
@@ -566,6 +490,87 @@ internal static class HextechFormAutoPlayHooks
 		public void Dispose()
 		{
 			ActiveBatch.Value = _previous;
+		}
+	}
+
+	[HextechPatch("combat.form-auto-play", "形态开局自动打出批处理")]
+	private static class FormAutoPlayPatches
+	{
+		public static void Apply(Harmony harmony)
+		{
+			harmony.Patch(
+				RequireMethod(typeof(PlayerCmd), nameof(PlayerCmd.EndTurn), BindingFlags.Public | BindingFlags.Static, typeof(Player), typeof(bool), typeof(Func<Task>)),
+				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(EndTurnPrefix)) { priority = Priority.First });
+			harmony.Patch(
+				RequireMethod(typeof(Hook), nameof(Hook.BeforeCardPlayed), BindingFlags.Public | BindingFlags.Static, typeof(ICombatState), typeof(CardPlay)),
+				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(BeforeCardPlayedPrefix)) { priority = Priority.First });
+			harmony.Patch(
+				RequireMethod(typeof(Hook), nameof(Hook.AfterCardPlayed), BindingFlags.Public | BindingFlags.Static, typeof(ICombatState), typeof(PlayerChoiceContext), typeof(CardPlay)),
+				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(AfterCardPlayedPrefix)) { priority = Priority.First });
+			harmony.Patch(
+				RequireMethod(typeof(Hook), nameof(Hook.AfterCardChangedPiles), BindingFlags.Public | BindingFlags.Static, typeof(IRunState), typeof(ICombatState), typeof(CardModel), typeof(PileType), typeof(AbstractModel)),
+				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(AfterCardChangedPilesPrefix)) { priority = Priority.First });
+			harmony.Patch(
+				GetPlayPowerCardFlyVfxMethod(),
+				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(PlayPowerCardFlyVfxPrefix)) { priority = Priority.First });
+			harmony.Patch(
+				RequireMethod(
+					typeof(PileTypeExtensions),
+					nameof(PileTypeExtensions.GetTargetPosition),
+					BindingFlags.Public | BindingFlags.Static,
+					typeof(PileType),
+					typeof(NCard)),
+				postfix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(GetTargetPositionPostfix)) { priority = Priority.Last });
+			harmony.Patch(
+				RequireMethod(
+					typeof(Hook),
+					nameof(Hook.ModifyCardPlayCount),
+					BindingFlags.Public | BindingFlags.Static,
+					typeof(ICombatState),
+					typeof(CardModel),
+					typeof(int),
+					typeof(Creature),
+					typeof(List<AbstractModel>).MakeByRefType()),
+				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayCountPrefix)) { priority = Priority.First });
+	#if STS2_109_OR_NEWER
+			harmony.Patch(
+				RequireMethod(
+					typeof(Hook),
+					nameof(Hook.ModifyCardPlayResultLocation),
+					BindingFlags.Public | BindingFlags.Static,
+					typeof(ICombatState),
+					typeof(CardModel),
+					typeof(bool),
+					typeof(ResourceInfo),
+					typeof(CardLocation),
+					typeof(IEnumerable<AbstractModel>).MakeByRefType()),
+				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayResultLocationPrefix)) { priority = Priority.First });
+	#else
+			harmony.Patch(
+				RequireMethod(
+					typeof(Hook),
+					nameof(Hook.ModifyCardPlayResultPileTypeAndPosition),
+					BindingFlags.Public | BindingFlags.Static,
+					typeof(ICombatState),
+					typeof(CardModel),
+					typeof(bool),
+					typeof(ResourceInfo),
+					typeof(PileType),
+					typeof(CardPilePosition),
+					typeof(IEnumerable<AbstractModel>).MakeByRefType()),
+				prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(ModifyCardPlayResultPileTypeAndPositionPrefix)) { priority = Priority.First });
+	#endif
+			foreach (Type formType in GetSupportedFormTypes())
+			{
+				harmony.Patch(
+					RequireMethod(
+						formType,
+						"OnPlay",
+						BindingFlags.Instance | BindingFlags.NonPublic,
+						typeof(PlayerChoiceContext),
+						typeof(CardPlay)),
+					prefix: new HarmonyMethod(typeof(HextechFormAutoPlayHooks), nameof(FormOnPlayPrefix)) { priority = Priority.First });
+			}
 		}
 	}
 }

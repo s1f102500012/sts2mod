@@ -12,27 +12,9 @@ namespace HextechRunes;
 /// </summary>
 internal static class HextechInkshadowHooks
 {
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(BladeOfInk), "OnPlay", BindingFlags.Instance | BindingFlags.NonPublic, typeof(PlayerChoiceContext), typeof(CardPlay)),
-			prefix: new HarmonyMethod(typeof(HextechInkshadowHooks), nameof(OnPlayPrefix)));
-	}
 
-	private static bool OnPlayPrefix(BladeOfInk __instance, PlayerChoiceContext choiceContext, ref Task __result)
-	{
-		if (__instance.Owner is not { } owner
-			|| __instance.CombatState is not { } combatState
-			|| owner.GetRelic<InkshadowRune>() == null)
-		{
-			return true;
-		}
 
-		__result = PlayWithGuardedEnchant(__instance, owner, combatState);
-		return false;
-	}
-
-	private static async Task PlayWithGuardedEnchant(BladeOfInk card, Player owner, HextechCombatState combatState)
+	internal static async Task PlayWithGuardedEnchant(BladeOfInk card, Player owner, HextechCombatState combatState)
 	{
 		foreach (CardModel item in await Shiv.CreateInHand(owner, card.DynamicVars.Cards.IntValue, combatState))
 		{
@@ -49,4 +31,5 @@ internal static class HextechInkshadowHooks
 			}
 		}
 	}
+
 }

@@ -20,24 +20,6 @@ internal static class HextechFormVfxSafetyHooks
 		Serpent
 	}
 
-	public static void Install(Harmony harmony)
-	{
-#if STS2_110_OR_NEWER
-		harmony.Patch(
-			ResolveAddFormVfxTarget(),
-			prefix: new HarmonyMethod(typeof(HextechFormVfxSafetyHooks), nameof(AddFormVfxPrefix))
-			{
-				priority = Priority.First
-			});
-		harmony.Patch(
-			ResolveRemoveFormVfxTarget(),
-			prefix: new HarmonyMethod(typeof(HextechFormVfxSafetyHooks), nameof(RemoveFormVfxPrefix))
-			{
-				priority = Priority.First
-			});
-#endif
-	}
-
 	internal static bool ShouldRunOriginal(bool hasFormVfxHolder)
 	{
 		return hasFormVfxHolder;
@@ -71,43 +53,6 @@ internal static class HextechFormVfxSafetyHooks
 			BindingFlags.Instance | BindingFlags.Public);
 	}
 
-	private static bool AddFormVfxPrefix(NCreatureVisuals __instance, NFormVfx formVfx)
-	{
-		Control? holder = GetFormVfxHolder(__instance);
-		if (!ShouldRunOriginal(holder != null))
-		{
-			return false;
-		}
-		if (!HasSymphonyOfWar(__instance))
-		{
-			return true;
-		}
-
-		// 战争交响乐固定保留恶魔与群蛇两层视觉；其他形态之间仍维持原版的后到覆盖先到。
-		FormVfxKind incoming = GetFormVfxKind(formVfx);
-		foreach (Node child in holder!.GetChildren())
-		{
-			FormVfxKind existing = child is NFormVfx existingFormVfx
-				? GetFormVfxKind(existingFormVfx)
-				: FormVfxKind.Other;
-			if (!ShouldPreserveExistingForSymphony(
-				hasSymphonyOfWar: true,
-				incoming,
-				existing))
-			{
-				child.Free();
-			}
-		}
-
-		holder.AddChild(formVfx);
-		formVfx.Position = Vector2.Zero;
-		return false;
-	}
-
-	private static bool RemoveFormVfxPrefix(NCreatureVisuals __instance)
-	{
-		return ShouldRunOriginal(GetFormVfxHolder(__instance) != null);
-	}
 
 	private static Control? GetFormVfxHolder(NCreatureVisuals visuals)
 	{
@@ -134,6 +79,60 @@ internal static class HextechFormVfxSafetyHooks
 			NSerpentFormVfx => FormVfxKind.Serpent,
 			_ => FormVfxKind.Other
 		};
+	}
+#endif
+
+	#if STS2_110_OR_NEWER
+	[HarmonyPatch(typeof(NCreatureVisuals), nameof(NCreatureVisuals.AddFormVfx), typeof(NFormVfx))]
+	[HextechPatch("compat.form-vfx.add", "形态特效容器安全")]
+	private static class AddFormVfxPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.First)]
+		private static bool Prefix(NCreatureVisuals __instance, NFormVfx formVfx)
+		{
+			Control? holder = GetFormVfxHolder(__instance);
+			if (!ShouldRunOriginal(holder != null))
+			{
+				return false;
+			}
+			if (!HasSymphonyOfWar(__instance))
+			{
+				return true;
+			}
+
+			// 战争交响乐固定保留恶魔与群蛇两层视觉；其他形态之间仍维持原版的后到覆盖先到。
+			FormVfxKind incoming = GetFormVfxKind(formVfx);
+			foreach (Node child in holder!.GetChildren())
+			{
+				FormVfxKind existing = child is NFormVfx existingFormVfx
+					? GetFormVfxKind(existingFormVfx)
+					: FormVfxKind.Other;
+				if (!ShouldPreserveExistingForSymphony(
+					hasSymphonyOfWar: true,
+					incoming,
+					existing))
+				{
+					child.Free();
+				}
+			}
+
+			holder.AddChild(formVfx);
+			formVfx.Position = Vector2.Zero;
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(NCreatureVisuals), nameof(NCreatureVisuals.RemoveFormVfx), new Type[0])]
+	[HextechPatch("compat.form-vfx.remove", "形态特效容器安全")]
+	private static class RemoveFormVfxPatch
+	{
+		[HarmonyPrefix]
+		[HarmonyPriority(Priority.First)]
+		private static bool Prefix(NCreatureVisuals __instance)
+		{
+			return ShouldRunOriginal(GetFormVfxHolder(__instance) != null);
+		}
 	}
 #endif
 }

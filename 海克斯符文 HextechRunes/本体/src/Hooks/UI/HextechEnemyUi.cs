@@ -30,16 +30,6 @@ internal static class HextechEnemyUi
 
 	private static bool _reportedMissingTopBarMembers;
 
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(NRelicBasicHolder), "OnFocus", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic),
-			prefix: new HarmonyMethod(typeof(HextechEnemyUi), nameof(EnemyHexHolderOnFocusPrefix)));
-		harmony.Patch(
-			RequireMethod(typeof(NRelicBasicHolder), "OnUnfocus", BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic),
-			prefix: new HarmonyMethod(typeof(HextechEnemyUi), nameof(EnemyHexHolderOnUnfocusPrefix)));
-	}
-
 	public static void Refresh(HextechMayhemModifier modifier)
 	{
 		// 纯表现层硬保证:本方法被多个 lockstep 同步钩子(BeforeCombatStart 等)调用,
@@ -342,29 +332,6 @@ internal static class HextechEnemyUi
 		return holder;
 	}
 
-	private static bool EnemyHexHolderOnFocusPrefix(NRelicBasicHolder __instance)
-	{
-		NHoverTipSet.Remove(__instance);
-
-		if (!TryGetHexFromHolder(__instance, out MonsterHexKind hex))
-		{
-			return true;
-		}
-
-		ShowEnemyHexHoverTip(__instance, hex);
-		return false;
-	}
-
-	private static bool EnemyHexHolderOnUnfocusPrefix(NRelicBasicHolder __instance)
-	{
-		if (!TryGetHexFromHolder(__instance, out _))
-		{
-			return true;
-		}
-
-		NHoverTipSet.Remove(__instance);
-		return false;
-	}
 
 	private static bool TryGetHexFromHolder(Control holder, out MonsterHexKind hex)
 	{
@@ -403,5 +370,41 @@ internal static class HextechEnemyUi
 		}
 
 		return true;
+	}
+
+	[HarmonyPatch(typeof(NRelicBasicHolder), "OnFocus", new Type[0])]
+	[HextechPatch("ui.enemy-hex.holder-focus", "敌方海克斯顶栏悬浮")]
+	private static class HolderFocusPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(NRelicBasicHolder __instance)
+		{
+			NHoverTipSet.Remove(__instance);
+
+			if (!TryGetHexFromHolder(__instance, out MonsterHexKind hex))
+			{
+				return true;
+			}
+
+			ShowEnemyHexHoverTip(__instance, hex);
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(NRelicBasicHolder), "OnUnfocus", new Type[0])]
+	[HextechPatch("ui.enemy-hex.holder-unfocus", "敌方海克斯顶栏悬浮")]
+	private static class HolderUnfocusPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(NRelicBasicHolder __instance)
+		{
+			if (!TryGetHexFromHolder(__instance, out _))
+			{
+				return true;
+			}
+
+			NHoverTipSet.Remove(__instance);
+			return false;
+		}
 	}
 }

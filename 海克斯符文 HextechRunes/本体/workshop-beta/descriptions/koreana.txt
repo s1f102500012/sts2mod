@@ -1,0 +1,27 @@
+[h1] 베타 에디션 안내 [/h1]
+이 아이템은 Slay the Spire 2의 [b]베타 브랜치[/b]만 지원합니다. 기본(공개) 브랜치에서 플레이하신다면 정식(Public) 버전을 구독해 주세요:
+https://steamcommunity.com/sharedfiles/filedetails/?id=3747501308
+
+[h1] 지원 언어 [/h1]
+English
+简体中文
+한국어 (기여자: 我有幸福症, oatone, Nark)
+Español
+日本語
+Português do Brasil (기여자: floca)
+ภาษาไทย
+Русский
+
+[h1] 소개 [/h1]
+이 모드는 《리그 오브 레전드》에서 영감을 받은 헥스테크 룬 시스템을 《Slay the Spire 2》에 추가합니다. 《Slay the Spire 2》의 인기 대형 확장 모드입니다.
+
+현재 효과가 제각기 다른 300종 이상의 헥스테크 룬이 있습니다. 플레이어는 매 층마다 무작위 헥스테크 룬 하나를 선택할 수 있으며, 동시에 몬스터도 같은 등급의 헥스테크를 무작위로 얻어 양측이 끊임없이 변화하는 규칙 속에서 전투를 벌입니다.
+
+또한 캐릭터 전용 헥스테크, 능력치 제련기, 완전히 새로운 카드, 통계 피드백 기능을 추가하여 매 게임마다 서로 다른 빌드 방향과 도전 리듬을 제공합니다.
+
+[img]https://i.mji.rip/2026/06/19/7459c0449d26c3e1a35bd5b020bd3961.png[/img]
+[img]https://i.mji.rip/2026/06/19/a7431d3a5ca25b7c5fa80026a0ba2496.webp[/img]
+
+제 모드가 마음에 드신다면 Afdian에서 후원해 주실 수 있습니다: https://ifdian.net/a/Lu-Ran
+Github: https://github.com/s1f102500012/sts2mod
+QQ 그룹: 1077728669

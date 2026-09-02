@@ -29,11 +29,7 @@ public sealed class ServantMasterRune : HextechRelicBase
 		return PowerCmd.Apply<NecroMasteryPower>(Owner.Creature, DynamicVars["NecroMasteryPower"].BaseValue, Owner.Creature, null);
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPlayerTurnStart(PlayerChoiceContext choiceContext, Player player)
-#else
-	public override async Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		if (player != Owner || Owner.Creature.IsDead || player.Creature.CombatState == null || !IsNecrobinderPlayer(player))
 		{

@@ -4,6 +4,19 @@ internal static class HextechHookReflection
 {
 	private static readonly object MissingMemberLogLock = new();
 	private static readonly HashSet<string> LoggedMissingMembers = [];
+	private static readonly List<string> MissingMemberDescriptions = [];
+
+	/// <summary>启动期发现缺失的原版私有成员(去重),供 <see cref="HextechPatcher.LogSummary"/> 一次性汇总。</summary>
+	internal static IReadOnlyList<string> MissingMembers
+	{
+		get
+		{
+			lock (MissingMemberLogLock)
+			{
+				return MissingMemberDescriptions.ToArray();
+			}
+		}
+	}
 
 	public static MethodInfo RequireMethod(Type type, string name, BindingFlags flags, params Type[] parameters)
 	{
@@ -72,6 +85,8 @@ internal static class HextechHookReflection
 			{
 				return;
 			}
+
+			MissingMemberDescriptions.Add(description);
 		}
 
 		Log.Warn($"[{ModInfo.Id}][Reflection] Missing {description}; dependent feature degraded.");

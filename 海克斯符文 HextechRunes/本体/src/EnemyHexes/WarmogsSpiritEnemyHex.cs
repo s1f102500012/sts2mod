@@ -44,14 +44,6 @@ internal sealed class WarmogsSpiritEnemyHex : HextechEnemyHexEffect
 			: Task.CompletedTask;
 	}
 
-#if !STS2_104_OR_NEWER
-	internal override Task BeforePlayPhaseStart(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, Player player)
-	{
-		return HextechPlayerContextHelper.IsNetworkMultiplayerRun() && player.Creature.CombatState is HextechCombatState combatState
-			? ResolveDrawProgressFromHistory(context, combatState)
-			: Task.CompletedTask;
-	}
-#endif
 
 	internal override Task BeforeTurnEnd(HextechEnemyHexContext context, PlayerChoiceContext choiceContext, CombatSide side, CombatRoom? combatRoom)
 	{

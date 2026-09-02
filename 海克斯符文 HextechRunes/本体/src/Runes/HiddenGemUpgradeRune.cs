@@ -1,3 +1,6 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+using MegaCrit.Sts2.Core.Nodes.Combat;
+
 namespace HextechRunes;
 
 public sealed class HiddenGemUpgradeRune : CardUpgradeRuneBase<HiddenGem>
@@ -63,5 +66,22 @@ public sealed class HiddenGemUpgradeRune : CardUpgradeRuneBase<HiddenGem>
 		return !candidate.Keywords.Contains(CardKeyword.Unplayable)
 			&& candidate.Type is not CardType.Status and not CardType.Curse
 			&& candidate.GetEnchantedReplayCount() < 1;
+	}
+
+	[HarmonyPatch(typeof(HiddenGem), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.hidden-gem", "升级未掘宝石", Rune = typeof(HiddenGemUpgradeRune))]
+	private static class HiddenGemPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(HiddenGem __instance, PlayerChoiceContext choiceContext, CardPlay cardPlay, ref Task __result)
+		{
+			if (!HiddenGemUpgradeRune.ShouldUseUpgradedPlay(__instance))
+			{
+				return true;
+			}
+
+			__result = HiddenGemUpgradeRune.PlayUpgraded(choiceContext, __instance, cardPlay);
+			return false;
+		}
 	}
 }

@@ -11,8 +11,6 @@
   "HEXTECH_FORGE_CHOICE_REWARD": "Escolha um Forjador de Atributos",
   "HEXTECH_WAITING_FOR_PLAYERS": "Aguardando os outros jogadores escolherem...",
   "HEXTECH_MAP_PREVIEW_HINT": "Você ainda não escolheu o hex. Feche o mapa para continuar escolhendo.",
-  "HEXTECH_CONFIG_BUTTON": "Configuração de Runas Hextech",
-  "HEXTECH_CONFIG_BUTTON_TOOLTIP": "Configura as regras de Hextech, hexes inimigos e forjadores de atributos usados ao jogar solo ou criar uma partida multiplayer.",
   "HEXTECH_CONFIG_TITLE": "Configuração de Runas Hextech",
   "HEXTECH_CONFIG_TAB_COUNTS": "Seleção",
   "HEXTECH_CONFIG_TAB_RUNE_POOLS": "Reservas de Hex",

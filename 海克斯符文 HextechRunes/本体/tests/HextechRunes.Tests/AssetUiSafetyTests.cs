@@ -71,7 +71,7 @@ internal static partial class Program
 
 	private static void AssetResolverRawOnlyMissReturnsNullWithoutCaching()
 	{
-		// 生产形态:raw 图片路径的 secondary 恒返回 null(HextechAssetHooks.LoadPortableTexture)。
+		// 生产形态:raw 图片路径的 secondary 恒返回 null(HextechTextures.LoadPortableTexture)。
 		const string path = "res://HextechRunes/images/relics/test.png";
 		Dictionary<string, FakeTexture> cache = new(StringComparer.Ordinal);
 

@@ -2,34 +2,26 @@ using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
 
-internal static class HextechSavedPropertyBootstrap
+/// <summary>
+/// SavedProperty 载体的注册窗口守卫与自检。版本差异(0.107.1 手动注入 vs 0.109+ 官方 Init 收录)
+/// 收口在 <c>.Legacy.cs</c> / <c>.Official.cs</c> 两个分部文件里,本文件只写与版本无关的流程。
+/// </summary>
+internal static partial class HextechSavedPropertyBootstrap
 {
 	private const BindingFlags SavedPropertyFlags =
 		BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
 
-#if STS2_109_OR_NEWER
-	private static readonly FieldInfo? OfficialCacheInitializedField = TryGetField(
-		typeof(SavedPropertiesTypeCache),
-		"_initialized",
-		BindingFlags.NonPublic | BindingFlags.Static,
-		warnIfMissing: false);
-#endif
-
+	/// <summary>
+	/// 注册窗口关闭后(wire 布局已冻结)再登记的载体必须已经在官方缓存里,否则拒绝——
+	/// 允许它会让两端的 net-id 布局分叉。窗口仍开着时直接放行。
+	/// </summary>
 	internal static void EnsureModelTypeRegistrationAllowed(Type type)
 	{
 		ArgumentNullException.ThrowIfNull(type);
-
-	#if STS2_109_OR_NEWER
-		if (!IsOfficialCacheInitialized())
+		if (!IsRegistrationWindowClosed())
 		{
 			return;
 		}
-	#else
-		if (!HextechSavedPropertyNetIdHooks.IsCanonicalized)
-		{
-			return;
-		}
-	#endif
 
 		PropertyInfo[] savedProperties = GetSavedProperties(type);
 		if (savedProperties.Length == 0)
@@ -64,64 +56,13 @@ internal static class HextechSavedPropertyBootstrap
 	internal static void InjectModelType(Type type)
 	{
 		ArgumentNullException.ThrowIfNull(type);
-
-#if STS2_109_OR_NEWER
-		// 0.109.0 的 Init 会从 ModelDb.All 统一排序、编号并散列 SavedProperty。Init 前调用
-		// CacheSavedPropertiesForTypeDebug 会提前写表且绕过该散列；Init 后追加则会破坏已经发布的 wire 布局。
-		// 因此这里只验证官方缓存是否已覆盖该载体，绝不调用 Debug 注入入口。
 		EnsureModelTypeRegistrationAllowed(type);
-		return;
-#else
-		EnsureModelTypeRegistrationAllowed(type);
-		if (HextechSavedPropertyNetIdHooks.IsCanonicalized)
-		{
-			return;
-		}
-
-		SavedPropertiesTypeCache.InjectTypeIntoCache(type);
-#endif
+		InjectModelTypeCore(type);
 	}
 
 	internal static void InjectCaches()
 	{
-#if STS2_109_OR_NEWER
-		// 0.109.0:注入与位宽兜底全部由游戏侧 Init() 承担;自检推迟到 ExecuteEssential 后
-		// (此刻表尚未填充,现跑必误报全量),见 HextechSavedPropertyNetIdHooks 的 0.109 分支。
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] SavedProperty 注入跳过:0.109+ 由 ModelIdSerializationCache.Init 自动收录 ModelDb 载体。");
-#else
-		foreach (Type type in HextechModelTypeIdentity.Distinct(HextechCatalog.GetAllCustomRelicTypes()))
-		{
-			SavedPropertiesTypeCache.InjectTypeIntoCache(type);
-		}
-
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechMayhemModifier));
-		foreach (Type type in HextechCustomModelRegistry.AllCustomModifierTypes)
-		{
-			SavedPropertiesTypeCache.InjectTypeIntoCache(type);
-		}
-
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechBurnPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechNextTurnDamagePower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechGalvanicPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechTemporaryStrengthPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechTemporaryDexterityPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechTemporaryStrengthLossPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechTemporaryDexterityLossPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechLethalTempoTemporaryStrengthPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechBloodPactTemporaryStrengthPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechPowerShieldTemporaryStrengthPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechAttackReplayPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechPlayerSlowPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechTemporarySlowPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechOceanDragonSoulPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechInfernalDragonSoulPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechDragonSoulPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechMountainDragonSoulPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechChemtechDragonSoulPower));
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(HextechCloudDragonSoulPower));
-		WarnOnUninjectedSavedPropertyCarriers();
-		EnsureSavedPropertyNetIdBitSize();
-#endif
+		InjectCachesCore();
 	}
 
 	// 启动自检同时核对全局 net-id 名字表和每个载体自己的 PropertyInfo 缓存。前者决定 wire 布局，
@@ -211,21 +152,6 @@ internal static class HextechSavedPropertyBootstrap
 				&& property.PropertyType == expected.PropertyType));
 	}
 
-	private static bool IsOfficialCacheInitialized()
-	{
-	#if STS2_109_OR_NEWER
-		if (OfficialCacheInitializedField?.GetValue(null) is bool initialized)
-		{
-			return initialized;
-		}
-
-		throw new InvalidOperationException(
-			$"[{ModInfo.Id}] 无法读取 ModelIdSerializationCache._initialized；为避免污染 SavedProperty net-id 表，已拒绝外部模型注册。");
-	#else
-		return false;
-	#endif
-	}
-
 	private static InvalidOperationException CreateLateRegistrationException(
 		System.Type type,
 		IReadOnlyList<PropertyInfo> missingProperties,
@@ -237,14 +163,8 @@ internal static class HextechSavedPropertyBootstrap
 				.Select(static property => property.Name)
 				.Distinct(StringComparer.Ordinal)
 				.OrderBy(static name => name, StringComparer.Ordinal));
-		string freezePoint =
-	#if STS2_109_OR_NEWER
-			"ModelIdSerializationCache.Init";
-	#else
-			"SavedProperty net-id 规范化";
-	#endif
 		string message =
-			$"[{ModInfo.Id}] SavedProperty 载体 {type.FullName} 在 {freezePoint} 之后注册，"
+			$"[{ModInfo.Id}] SavedProperty 载体 {type.FullName} 在 {RegistrationFreezePointName} 之后注册，"
 			+ $"但 per-type cache 缺少属性 [{propertyNames}]。为保持联机 net-id 布局不变，已拒绝延迟注册。";
 		return new InvalidOperationException(message, innerException);
 	}
@@ -316,35 +236,4 @@ internal static class HextechSavedPropertyBootstrap
 
 		return result;
 	}
-
-#if !STS2_109_OR_NEWER
-	private static void EnsureSavedPropertyNetIdBitSize()
-	{
-		// 兜底:按与游戏 / RitsuLib 一致的公式 CeilToInt(Log2(count)) 把位宽抬到能容纳当前属性数。
-		// 联机一致性的权威设置由 HextechSavedPropertyNetIdHooks 在规范化后统一完成;此处仅保证即便该
-		// 后缀钩子未能安装,本模组单独联机时位宽也够用。不再使用旧的固定下限 16——它与原版 / RitsuLib 的
-		// 公式不一致,会让一端是 16、另一端是 CeilToInt(Log2(count)),造成 net-id 位宽错位而断连。
-		const BindingFlags flags = BindingFlags.NonPublic | BindingFlags.Static;
-
-		FieldInfo? mapField = TryGetField(typeof(SavedPropertiesTypeCache), "_netIdToPropertyNameMap", flags);
-		int propertyNameCount = (mapField?.GetValue(null) as System.Collections.ICollection)?.Count ?? 0;
-		int targetBitSize = HextechSavedPropertyNetIdCanonicalizer.ComputeNetIdBitSize(propertyNameCount);
-		int currentBitSize = SavedPropertiesTypeCache.NetIdBitSize;
-		if (currentBitSize >= targetBitSize)
-		{
-			HextechLog.Info($"[{ModInfo.Id}][Mayhem] SavedPropertiesTypeCache NetIdBitSize unchanged: bitSize={currentBitSize} propertyNames={propertyNameCount}");
-			return;
-		}
-
-		FieldInfo? backingField = TryGetField(typeof(SavedPropertiesTypeCache), "<NetIdBitSize>k__BackingField", flags);
-		if (backingField == null)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] SavedPropertiesTypeCache NetIdBitSize backing field not found; custom saved properties may desync in multiplayer.");
-			return;
-		}
-
-		backingField.SetValue(null, targetBitSize);
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] SavedPropertiesTypeCache NetIdBitSize updated: old={currentBitSize} new={targetBitSize} propertyNames={propertyNameCount}");
-	}
-#endif
 }

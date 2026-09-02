@@ -12,43 +12,6 @@ namespace HextechRunes.Tests;
 
 internal static partial class Program
 {
-	private static void SavedPropertyProtocolClassifierMatchesOnlyOfficialShapes()
-	{
-		Exception unknownName = new ArgumentException(
-			"SavedProperty name ExternalCounter could not be mapped to any net ID!");
-		Exception outOfRange = new ArgumentOutOfRangeException(
-			"SavedProperty net ID 12 is out of range! We have 7 property names");
-
-		Expect(
-			HextechMultiplayerCompatibilityHooks.IsSavedPropertiesProtocolException(unknownName),
-			"official unknown SavedProperty name exception should be recognized");
-		Expect(
-			HextechMultiplayerCompatibilityHooks.IsSavedPropertiesProtocolException(
-				new InvalidOperationException("wrapper", outOfRange)),
-			"official SavedProperty net-id range exception should be recognized through its inner exception");
-
-		Expect(
-			!HextechMultiplayerCompatibilityHooks.IsSavedPropertiesProtocolException(
-				new InvalidOperationException("SavedProperty name ExternalCounter could not be mapped to any net ID!")),
-			"matching text on the wrong exception type must not be swallowed");
-		Expect(
-			!HextechMultiplayerCompatibilityHooks.IsSavedPropertiesProtocolException(
-				new InvalidOperationException("ModelIdSerializationCache used before it was initialized!")),
-			"0.110 cache initialization failures are not SavedProperty mapping mismatches");
-		Expect(
-			!HextechMultiplayerCompatibilityHooks.IsSavedPropertiesProtocolException(
-				new ArgumentException("SavedProperty net ID 12 is out of range! We have 7 property names")),
-			"net-id range text on ArgumentException must not be treated as the official range exception");
-		Expect(
-			!HextechMultiplayerCompatibilityHooks.IsSavedPropertiesProtocolException(
-				new ArgumentException("SavedProperty name ExternalCounter could not be mapped to any net ID! trailing text")),
-			"partial SavedProperty message matches must not be swallowed");
-		Expect(
-			!HextechMultiplayerCompatibilityHooks.IsSavedPropertiesProtocolException(
-				new NullReferenceException("failure inside SavedPropertiesTypeCache")),
-			"stack or type-name proximity alone must not be classified as a protocol mismatch");
-	}
-
 	private static void SavedPropertyLateRegistrationFailsClosedOn0107WithoutPartialState()
 	{
 #if !STS2_109_OR_NEWER

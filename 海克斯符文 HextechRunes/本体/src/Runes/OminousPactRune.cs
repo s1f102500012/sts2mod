@@ -14,17 +14,10 @@ public sealed class OminousPactRune : HextechRelicBase
 		return IsNecrobinderPlayer(player);
 	}
 
-#if STS2_104_OR_NEWER
 	public override Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
 	{
 		return HandleDoomApplied(choiceContext, power, amount, applier);
 	}
-#else
-	public override Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-	{
-		return HandleDoomApplied(new BlockingPlayerChoiceContext(), power, amount, applier);
-	}
-#endif
 
 	private async Task HandleDoomApplied(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier)
 	{

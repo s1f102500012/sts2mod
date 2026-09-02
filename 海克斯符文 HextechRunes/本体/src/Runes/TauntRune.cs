@@ -17,11 +17,7 @@ public sealed class TauntRune : HextechRelicBase
 		return IsNecrobinderPlayer(player);
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#else
-	public override async Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#endif
 	{
 		if (Owner == null
 			|| Owner.Creature.IsDead

@@ -1,0 +1,27 @@
+[h1] Edição Beta [/h1]
+Este item só é compatível com o [b]branch beta[/b] de Slay the Spire 2. Se você joga no branch padrão (público), inscreva-se na edição Public:
+https://steamcommunity.com/sharedfiles/filedetails/?id=3747501308
+
+[h1] Idiomas suportados [/h1]
+English
+简体中文
+한국어 (Colaboradores: 我有幸福症, oatone, Nark)
+Español
+日本語
+Português do Brasil (Colaborador: floca)
+ภาษาไทย
+Русский、(Colaborador: Dragon enjoyer)
+
+[h1] Introdução [/h1]
+Este mod adiciona ao Slay the Spire 2 um sistema de Runas Hextech inspirado em League of Legends. É um popular mod de expansão em grande escala para Slay the Spire 2.
+
+Atualmente há mais de 300 Runas Hextech com os mais variados efeitos. A cada andar, você escolhe uma Runa Hextech aleatória, enquanto os monstros também recebem aleatoriamente uma Hextech da mesma raridade — e os dois lados lutam sob regras em constante mudança.
+
+O mod também adiciona Hextechs exclusivas de cada personagem, forjadores de atributos, cartas inéditas e estatísticas de feedback, dando a cada jornada direções de build e ritmos de desafio diferentes.
+
+[img]https://i.mji.rip/2026/06/19/7459c0449d26c3e1a35bd5b020bd3961.png[/img]
+[img]https://i.mji.rip/2026/06/19/a7431d3a5ca25b7c5fa80026a0ba2496.webp[/img]
+
+Se você gosta do meu mod, pode me apoiar no Afdian: https://ifdian.net/a/Lu-Ran
+Github: https://github.com/s1f102500012/sts2mod
+Grupo do QQ: 1077728669

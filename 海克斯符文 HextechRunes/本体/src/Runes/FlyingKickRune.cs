@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Models.Exceptions;
 
 namespace HextechRunes;
@@ -125,6 +126,55 @@ public sealed class FlyingKickRune : HextechRelicBase
 		{
 			decimal heal = Math.Max(1m, decimal.Floor(Owner.Creature.MaxHp * DynamicVars.Heal.BaseValue / 100m));
 			await CreatureCmd.Heal(Owner.Creature, heal);
+		}
+	}
+
+	[HarmonyPatch(typeof(RelicModel), nameof(RelicModel.DynamicDescription), MethodType.Getter)]
+	[HextechPatch("rune.flying-kick.description", "飞踢", Rune = typeof(FlyingKickRune))]
+	private static class FlyingKickDescriptionPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(RelicModel __instance)
+		{
+			if (__instance is FlyingKickRune flyingKickRune)
+			{
+				flyingKickRune.RefreshExecutePercentFromOwner();
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(NCreature), nameof(NCreature.StartDeathAnim), typeof(bool))]
+	[HextechPatch("rune.flying-kick.corpse-launch", "飞踢尸体击飞视觉")]
+	private static class FlyingKickCorpseLaunchPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare()
+		{
+			if (HextechRuntimeRuneCompatibility.IsAndroidRuntime)
+			{
+				Log.Warn($"[{ModInfo.Id}][Mayhem][Compat] Flying Kick corpse launch visual hook skipped on Android runtime.");
+				return false;
+			}
+
+			return true;
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(NCreature __instance, bool shouldRemove)
+		{
+			if (!FlyingKickCorpseLaunchDriver.TryConsumePending(__instance.Entity))
+			{
+				return;
+			}
+
+			if (!shouldRemove
+				|| __instance.Entity == null
+				|| !HextechMonsterInteractionPolicy.IsTrueCombatDeath(__instance.Entity))
+			{
+				return;
+			}
+
+			FlyingKickCorpseLaunchDriver.TryAttach(__instance);
 		}
 	}
 }

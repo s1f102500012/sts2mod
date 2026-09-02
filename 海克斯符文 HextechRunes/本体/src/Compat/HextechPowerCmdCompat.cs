@@ -8,7 +8,6 @@ public static class HextechPowerCmdCompat
 
 	public static MethodInfo RequireModifyAmountMethod()
 	{
-#if STS2_104_OR_NEWER
 		return RequireMethod(
 			typeof(MegaCrit.Sts2.Core.Commands.PowerCmd),
 			nameof(MegaCrit.Sts2.Core.Commands.PowerCmd.ModifyAmount),
@@ -19,17 +18,6 @@ public static class HextechPowerCmdCompat
 			typeof(Creature),
 			typeof(CardModel),
 			typeof(bool));
-#else
-		return RequireMethod(
-			typeof(MegaCrit.Sts2.Core.Commands.PowerCmd),
-			nameof(MegaCrit.Sts2.Core.Commands.PowerCmd.ModifyAmount),
-			PublicStatic,
-			typeof(PowerModel),
-			typeof(decimal),
-			typeof(Creature),
-			typeof(CardModel),
-			typeof(bool));
-#endif
 	}
 
 	public static Task<IReadOnlyList<T>> Apply<T>(
@@ -40,7 +28,6 @@ public static class HextechPowerCmdCompat
 		bool silent = false)
 		where T : PowerModel
 	{
-#if STS2_104_OR_NEWER
 		return MegaCrit.Sts2.Core.Commands.PowerCmd.Apply<T>(
 			new BlockingPlayerChoiceContext(),
 			targets,
@@ -48,14 +35,6 @@ public static class HextechPowerCmdCompat
 			applier,
 			cardSource,
 			silent);
-#else
-		return MegaCrit.Sts2.Core.Commands.PowerCmd.Apply<T>(
-			targets,
-			amount,
-			applier,
-			cardSource,
-			silent);
-#endif
 	}
 
 	public static Task<T?> Apply<T>(
@@ -66,7 +45,6 @@ public static class HextechPowerCmdCompat
 		bool silent = false)
 		where T : PowerModel
 	{
-#if STS2_104_OR_NEWER
 		return MegaCrit.Sts2.Core.Commands.PowerCmd.Apply<T>(
 			new BlockingPlayerChoiceContext(),
 			target,
@@ -74,14 +52,6 @@ public static class HextechPowerCmdCompat
 			applier,
 			cardSource,
 			silent);
-#else
-		return MegaCrit.Sts2.Core.Commands.PowerCmd.Apply<T>(
-			target,
-			amount,
-			applier,
-			cardSource,
-			silent);
-#endif
 	}
 
 	public static Task<T?> Apply<T>(
@@ -93,7 +63,6 @@ public static class HextechPowerCmdCompat
 		bool silent = false)
 		where T : PowerModel
 	{
-#if STS2_104_OR_NEWER
 		return MegaCrit.Sts2.Core.Commands.PowerCmd.Apply<T>(
 			choiceContext as PlayerChoiceContext ?? new BlockingPlayerChoiceContext(),
 			target,
@@ -101,14 +70,6 @@ public static class HextechPowerCmdCompat
 			applier,
 			cardSource,
 			silent);
-#else
-		return MegaCrit.Sts2.Core.Commands.PowerCmd.Apply<T>(
-			target,
-			amount,
-			applier,
-			cardSource,
-			silent);
-#endif
 	}
 
 	public static Task Apply(
@@ -119,7 +80,6 @@ public static class HextechPowerCmdCompat
 		CardModel? cardSource,
 		bool silent = false)
 	{
-#if STS2_104_OR_NEWER
 		return MegaCrit.Sts2.Core.Commands.PowerCmd.Apply(
 			new BlockingPlayerChoiceContext(),
 			power,
@@ -128,15 +88,6 @@ public static class HextechPowerCmdCompat
 			applier,
 			cardSource,
 			silent);
-#else
-		return MegaCrit.Sts2.Core.Commands.PowerCmd.Apply(
-			power,
-			target,
-			amount,
-			applier,
-			cardSource,
-			silent);
-#endif
 	}
 
 	public static Task Remove<T>(Creature creature)

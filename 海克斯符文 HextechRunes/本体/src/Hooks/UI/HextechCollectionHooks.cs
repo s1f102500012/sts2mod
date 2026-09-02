@@ -113,55 +113,33 @@ internal static partial class HextechCollectionHooks
 
 	private static bool _loggedMissingFallbackContainer;
 
-	public static void Install(Harmony harmony)
+	/// <summary>图鉴分类依赖原版 NRelicCollectionCategory 的一组私有成员;主目标缺失整体停用,子分类成员缺失退化为平铺网格。</summary>
+	private static bool CollectionHooksAvailable
 	{
-		if (LoadRelicsMethod == null)
+		get
 		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Relic collection hooks disabled: missing NRelicCollectionCategory.LoadRelics.");
-			return;
-		}
-
-		List<string> missingSubcategoryDependencies = GetMissingSubcategoryDependencies().ToList();
-		if (missingSubcategoryDependencies.Count > 0)
-		{
-			if (RelicsContainerField == null)
+			if (LoadRelicsMethod == null)
 			{
-				Log.Warn($"[{ModInfo.Id}][Mayhem] Relic collection hooks disabled: missing {string.Join(", ", missingSubcategoryDependencies.Append("NRelicCollectionCategory._relicsContainer"))}.");
-				return;
+				Log.Warn($"[{ModInfo.Id}][Mayhem] Relic collection hooks disabled: missing NRelicCollectionCategory.LoadRelics.");
+				return false;
 			}
 
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Relic collection subcategory hooks unavailable: missing {string.Join(", ", missingSubcategoryDependencies)}; using flat starter-grid fallback.");
-		}
+			List<string> missingSubcategoryDependencies = GetMissingSubcategoryDependencies().ToList();
+			if (missingSubcategoryDependencies.Count > 0)
+			{
+				if (RelicsContainerField == null)
+				{
+					Log.Warn($"[{ModInfo.Id}][Mayhem] Relic collection hooks disabled: missing {string.Join(", ", missingSubcategoryDependencies.Append("NRelicCollectionCategory._relicsContainer"))}.");
+					return false;
+				}
 
-		harmony.Patch(
-			LoadRelicsMethod!,
-			postfix: new HarmonyMethod(typeof(HextechCollectionHooks), nameof(LoadRelicsPostfix)));
+				Log.Warn($"[{ModInfo.Id}][Mayhem] Relic collection subcategory hooks unavailable: missing {string.Join(", ", missingSubcategoryDependencies)}; using flat starter-grid fallback.");
+			}
+
+			return true;
+		}
 	}
 
-	private static void LoadRelicsPostfix(
-		NRelicCollectionCategory __instance,
-		RelicRarity relicRarity,
-		NRelicCollection collection,
-		LocString header,
-		HashSet<RelicModel> seenRelics,
-		UnlockState unlockState,
-		HashSet<RelicModel> allUnlockedRelics)
-	{
-		if (relicRarity != RelicRarity.Starter)
-		{
-			return;
-		}
-
-		_starterHeaderTemplate ??= header.GetRawText();
-		if (!CanUseSubcategoryHooks())
-		{
-			AddFlatFallbackRelics(__instance, collection);
-			return;
-		}
-
-		AddHextechSubcategory(__instance, collection, seenRelics, allUnlockedRelics);
-		AddForgeSubcategory(__instance, collection, seenRelics, allUnlockedRelics);
-	}
 
 	public static void RefreshOpenRelicCollections()
 	{
@@ -219,4 +197,41 @@ internal static partial class HextechCollectionHooks
 		}
 	}
 
+
+	[HarmonyPatch]
+	[HextechPatch("ui.relic-collection", "遗物图鉴分类", Optional = true)]
+	private static class LoadRelicsPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => CollectionHooksAvailable;
+
+		[HarmonyTargetMethod]
+		private static MethodBase TargetMethod() => LoadRelicsMethod!;
+
+		[HarmonyPostfix]
+		private static void Postfix(
+			NRelicCollectionCategory __instance,
+			RelicRarity relicRarity,
+			NRelicCollection collection,
+			LocString header,
+			HashSet<RelicModel> seenRelics,
+			UnlockState unlockState,
+			HashSet<RelicModel> allUnlockedRelics)
+		{
+			if (relicRarity != RelicRarity.Starter)
+			{
+				return;
+			}
+
+			_starterHeaderTemplate ??= header.GetRawText();
+			if (!CanUseSubcategoryHooks())
+			{
+				AddFlatFallbackRelics(__instance, collection);
+				return;
+			}
+
+			AddHextechSubcategory(__instance, collection, seenRelics, allUnlockedRelics);
+			AddForgeSubcategory(__instance, collection, seenRelics, allUnlockedRelics);
+		}
+	}
 }

@@ -11,8 +11,6 @@
   "HEXTECH_FORGE_CHOICE_REWARD": "Выберите наковальню показателей",
   "HEXTECH_WAITING_FOR_PLAYERS": "Ожидание выбора других игроков...",
   "HEXTECH_MAP_PREVIEW_HINT": "Руна ещё не выбран — закройте карту, чтобы продолжить выбор.",
-  "HEXTECH_CONFIG_BUTTON": "Настройки рун Хекстека",
-  "HEXTECH_CONFIG_BUTTON_TOOLTIP": "Настройте правила рун Хекстека, вражеских рун и наковальней показателей, используемые в одиночной игре или при хостинге сетевой игры.",
   "HEXTECH_CONFIG_TITLE": "Настройки рун Хекстека",
   "HEXTECH_CONFIG_TAB_COUNTS": "Выбор",
   "HEXTECH_CONFIG_TAB_RUNE_POOLS": "Пул рун",

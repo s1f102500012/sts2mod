@@ -12,48 +12,34 @@
     <GameDataDir Condition="'$(GameDataDir)' == ''">$(GameRoot)/Contents/Resources/data_sts2_macos_arm64</GameDataDir>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.103.2'">
-    <DefineConstants>$(DefineConstants);STS2_103_2</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.104.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.105.1'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.106.1'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.107.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
+  <!--
+    发布目标只有 0.107.1 / 0.110.0 / 0.111.0 三个变体。
+    STS2_107_1 表示"0.107.1 分支";STS2_1xx_OR_NEWER 表示"该版本引入的 API 在本目标可用"。
+    0.104~0.107.0 的符号已随这些版本退役,代码里不再出现。
+  -->
   <PropertyGroup Condition="'$(HextechSts2Target)' == '0.107.1'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.108.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSts2Target)' == '0.109.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER;STS2_109_OR_NEWER</DefineConstants>
+    <DefineConstants>$(DefineConstants);STS2_107_1</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(HextechSts2Target)' == '0.110.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER</DefineConstants>
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(HextechSts2Target)' == '0.111.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER;STS2_111_OR_NEWER</DefineConstants>
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER;STS2_111_OR_NEWER</DefineConstants>
   </PropertyGroup>
+
+  <Target Name="HextechValidateTarget" BeforeTargets="CoreCompile" Condition="'$(HextechSts2Target)' != '0.107.1' and '$(HextechSts2Target)' != '0.110.0' and '$(HextechSts2Target)' != '0.111.0'">
+    <Error Text="HextechSts2Target '$(HextechSts2Target)' is not a shipped variant (0.107.1 / 0.110.0 / 0.111.0)." />
+  </Target>
 
   <ItemGroup>
     <AssemblyMetadata Include="HextechCompatibilityTarget" Value="$(HextechSts2Target)" />
+  </ItemGroup>
+
+  <!-- 原版拷贝守卫的冻结 IL 表(按变体);缺表则守卫在运行时跳过。生成方式见 HextechVanillaCopyGuard。 -->
+  <ItemGroup Condition="Exists('$(MSBuildThisFileDirectory)../tests/vanilla_copy_guard.$(HextechSts2Target).txt')">
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)../tests/vanilla_copy_guard.$(HextechSts2Target).txt" LogicalName="vanilla_copy_guard.txt" />
   </ItemGroup>
 
   <ItemGroup>

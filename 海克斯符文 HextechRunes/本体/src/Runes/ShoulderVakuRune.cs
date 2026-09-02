@@ -58,11 +58,7 @@ public sealed class ShoulderVakuRune : HextechRelicBase
 		await CreatureCmd.Heal(Owner.Creature, heal);
 	}
 
-#if STS2_104_OR_NEWER
 	public override Task AfterAutoPrePlayPhaseEnteredLate(PlayerChoiceContext choiceContext, Player player)
-#else
-	public override Task BeforePlayPhaseStartLate(PlayerChoiceContext choiceContext, Player player)
-#endif
 	{
 		return ControlOddTurnWithVakuu(choiceContext, player);
 	}

@@ -22,76 +22,11 @@ internal static partial class HextechCombatHooks
 	//
 	// 纯无状态转换:每次都基于原始意图的 DamageCalc 重新计算,既不改原意图对象、也不读回自己上次产出的
 	// 意图,因此意图反复刷新也不会把伤害越减越少。
-	private static void InstallDualWieldIntentHooks(Harmony harmony)
-	{
-		try
-		{
-			harmony.Patch(
-				RequireMethod(
-					typeof(NIntent),
-					nameof(NIntent.UpdateIntent),
-					BindingFlags.Instance | BindingFlags.Public,
-					typeof(AbstractIntent),
-					typeof(IEnumerable<Creature>),
-					typeof(Creature)),
-				prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(NIntentUpdateIntentPrefix)));
-
-			harmony.Patch(
-				RequireMethod(
-					typeof(AbstractIntent),
-					nameof(AbstractIntent.GetHoverTip),
-					BindingFlags.Instance | BindingFlags.Public,
-					typeof(IEnumerable<Creature>),
-					typeof(Creature)),
-				prefix: new HarmonyMethod(typeof(HextechCombatHooks), nameof(AbstractIntentGetHoverTipPrefix)));
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] 双刀流意图预览 hook 安装失败,意图显示可能与实际伤害不一致: {ex.GetType().Name}: {ex.Message}");
-		}
-	}
 
 	// 头顶意图数字/贴图:把传入的攻击意图替换成「双段」等价意图。
-	private static void NIntentUpdateIntentPrefix(ref AbstractIntent intent, Creature owner)
-	{
-		try
-		{
-			if (TryCreateDualWieldIntent(intent, owner, out DualWieldAttackIntent? transformed) && transformed != null)
-			{
-				intent = transformed;
-			}
-		}
-		catch (Exception ex)
-		{
-			LogDualWieldIntentFailure(nameof(NIntentUpdateIntentPrefix), ex);
-		}
-	}
 
 	// 意图 hover tooltip:NIntent.OnHovered 与 Creature.HoverTips 都汇到这里。用「双段」等价意图生成
 	// hover tip,让悬停描述里的每段伤害/段数也和实战一致。
-	private static bool AbstractIntentGetHoverTipPrefix(
-		AbstractIntent __instance,
-		IEnumerable<Creature> targets,
-		Creature owner,
-		ref HoverTip __result)
-	{
-		try
-		{
-			if (TryCreateDualWieldIntent(__instance, owner, out DualWieldAttackIntent? transformed) && transformed != null)
-			{
-				// transformed 自身是 DualWieldAttackIntent,再次进入本 prefix 会被下方类型守卫挡掉,不会递归。
-				__result = transformed.GetHoverTip(targets, owner);
-				return false;
-			}
-		}
-		catch (Exception ex)
-		{
-			// prefix 当场跑 DamageCalc→ModifyDamage 链,异常会打断调用方;失败放行原版。
-			LogDualWieldIntentFailure(nameof(AbstractIntentGetHoverTipPrefix), ex);
-		}
-
-		return true;
-	}
 
 	private static void LogDualWieldIntentFailure(string hook, Exception ex)
 	{
@@ -141,6 +76,63 @@ internal static partial class HextechCombatHooks
 			},
 			doubledRepeats);
 		return true;
+	}
+
+	[HarmonyPatch(typeof(NIntent), nameof(NIntent.UpdateIntent), typeof(AbstractIntent), typeof(IEnumerable<Creature>), typeof(Creature))]
+	[HextechPatch("combat.dual-wield.intent", "敌方双刀流")]
+	private static class DualWieldIntentPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => DualWieldFieldsAvailable;
+
+		[HarmonyPrefix]
+		private static void Prefix(ref AbstractIntent intent, Creature owner)
+		{
+			try
+			{
+				if (TryCreateDualWieldIntent(intent, owner, out DualWieldAttackIntent? transformed) && transformed != null)
+				{
+					intent = transformed;
+				}
+			}
+			catch (Exception ex)
+			{
+				LogDualWieldIntentFailure("DualWieldIntentPatch.Prefix", ex);
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(AbstractIntent), nameof(AbstractIntent.GetHoverTip), typeof(IEnumerable<Creature>), typeof(Creature))]
+	[HextechPatch("combat.dual-wield.hover-tip", "敌方双刀流")]
+	private static class DualWieldHoverTipPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => DualWieldFieldsAvailable;
+
+		[HarmonyPrefix]
+		private static bool Prefix(
+			AbstractIntent __instance,
+			IEnumerable<Creature> targets,
+			Creature owner,
+			ref HoverTip __result)
+		{
+			try
+			{
+				if (TryCreateDualWieldIntent(__instance, owner, out DualWieldAttackIntent? transformed) && transformed != null)
+				{
+					// transformed 自身是 DualWieldAttackIntent,再次进入本 prefix 会被下方类型守卫挡掉,不会递归。
+					__result = transformed.GetHoverTip(targets, owner);
+					return false;
+				}
+			}
+			catch (Exception ex)
+			{
+				// prefix 当场跑 DamageCalc→ModifyDamage 链,异常会打断调用方;失败放行原版。
+				LogDualWieldIntentFailure("DualWieldHoverTipPatch.Prefix", ex);
+			}
+
+			return true;
+		}
 	}
 }
 

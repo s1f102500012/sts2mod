@@ -1,3 +1,6 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+using MegaCrit.Sts2.Core.Nodes.Combat;
+
 namespace HextechRunes;
 
 /// <summary>
@@ -74,5 +77,22 @@ public sealed class AutomationUpgradeRune : CardUpgradeRuneBase<Automation>
 		AutomationUpgradeRune? rune = owner.GetRelic<AutomationUpgradeRune>();
 		rune?.Flash();
 		await CardPileCmd.Draw(choiceContext, rune?.DynamicVars.Cards.BaseValue ?? 2m, owner, fromHandDraw: false);
+	}
+
+	[HarmonyPatch(typeof(AutomationPower), nameof(AutomationPower.AfterCardDrawn), typeof(PlayerChoiceContext), typeof(CardModel), typeof(bool))]
+	[HextechPatch("rune.automation", "升级自动化", Rune = typeof(AutomationUpgradeRune))]
+	private static class AutomationPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(AutomationPower __instance, PlayerChoiceContext choiceContext, CardModel card, bool fromHandDraw, ref Task __result)
+		{
+			if (!AutomationUpgradeRune.ShouldUseUpgradedDraw(__instance, card))
+			{
+				return true;
+			}
+
+			__result = AutomationUpgradeRune.AfterCardDrawnUpgraded(choiceContext, __instance, card, fromHandDraw);
+			return false;
+		}
 	}
 }

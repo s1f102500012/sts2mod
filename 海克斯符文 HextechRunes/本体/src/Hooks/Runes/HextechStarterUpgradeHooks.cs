@@ -15,55 +15,6 @@ internal static class HextechStarterUpgradeHooks
 
 	private static readonly HextechScopedDepthGuard CardDeserializationGuard = new();
 
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(CardModel), "get_MaxUpgradeLevel", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechStarterUpgradeHooks), nameof(MaxUpgradeLevelPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(CardModel), nameof(CardModel.FromSerializable), BindingFlags.Static | BindingFlags.Public, typeof(SerializableCard)),
-			prefix: new HarmonyMethod(typeof(HextechStarterUpgradeHooks), nameof(CardFromSerializablePrefix)),
-			finalizer: new HarmonyMethod(typeof(HextechStarterUpgradeHooks), nameof(CardFromSerializableFinalizer)));
-	}
-
-	private static void MaxUpgradeLevelPostfix(CardModel __instance, ref int __result)
-	{
-		if (__result != 1)
-		{
-			return;
-		}
-
-		// 卡牌图鉴/预览等场景传入的是 canonical 实例:其 Owner getter 直接抛
-		// CanonicalModelException,会把整个图鉴 InitGrid 打断(卡牌全堆左上角,玩家实报,
-		// 第三方 mod 的基础打击变体同样命中判定)。canonical 卡不属于任何玩家,保持原上限。
-		if (__instance.IsCanonical)
-		{
-			return;
-		}
-
-		bool isStrike = StrikeUpgradeRune.IsBasicStrike(__instance);
-		bool isDefend = !isStrike && DefendUpgradeRune.IsBasicDefend(__instance);
-		if (!isStrike && !isDefend)
-		{
-			return;
-		}
-
-		Player? owner = __instance.Owner;
-		if (owner == null)
-		{
-			__result = ResolveUnownedMaxUpgradeLevel(
-				__instance.CurrentUpgradeLevel,
-				CardDeserializationGuard.IsActive);
-			return;
-		}
-
-		if ((isStrike && owner.GetRelic<StrikeUpgradeRune>() != null)
-			|| (isDefend && owner.GetRelic<DefendUpgradeRune>() != null))
-		{
-			// 持有者同样兼容历史坏档:等级已超上限时以当前等级为准(不再增长,但可正常游戏)。
-			__result = ResolveOwnedMaxUpgradeLevel(__instance.CurrentUpgradeLevel);
-		}
-	}
 
 	internal static int ResolveOwnedMaxUpgradeLevel(int currentUpgradeLevel)
 	{
@@ -83,14 +34,67 @@ internal static class HextechStarterUpgradeHooks
 		return Math.Max(nextUpgradeLevel, UpgradeLevelCap);
 	}
 
-	private static void CardFromSerializablePrefix()
+
+	[HarmonyPatch(typeof(CardModel), nameof(CardModel.MaxUpgradeLevel), MethodType.Getter)]
+	[HextechPatch("card.starter-upgrade.max-level", "起始牌多重升级")]
+	private static class MaxUpgradeLevelPatch
 	{
-		CardDeserializationGuard.Enter();
+		[HarmonyPostfix]
+		private static void Postfix(CardModel __instance, ref int __result)
+		{
+			if (__result != 1)
+			{
+				return;
+			}
+
+			// 卡牌图鉴/预览等场景传入的是 canonical 实例:其 Owner getter 直接抛
+			// CanonicalModelException,会把整个图鉴 InitGrid 打断(卡牌全堆左上角,玩家实报,
+			// 第三方 mod 的基础打击变体同样命中判定)。canonical 卡不属于任何玩家,保持原上限。
+			if (__instance.IsCanonical)
+			{
+				return;
+			}
+
+			bool isStrike = StrikeUpgradeRune.IsBasicStrike(__instance);
+			bool isDefend = !isStrike && DefendUpgradeRune.IsBasicDefend(__instance);
+			if (!isStrike && !isDefend)
+			{
+				return;
+			}
+
+			Player? owner = __instance.Owner;
+			if (owner == null)
+			{
+				__result = ResolveUnownedMaxUpgradeLevel(
+					__instance.CurrentUpgradeLevel,
+					CardDeserializationGuard.IsActive);
+				return;
+			}
+
+			if ((isStrike && owner.GetRelic<StrikeUpgradeRune>() != null)
+				|| (isDefend && owner.GetRelic<DefendUpgradeRune>() != null))
+			{
+				// 持有者同样兼容历史坏档:等级已超上限时以当前等级为准(不再增长,但可正常游戏)。
+				__result = ResolveOwnedMaxUpgradeLevel(__instance.CurrentUpgradeLevel);
+			}
+		}
 	}
 
-	private static Exception? CardFromSerializableFinalizer(Exception? __exception)
+	[HarmonyPatch(typeof(CardModel), nameof(CardModel.FromSerializable), typeof(SerializableCard))]
+	[HextechPatch("card.starter-upgrade.load", "起始牌多重升级")]
+	private static class FromSerializablePatch
 	{
-		CardDeserializationGuard.Exit();
-		return __exception;
+		[HarmonyPrefix]
+		private static void Prefix()
+		{
+			CardDeserializationGuard.Enter();
+		}
+
+		[HarmonyFinalizer]
+		private static Exception? Finalizer(Exception? __exception)
+		{
+			CardDeserializationGuard.Exit();
+			return __exception;
+		}
 	}
 }

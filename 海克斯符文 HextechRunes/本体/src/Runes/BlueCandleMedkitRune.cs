@@ -38,6 +38,13 @@ public sealed class BlueCandleMedkitRune : HextechRelicBase
 			&& rune.CanAffect(card);
 	}
 
+	// 状态/诅咒牌在手牌里变得可打出:直接从战斗内关键词集合摘掉 Unplayable,
+	// CanPlay 的 HasUnplayableKeyword 判定与卡面上的"无法打出"文字随之一起消失。
+	public override bool TryModifyKeywordsInCombat(CardModel card, ISet<CardKeyword> keywords)
+	{
+		return CanAffect(card) && keywords.Remove(CardKeyword.Unplayable);
+	}
+
 	private bool CanAffect(CardModel card)
 	{
 		return Owner != null

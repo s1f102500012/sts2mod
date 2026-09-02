@@ -2,7 +2,6 @@ namespace HextechRunes;
 
 // 0.108.0 起伤害管线加 CardPlay 参数:游戏侧 override 按版本二选一,子类统一重写版本无关的
 // Compat 虚方法(见各基类内的同名段落)。
-#if STS2_106_OR_NEWER
 public abstract class HextechPowerBase : PowerModel
 {
 	public virtual decimal ModifyDamageMultiplicativeCompat(Creature? target, decimal amount, ValueProp props, Creature? dealer, CardModel? cardSource)
@@ -143,12 +142,3 @@ internal abstract class HextechModifierBase : ModifierModel
 		return AfterTurnEnd(choiceContext, side);
 	}
 }
-#else
-public abstract class HextechPowerBase : PowerModel
-{
-}
-
-internal abstract class HextechModifierBase : ModifierModel
-{
-}
-#endif

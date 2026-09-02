@@ -60,6 +60,13 @@ internal sealed partial class HextechMayhemModifier
 			(effect, context) => effect.ShouldDraw(context, player, fromHandDraw));
 	}
 
+	public override bool ShouldPlay(CardModel card, AutoPlayType autoPlayType)
+	{
+		return HextechEnemyHexDispatcher.All(
+			this,
+			(effect, context) => effect.ShouldPlay(context, card, autoPlayType));
+	}
+
 	public override bool ShouldFlush(Player player)
 	{
 		return HextechEnemyHexDispatcher.All(

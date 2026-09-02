@@ -3,53 +3,8 @@ using HarmonyLib;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes.Combat;
 using MegaCrit.Sts2.Core.Nodes.Rooms;
-using static HextechRunes.HextechHookReflection;
 
 namespace HextechRunes;
-
-/// <summary>
-/// 灼烧(<see cref="HextechBurnPower"/>)的持续燃烧特效。挂到每个 <see cref="NCreature"/>(敌我通用)、
-/// 逐帧轮询该角色是否带灼烧 power,带则在其身上烧起火焰,火势随层数增强。
-/// 渲染为软粒子火焰(渐变圆+加法混合,大而慢的粒子叠成火体):身后主层+身前缩小调淡的一层
-/// (高大立绘挡死身后火时仍可读),淡烟画在身后、火星画在身前。已排除的路线:原版单帧火舌贴图
-/// (贴纸雨)、fire_impact flipbook(暗景诡异)、fire_base_slim+噪声的整团 shader 火(脚下一滩橙色更怪)。
-/// 强度经短插值平滑,获得/叠层渐起、清除时火焰自然熄灭而非瞬灭。
-/// 纯表现层,只读 power 状态、只建可视节点,不改任何 gameplay/同步状态。
-/// </summary>
-internal static class HextechBurnVisualHooks
-{
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(NCombatRoom), "_Ready", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechBurnVisualHooks), nameof(CombatRoomReadyPostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCombatRoom), nameof(NCombatRoom.AddCreature), BindingFlags.Instance | BindingFlags.Public, typeof(Creature)),
-			postfix: new HarmonyMethod(typeof(HextechBurnVisualHooks), nameof(AddCreaturePostfix)));
-		harmony.Patch(
-			RequireMethod(typeof(NCreature), "_Ready", BindingFlags.Instance | BindingFlags.Public),
-			postfix: new HarmonyMethod(typeof(HextechBurnVisualHooks), nameof(CreatureReadyPostfix)));
-		HextechLog.Info($"[{ModInfo.Id}][Burn] Visual hooks installed.");
-	}
-
-	private static void CombatRoomReadyPostfix(NCombatRoom __instance)
-	{
-		foreach (NCreature creature in __instance.CreatureNodes)
-		{
-			HextechBurnVisual.TryAttach(creature);
-		}
-	}
-
-	private static void AddCreaturePostfix(NCombatRoom __instance, Creature creature)
-	{
-		HextechBurnVisual.TryAttach(HextechCreatureNodeRegistry.SafeGetCreatureNode(__instance, creature));
-	}
-
-	private static void CreatureReadyPostfix(NCreature __instance)
-	{
-		HextechBurnVisual.TryAttach(__instance);
-	}
-}
 
 internal sealed class HextechBurnVisual
 {

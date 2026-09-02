@@ -1,23 +1,11 @@
+using MegaCrit.Sts2.Core.Nodes.Rooms;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 
 namespace HextechRunes;
 
 internal static partial class HextechRunLifecycleHooks
 {
-	private static void EventRoomProceedPrefix(out EventRoomProceedState __state)
-	{
-		bool shouldSelectAfterProceed = TryGetPendingEventProceedSelection(out RunState runState, out int actIndex, out string eventId);
-		__state = new EventRoomProceedState(shouldSelectAfterProceed, runState, actIndex, eventId);
-		if (shouldSelectAfterProceed)
-		{
-			HextechLog.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed begin: act={actIndex} event={eventId} {DescribeCurrentEventState(runState)}");
-		}
-	}
 
-	private static void EventRoomProceedPostfix(EventRoomProceedState __state, ref Task __result)
-	{
-		__result = EventRoomProceedAfterOriginal(__result, __state);
-	}
 
 	private static async Task EventRoomProceedAfterOriginal(Task original, EventRoomProceedState state)
 	{
@@ -138,5 +126,27 @@ internal static partial class HextechRunLifecycleHooks
 	{
 		completionReason = "all-player-events";
 		return events.Count >= runState.Players.Count && finishedCount == events.Count;
+	}
+
+	[HarmonyPatch(typeof(NEventRoom), nameof(NEventRoom.Proceed), new Type[0])]
+	[HextechPatch("run.event-room-proceed", "事件房离开")]
+	private static class EventRoomProceedPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(out EventRoomProceedState __state)
+		{
+			bool shouldSelectAfterProceed = TryGetPendingEventProceedSelection(out RunState runState, out int actIndex, out string eventId);
+			__state = new EventRoomProceedState(shouldSelectAfterProceed, runState, actIndex, eventId);
+			if (shouldSelectAfterProceed)
+			{
+				HextechLog.Info($"[{ModInfo.Id}][Mayhem] EventRoomProceed begin: act={actIndex} event={eventId} {DescribeCurrentEventState(runState)}");
+			}
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(EventRoomProceedState __state, ref Task __result)
+		{
+			__result = EventRoomProceedAfterOriginal(__result, __state);
+		}
 	}
 }

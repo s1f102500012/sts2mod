@@ -1,3 +1,4 @@
+using MegaCrit.Sts2.Core.CardSelection;
 namespace HextechRunes;
 
 public sealed class BodySlamUpgradeRune : CardUpgradeRuneBase<BodySlam>
@@ -27,5 +28,26 @@ public sealed class BodySlamUpgradeRune : CardUpgradeRuneBase<BodySlam>
 	internal static int CalculateFisticuffsBlock(int totalDamage, int overkillDamage)
 	{
 		return totalDamage + overkillDamage;
+	}
+
+	[HarmonyPatch(typeof(BodySlam), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.body-slam", "升级铁山靠", Rune = typeof(BodySlamUpgradeRune))]
+	private static class BodySlamPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(
+			BodySlam __instance,
+			PlayerChoiceContext choiceContext,
+			CardPlay cardPlay,
+			ref Task __result)
+		{
+			if (__instance.Owner?.GetRelic<BodySlamUpgradeRune>() is not BodySlamUpgradeRune rune)
+			{
+				return true;
+			}
+
+			__result = rune.PlayUpgraded(choiceContext, __instance, cardPlay);
+			return false;
+		}
 	}
 }

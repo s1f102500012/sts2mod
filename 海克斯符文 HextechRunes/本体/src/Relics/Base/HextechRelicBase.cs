@@ -81,7 +81,6 @@ public abstract partial class HextechRelicBase : RelicModel
 	}
 #endif
 
-#if STS2_106_OR_NEWER
 	public virtual Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, HextechCombatState combatState)
 	{
 		return Task.CompletedTask;
@@ -121,13 +120,14 @@ public abstract partial class HextechRelicBase : RelicModel
 	{
 		return AfterTurnEnd(choiceContext, side);
 	}
-#endif
 
 	public sealed override RelicRarity Rarity => RelicRarity.Starter;
 
+	// 三条路径都指向 PCK 内已导入的资源,原版 Icon/IconOutline/BigIcon getter 直接 ResourceLoader.Load 即可,
+	// 不需要再拦截 getter;描边给一张全透明图,等价于原版小图标模式下隐藏描边。
 	public override string PackedIconPath => GetResolvedIconPath();
 
-	protected override string PackedIconOutlinePath => GetResolvedIconPath();
+	protected override string PackedIconOutlinePath => HextechAssets.RelicOutlineEmptyPath;
 
 	protected override string BigIconPath => GetResolvedIconPath();
 

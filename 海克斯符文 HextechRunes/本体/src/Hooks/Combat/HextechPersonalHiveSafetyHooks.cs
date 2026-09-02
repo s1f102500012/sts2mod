@@ -8,12 +8,6 @@ namespace HextechRunes;
 // 只让非法的非敌方实例安全完成回调,以便原版伤害响应链正常 PopModel/收尾。
 internal static class HextechPersonalHiveSafetyHooks
 {
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			ResolveDamageResponseTarget(),
-			prefix: new HarmonyMethod(typeof(HextechPersonalHiveSafetyHooks), nameof(AfterDamageReceivedPrefix)));
-	}
 
 	internal static MethodInfo ResolveDamageResponseTarget()
 	{
@@ -34,14 +28,24 @@ internal static class HextechPersonalHiveSafetyHooks
 		return ownerSide == CombatSide.Enemy;
 	}
 
-	private static bool AfterDamageReceivedPrefix(PersonalHivePower __instance, ref Task __result)
-	{
-		if (ShouldRunOriginal(__instance.Owner?.Side))
-		{
-			return true;
-		}
 
-		__result = Task.CompletedTask;
-		return false;
+	[HarmonyPatch]
+	[HextechPatch("compat.personal-hive", "私人蜂巢伤害响应安全")]
+	private static class DamageResponsePatch
+	{
+		[HarmonyTargetMethod]
+		private static MethodBase TargetMethod() => ResolveDamageResponseTarget();
+
+		[HarmonyPrefix]
+		private static bool Prefix(PersonalHivePower __instance, ref Task __result)
+		{
+			if (ShouldRunOriginal(__instance.Owner?.Side))
+			{
+				return true;
+			}
+
+			__result = Task.CompletedTask;
+			return false;
+		}
 	}
 }

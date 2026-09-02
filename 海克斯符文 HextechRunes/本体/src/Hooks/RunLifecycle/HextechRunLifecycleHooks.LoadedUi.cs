@@ -1,5 +1,6 @@
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Nodes;
+using MegaCrit.Sts2.Core.Nodes.CommonUi;
 using MegaCrit.Sts2.Core.Nodes.Screens.Map;
 using MegaCrit.Sts2.Core.Nodes.Screens.Overlays;
 
@@ -9,14 +10,6 @@ internal static partial class HextechRunLifecycleHooks
 {
 	private const int EnemyUiRefreshFrameBudget = 45;
 
-	private static void LoadRunPostfix(RunState runState, ref Task __result)
-	{
-		HextechRunLogBudget.Reset();
-		HextechCombatHooks.ResetTransientCombatState();
-		HextechEnemyHexEffects.ResetAllRunScopedState();
-		HextechGoldrendSync.ResetForRun(runState);
-		__result = LoadRunAfterOriginal(__result, runState);
-	}
 
 	private static async Task LoadRunAfterOriginal(Task original, RunState runState)
 	{
@@ -159,16 +152,6 @@ internal static partial class HextechRunLifecycleHooks
 		Log.Warn($"[{ModInfo.Id}][Mayhem] ResumePendingActSelectionAfterLoad timed out: currentRun={IsCurrentRun(runState)} act={runState.CurrentActIndex} room={runState.CurrentRoom?.GetType().Name ?? "null"}");
 	}
 
-	private static void TopBarInitializePostfix(IRunState runState)
-	{
-		if (runState is RunState concreteRunState)
-		{
-			ScheduleEnemyUiRefresh(concreteRunState, "NTopBar.Initialize", EnemyUiRefreshFrameBudget);
-			return;
-		}
-
-		ScheduleEnemyUiRefreshForCurrentRun("NTopBar.Initialize", EnemyUiRefreshFrameBudget);
-	}
 
 	private static void ScheduleEnemyUiRefresh(RunState runState, string reason, int frameBudget)
 	{
@@ -243,5 +226,40 @@ internal static partial class HextechRunLifecycleHooks
 		HextechEnemyUi.Refresh(modifier);
 		HextechLog.Info($"[{ModInfo.Id}][Mayhem] EnemyUi delayed refresh: reason={reason} frame={frame} recovered={recovered} actIndex={runState.CurrentActIndex} {modifier.DescribeActState()}");
 		return true;
+	}
+
+	[HarmonyPatch(typeof(NGame), "LoadRun", typeof(RunState), typeof(SerializableRoom))]
+	[HextechPatch("run.load", "跑局生命周期")]
+	private static class LoadRunPatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(RunState runState, ref Task __result)
+		{
+	#if STS2_109_OR_NEWER
+			HextechSavedPropertyBootstrap.RunOfficialCacheAuditOnce();
+	#endif
+			HextechRunLogBudget.Reset();
+			HextechCombatHooks.ResetTransientCombatState();
+			HextechEnemyHexEffects.ResetAllRunScopedState();
+			HextechGoldrendSync.ResetForRun(runState);
+			__result = LoadRunAfterOriginal(__result, runState);
+		}
+	}
+
+	[HarmonyPatch(typeof(NTopBar), nameof(NTopBar.Initialize), typeof(IRunState))]
+	[HextechPatch("run.top-bar", "顶栏海克斯入口")]
+	private static class TopBarInitializePatch
+	{
+		[HarmonyPostfix]
+		private static void Postfix(IRunState runState)
+		{
+			if (runState is RunState concreteRunState)
+			{
+				ScheduleEnemyUiRefresh(concreteRunState, "NTopBar.Initialize", EnemyUiRefreshFrameBudget);
+				return;
+			}
+
+			ScheduleEnemyUiRefreshForCurrentRun("NTopBar.Initialize", EnemyUiRefreshFrameBudget);
+		}
 	}
 }

@@ -37,57 +37,6 @@ internal static class HextechUiSafetyHooks
 		"BeforeResumedAfterPlayerChoice",
 		BindingFlags.Instance | BindingFlags.NonPublic);
 
-	public static void Install(Harmony harmony)
-	{
-		harmony.Patch(
-			RequireMethod(typeof(NRelicInventoryHolder), nameof(NRelicInventoryHolder.PlayNewlyAcquiredAnimation), BindingFlags.Instance | BindingFlags.Public, typeof(Vector2?), typeof(Vector2?)),
-			prefix: new HarmonyMethod(typeof(HextechUiSafetyHooks), nameof(PlayNewlyAcquiredAnimationPrefix)),
-			postfix: new HarmonyMethod(typeof(HextechUiSafetyHooks), nameof(PlayNewlyAcquiredAnimationPostfix)));
-
-		PatchIfPresent(
-			harmony,
-			typeof(NMultiplayerPlayerIntentHandler),
-			"BeforeActionReadyToResumeAfterPlayerChoice",
-			BindingFlags.Instance | BindingFlags.NonPublic,
-			nameof(MultiplayerIntentBeforeActionReadyPrefix));
-		PatchIfPresent(
-			harmony,
-			typeof(NCardPlayQueue),
-			"BeforeRemoteCardPlayResumedAfterPlayerChoice",
-			BindingFlags.Instance | BindingFlags.NonPublic,
-			nameof(CardPlayQueueBeforeRemoteCardPlayResumedPrefix));
-	}
-
-	private static void PatchIfPresent(Harmony harmony, Type type, string methodName, BindingFlags flags, string prefixName)
-	{
-		MethodInfo? method = TryGetMethod(type, methodName, flags, typeof(GameAction));
-		if (method != null)
-		{
-			harmony.Patch(method, prefix: new HarmonyMethod(typeof(HextechUiSafetyHooks), prefixName));
-		}
-	}
-
-	private static bool PlayNewlyAcquiredAnimationPrefix(NRelicInventoryHolder __instance, ref Task __result, out bool __state)
-	{
-		__state = false;
-		if (!IsNodeUsable(__instance))
-		{
-			LogRelicAnimationSkipped("holder-not-in-tree");
-			__result = Task.CompletedTask;
-			return false;
-		}
-
-		__state = true;
-		return true;
-	}
-
-	private static void PlayNewlyAcquiredAnimationPostfix(NRelicInventoryHolder __instance, bool __state, ref Task __result)
-	{
-		if (__state)
-		{
-			__result = PlayNewlyAcquiredAnimationSafely(__result, __instance);
-		}
-	}
 
 	private static async Task PlayNewlyAcquiredAnimationSafely(Task original, NRelicInventoryHolder self)
 	{
@@ -110,42 +59,6 @@ internal static class HextechUiSafetyHooks
 		return GodotObject.IsInstanceValid(node) && node.IsInsideTree();
 	}
 
-	private static bool MultiplayerIntentBeforeActionReadyPrefix(NMultiplayerPlayerIntentHandler __instance, GameAction action)
-	{
-		NCard? card = IntentCardInPlayAwaitingPlayerChoiceField?.GetValue(__instance) as NCard;
-		if (card == null || HasUsableParent(card))
-		{
-			return true;
-		}
-
-		RestoreRemoteIntentUi(__instance);
-		LogRemoteIntentSkipped(action, "awaiting-card-detached");
-		return false;
-	}
-
-	private static bool CardPlayQueueBeforeRemoteCardPlayResumedPrefix(NCardPlayQueue __instance, GameAction action)
-	{
-		if (!TryFindQueueItem(__instance, action, out IList? playQueue, out int index, out object? item, out NCard? card))
-		{
-			return true;
-		}
-
-		if (card != null && HasUsableParent(card))
-		{
-			return true;
-		}
-
-		UnsubscribeCardPlayQueueResume(__instance, action);
-		KillQueueItemTween(item);
-		if (playQueue != null && index >= 0 && index < playQueue.Count)
-		{
-			playQueue.RemoveAt(index);
-			TweenAllToQueuePositionMethod?.Invoke(__instance, null);
-		}
-
-		LogRemotePlayQueueSkipped(action, card == null ? "missing-card-node" : "card-node-detached");
-		return false;
-	}
 
 	private static bool TryFindQueueItem(NCardPlayQueue queue, GameAction action, out IList? playQueue, out int index, out object? item, out NCard? card)
 	{
@@ -294,4 +207,82 @@ internal static class HextechUiSafetyHooks
 		}
 	}
 
+
+	[HarmonyPatch(typeof(NRelicInventoryHolder), nameof(NRelicInventoryHolder.PlayNewlyAcquiredAnimation), typeof(Vector2?), typeof(Vector2?))]
+	[HextechPatch("ui.safety.newly-acquired-animation", "遗物获取动画安全")]
+	private static class NewlyAcquiredAnimationPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(NRelicInventoryHolder __instance, ref Task __result, out bool __state)
+		{
+			__state = false;
+			if (!IsNodeUsable(__instance))
+			{
+				LogRelicAnimationSkipped("holder-not-in-tree");
+				__result = Task.CompletedTask;
+				return false;
+			}
+
+			__state = true;
+			return true;
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(NRelicInventoryHolder __instance, bool __state, ref Task __result)
+		{
+			if (__state)
+			{
+				__result = PlayNewlyAcquiredAnimationSafely(__result, __instance);
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(NMultiplayerPlayerIntentHandler), "BeforeActionReadyToResumeAfterPlayerChoice")]
+	[HextechPatch("ui.safety.multiplayer-intent", "联机意图恢复安全", Optional = true)]
+	private static class MultiplayerIntentPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(NMultiplayerPlayerIntentHandler __instance, GameAction action)
+		{
+			NCard? card = IntentCardInPlayAwaitingPlayerChoiceField?.GetValue(__instance) as NCard;
+			if (card == null || HasUsableParent(card))
+			{
+				return true;
+			}
+
+			RestoreRemoteIntentUi(__instance);
+			LogRemoteIntentSkipped(action, "awaiting-card-detached");
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(NCardPlayQueue), "BeforeRemoteCardPlayResumedAfterPlayerChoice")]
+	[HextechPatch("ui.safety.card-play-queue", "联机出牌队列恢复安全", Optional = true)]
+	private static class CardPlayQueuePatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(NCardPlayQueue __instance, GameAction action)
+		{
+			if (!TryFindQueueItem(__instance, action, out IList? playQueue, out int index, out object? item, out NCard? card))
+			{
+				return true;
+			}
+
+			if (card != null && HasUsableParent(card))
+			{
+				return true;
+			}
+
+			UnsubscribeCardPlayQueueResume(__instance, action);
+			KillQueueItemTween(item);
+			if (playQueue != null && index >= 0 && index < playQueue.Count)
+			{
+				playQueue.RemoveAt(index);
+				TweenAllToQueuePositionMethod?.Invoke(__instance, null);
+			}
+
+			LogRemotePlayQueueSkipped(action, card == null ? "missing-card-node" : "card-node-detached");
+			return false;
+		}
+	}
 }

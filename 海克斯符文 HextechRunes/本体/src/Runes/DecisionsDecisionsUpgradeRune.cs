@@ -77,4 +77,44 @@ public sealed class DecisionsDecisionsUpgradeRune : CardUpgradeRuneBase<Decision
 	{
 		return playCount + Math.Max(0, requestedPlayCount - 1);
 	}
+
+	[HarmonyPatch(typeof(DecisionsDecisions), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.decisions.play", "升级抉择", Rune = typeof(DecisionsDecisionsUpgradeRune))]
+	private static class DecisionsDecisionsOnPlayPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(
+			DecisionsDecisions __instance,
+			PlayerChoiceContext choiceContext,
+			ref Task __result)
+		{
+			if (__instance.Owner?.GetRelic<DecisionsDecisionsUpgradeRune>() is not DecisionsDecisionsUpgradeRune rune)
+			{
+				return true;
+			}
+
+			__result = rune.PlayUpgraded(choiceContext, __instance);
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(CardSelectCmd), nameof(CardSelectCmd.FromHand), typeof(PlayerChoiceContext), typeof(Player), typeof(CardSelectorPrefs), typeof(Func<CardModel, bool>), typeof(AbstractModel))]
+	[HextechPatch("rune.decisions.select", "升级抉择", Rune = typeof(DecisionsDecisionsUpgradeRune))]
+	private static class DecisionsDecisionsFromHandPatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(
+			AbstractModel source,
+			ref Func<CardModel, bool> filter)
+		{
+			if (source is not DecisionsDecisions card
+				|| card.Owner?.GetRelic<DecisionsDecisionsUpgradeRune>() is not DecisionsDecisionsUpgradeRune rune)
+			{
+				return;
+			}
+
+			rune.Flash();
+			filter = DecisionsDecisionsUpgradeRune.CanSelectCard;
+		}
+	}
 }

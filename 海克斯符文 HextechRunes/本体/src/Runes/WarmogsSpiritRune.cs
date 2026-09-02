@@ -97,15 +97,6 @@ public sealed class WarmogsSpiritRune : HextechRelicBase
 		}
 	}
 
-#if !STS2_104_OR_NEWER
-	public override async Task BeforePlayPhaseStart(PlayerChoiceContext choiceContext, Player player)
-	{
-		if (ShouldUseNetworkCombatHistory() && player == Owner)
-		{
-			await ResolveDrawProgressFromHistory();
-		}
-	}
-#endif
 
 	private async Task ResolveDrawProgressFromHistory()
 	{

@@ -232,11 +232,7 @@ public sealed class HextechTemporarySlowPower : HextechPowerBase, ITemporaryPowe
 		await PowerCmd.Apply<HextechPlayerSlowPower>(target, amount, applier, cardSource, silent: true);
 	}
 
-#if STS2_104_OR_NEWER
 	public override async Task AfterPowerAmountChanged(PlayerChoiceContext choiceContext, PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#else
-	public override async Task AfterPowerAmountChanged(PowerModel power, decimal amount, Creature? applier, CardModel? cardSource)
-#endif
 	{
 		if (power != this || amount == Amount)
 		{

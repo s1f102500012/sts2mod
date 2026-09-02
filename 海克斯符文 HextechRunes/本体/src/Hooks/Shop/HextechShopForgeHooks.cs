@@ -14,144 +14,37 @@ internal static class HextechShopForgeHooks
 	private const float CardRemovalRandomForgeOffsetY = 60f;
 
 	private static readonly FieldInfo? MerchantInventoryRelicEntriesField = TryGetField(typeof(MerchantInventory), "_relicEntries");
+	private static bool? _randomForgeShopHooksAvailable;
+
+	/// <summary>
+	/// 随机锻造器商店条目依赖四个原版商人方法(购买/补货/定价/补位);任一缺失则整组停用,
+	/// 否则条目会出现在商店却无法购买。七个补丁类共用这一次探测。
+	/// </summary>
+	private static bool RandomForgeShopHooksAvailable
+	{
+		get
+		{
+			if (_randomForgeShopHooksAvailable is bool cached)
+			{
+				return cached;
+			}
+
+			bool available =
+				TryGetMethod(typeof(MerchantRelicEntry), "OnTryPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(MerchantInventory), typeof(bool)) != null
+				&& TryGetMethod(typeof(MerchantRelicEntry), "RestockAfterPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(MerchantInventory)) != null
+				&& TryGetMethod(typeof(CoreHook), nameof(CoreHook.ModifyMerchantPrice), BindingFlags.Static | BindingFlags.Public, typeof(IRunState), typeof(Player), typeof(MerchantEntry), typeof(decimal)) != null
+				&& TryGetMethod(typeof(CoreHook), nameof(CoreHook.ShouldRefillMerchantEntry), BindingFlags.Static | BindingFlags.Public, typeof(IRunState), typeof(MerchantEntry), typeof(Player)) != null;
+			if (!available)
+			{
+				Log.Warn($"[{ModInfo.Id}][Mayhem] Random forge shop entry disabled because one or more merchant hooks are unavailable.");
+			}
+
+			_randomForgeShopHooksAvailable = available;
+			return available;
+		}
+	}
 	private static readonly Dictionary<ulong, Vector2> CardRemovalOriginalPositions = [];
 
-	public static void Install(Harmony harmony)
-	{
-		bool purchaseHookInstalled = TryPatch(
-			harmony,
-			() => RequireMethod(typeof(MerchantRelicEntry), "OnTryPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(MerchantInventory), typeof(bool)),
-			"random forge purchase",
-			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantRelicPurchasePrefix)));
-		bool restockHookInstalled = TryPatch(
-			harmony,
-			() => RequireMethod(typeof(MerchantRelicEntry), "RestockAfterPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(MerchantInventory)),
-			"random forge restock",
-			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantRelicRestockPrefix)));
-		bool priceHookInstalled = TryPatch(
-			harmony,
-			() => RequireMethod(typeof(CoreHook), nameof(CoreHook.ModifyMerchantPrice), BindingFlags.Static | BindingFlags.Public, typeof(IRunState), typeof(Player), typeof(MerchantEntry), typeof(decimal)),
-			"random forge price",
-			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(ModifyMerchantPricePrefix)));
-		bool refillHookInstalled = TryPatch(
-			harmony,
-			() => RequireMethod(typeof(CoreHook), nameof(CoreHook.ShouldRefillMerchantEntry), BindingFlags.Static | BindingFlags.Public, typeof(IRunState), typeof(MerchantEntry), typeof(Player)),
-			"random forge refill",
-			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(ShouldRefillMerchantEntryPrefix)));
-
-		if (!purchaseHookInstalled || !restockHookInstalled || !priceHookInstalled || !refillHookInstalled)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Random forge shop entry disabled because one or more merchant hooks are unavailable.");
-			return;
-		}
-
-		TryPatch(
-			harmony,
-			() => RequireMethod(typeof(MerchantInventory), nameof(MerchantInventory.CreateForNormalMerchant), BindingFlags.Static | BindingFlags.Public, typeof(Player)),
-			"random forge merchant entry",
-			postfix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(CreateForNormalMerchantPostfix)));
-		TryPatch(
-			harmony,
-			() => RequireMethod(typeof(NMerchantInventory), nameof(NMerchantInventory.Initialize), BindingFlags.Instance | BindingFlags.Public, typeof(MerchantInventory), typeof(MerchantDialogueSet)),
-			"random forge shop layout",
-			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantInventoryInitializePrefix)),
-			postfix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantInventoryInitializePostfix)));
-		TryPatch(
-			harmony,
-			() => RequireMethod(typeof(NMerchantRelic), "OnSuccessfulPurchase", BindingFlags.Instance | BindingFlags.NonPublic, typeof(PurchaseStatus), typeof(MerchantEntry)),
-			"random forge purchase animation",
-			prefix: new HarmonyMethod(typeof(HextechShopForgeHooks), nameof(MerchantRelicSuccessfulPurchasePrefix)));
-	}
-
-	private static bool TryPatch(Harmony harmony, Func<MethodInfo> resolveTarget, string label, HarmonyMethod? prefix = null, HarmonyMethod? postfix = null)
-	{
-		try
-		{
-			MethodInfo target = resolveTarget();
-			harmony.Patch(target, prefix, postfix);
-			return true;
-		}
-		catch (Exception ex)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Shop random forge hook skipped: {label}: {ex.GetType().Name}: {ex.Message}");
-			return false;
-		}
-	}
-
-	private static void CreateForNormalMerchantPostfix(Player player, MerchantInventory __result)
-	{
-		InstallRandomForgeEntry(__result, player);
-	}
-
-	private static void ModifyMerchantPricePrefix(MerchantEntry entry, ref decimal result)
-	{
-		if (TryGetRandomForgeShopRelic(entry, out RandomForgeShopRelic? shopRelic) && shopRelic != null)
-		{
-			HextechForgeShopPriceHelper.RefreshRandomForgeShopRelic(shopRelic, shopRelic.Owner?.RunState as RunState);
-			result = GetRandomForgeShopBaseCost(shopRelic);
-		}
-	}
-
-	private static bool ShouldRefillMerchantEntryPrefix(MerchantEntry entry, ref bool __result)
-	{
-		if (!IsRandomForgeEntry(entry))
-		{
-			return true;
-		}
-
-		__result = true;
-		return false;
-	}
-
-	private static void MerchantInventoryInitializePrefix(NMerchantInventory __instance, MerchantInventory inventory)
-	{
-		if (IsFakeMerchantInventory(__instance))
-		{
-			RemoveRandomForgeEntries(inventory);
-			return;
-		}
-
-		InstallRandomForgeEntry(inventory, inventory.Player);
-		EnsureRandomForgeRelicSlot(__instance, inventory);
-	}
-
-	private static void MerchantInventoryInitializePostfix(NMerchantInventory __instance, MerchantInventory inventory)
-	{
-		if (IsFakeMerchantInventory(__instance))
-		{
-			return;
-		}
-
-		MoveCardRemovalBelowRandomForge(__instance, inventory);
-	}
-
-	private static bool MerchantRelicPurchasePrefix(MerchantRelicEntry __instance, MerchantInventory inventory, bool ignoreCost, ref Task<(bool, int)> __result)
-	{
-		if (!IsRandomForgeEntry(__instance))
-		{
-			return true;
-		}
-
-		__result = PurchaseRandomForge(__instance, inventory, ignoreCost);
-		return false;
-	}
-
-	private static bool MerchantRelicRestockPrefix(MerchantRelicEntry __instance)
-	{
-		return !IsRandomForgeEntry(__instance);
-	}
-
-	private static bool MerchantRelicSuccessfulPurchasePrefix(NMerchantRelic __instance)
-	{
-		if (!IsRandomForgeEntry(__instance.Entry))
-		{
-			return true;
-		}
-
-		__instance.Entry.OnMerchantInventoryUpdated();
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] Skipped merchant relic inventory animation for random forge placeholder.");
-		return false;
-	}
 
 	private static void InstallRandomForgeEntry(MerchantInventory inventory, Player player)
 	{
@@ -203,11 +96,7 @@ internal static class HextechShopForgeHooks
 		int purchaseOrdinal = shopRelic?.PurchaseCount ?? 0;
 		if (!HextechForgeGrantHelper.TryCreateStableShopForgeChoice(player, purchaseOrdinal, out List<RelicModel> options))
 		{
-#if STS2_104_OR_NEWER
 			entry.InvokePurchaseFailed(PurchaseStatus.FailureOutOfStock);
-#else
-			entry.InvokePurchaseFailed(PurchaseStatus.FailureForbidden);
-#endif
 			return (false, 0);
 		}
 
@@ -221,11 +110,7 @@ internal static class HextechShopForgeHooks
 		if (HextechForgeGrantHelper.IsForgeDisabledForPlayer(player, forge))
 		{
 			Log.Warn($"[{ModInfo.Id}][Mayhem] Blocked purchasing a config-disabled forge: player={player.NetId} relic={(forge.CanonicalInstance?.Id ?? forge.Id).Entry}");
-#if STS2_104_OR_NEWER
 			entry.InvokePurchaseFailed(PurchaseStatus.FailureOutOfStock);
-#else
-			entry.InvokePurchaseFailed(PurchaseStatus.FailureForbidden);
-#endif
 			return (false, 0);
 		}
 
@@ -423,4 +308,143 @@ internal static class HextechShopForgeHooks
 		return new Vector2(160f, 0f);
 	}
 
+
+	[HarmonyPatch(typeof(MerchantRelicEntry), "OnTryPurchase", typeof(MerchantInventory), typeof(bool))]
+	[HextechPatch("shop.random-forge.purchase", "商店随机锻造器")]
+	private static class PurchasePatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => RandomForgeShopHooksAvailable;
+
+		[HarmonyPrefix]
+		private static bool Prefix(MerchantRelicEntry __instance, MerchantInventory inventory, bool ignoreCost, ref Task<(bool, int)> __result)
+		{
+			if (!IsRandomForgeEntry(__instance))
+			{
+				return true;
+			}
+
+			__result = PurchaseRandomForge(__instance, inventory, ignoreCost);
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(MerchantRelicEntry), "RestockAfterPurchase", typeof(MerchantInventory))]
+	[HextechPatch("shop.random-forge.restock", "商店随机锻造器")]
+	private static class RestockPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => RandomForgeShopHooksAvailable;
+
+		[HarmonyPrefix]
+		private static bool Prefix(MerchantRelicEntry __instance)
+		{
+			return !IsRandomForgeEntry(__instance);
+		}
+	}
+
+	[HarmonyPatch(typeof(CoreHook), nameof(CoreHook.ModifyMerchantPrice), typeof(IRunState), typeof(Player), typeof(MerchantEntry), typeof(decimal))]
+	[HextechPatch("shop.random-forge.price", "商店随机锻造器")]
+	private static class PricePatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => RandomForgeShopHooksAvailable;
+
+		[HarmonyPrefix]
+		private static void Prefix(MerchantEntry entry, ref decimal result)
+		{
+			if (TryGetRandomForgeShopRelic(entry, out RandomForgeShopRelic? shopRelic) && shopRelic != null)
+			{
+				HextechForgeShopPriceHelper.RefreshRandomForgeShopRelic(shopRelic, shopRelic.Owner?.RunState as RunState);
+				result = GetRandomForgeShopBaseCost(shopRelic);
+			}
+		}
+	}
+
+	[HarmonyPatch(typeof(CoreHook), nameof(CoreHook.ShouldRefillMerchantEntry), typeof(IRunState), typeof(MerchantEntry), typeof(Player))]
+	[HextechPatch("shop.random-forge.refill", "商店随机锻造器")]
+	private static class RefillPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => RandomForgeShopHooksAvailable;
+
+		[HarmonyPrefix]
+		private static bool Prefix(MerchantEntry entry, ref bool __result)
+		{
+			if (!IsRandomForgeEntry(entry))
+			{
+				return true;
+			}
+
+			__result = true;
+			return false;
+		}
+	}
+
+	[HarmonyPatch(typeof(MerchantInventory), nameof(MerchantInventory.CreateForNormalMerchant), typeof(Player))]
+	[HextechPatch("shop.random-forge.entry", "商店随机锻造器", Optional = true)]
+	private static class MerchantEntryPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => RandomForgeShopHooksAvailable;
+
+		[HarmonyPostfix]
+		private static void Postfix(Player player, MerchantInventory __result)
+		{
+			InstallRandomForgeEntry(__result, player);
+		}
+	}
+
+	[HarmonyPatch(typeof(NMerchantInventory), nameof(NMerchantInventory.Initialize), typeof(MerchantInventory), typeof(MerchantDialogueSet))]
+	[HextechPatch("shop.random-forge.layout", "商店随机锻造器", Optional = true)]
+	private static class LayoutPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => RandomForgeShopHooksAvailable;
+
+		[HarmonyPrefix]
+		private static void Prefix(NMerchantInventory __instance, MerchantInventory inventory)
+		{
+			if (IsFakeMerchantInventory(__instance))
+			{
+				RemoveRandomForgeEntries(inventory);
+				return;
+			}
+
+			InstallRandomForgeEntry(inventory, inventory.Player);
+			EnsureRandomForgeRelicSlot(__instance, inventory);
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(NMerchantInventory __instance, MerchantInventory inventory)
+		{
+			if (IsFakeMerchantInventory(__instance))
+			{
+				return;
+			}
+
+			MoveCardRemovalBelowRandomForge(__instance, inventory);
+		}
+	}
+
+	[HarmonyPatch(typeof(NMerchantRelic), "OnSuccessfulPurchase", typeof(PurchaseStatus), typeof(MerchantEntry))]
+	[HextechPatch("shop.random-forge.purchase-animation", "商店随机锻造器", Optional = true)]
+	private static class PurchaseAnimationPatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => RandomForgeShopHooksAvailable;
+
+		[HarmonyPrefix]
+		private static bool Prefix(NMerchantRelic __instance)
+		{
+			if (!IsRandomForgeEntry(__instance.Entry))
+			{
+				return true;
+			}
+
+			__instance.Entry.OnMerchantInventoryUpdated();
+			HextechLog.Info($"[{ModInfo.Id}][Mayhem] Skipped merchant relic inventory animation for random forge placeholder.");
+			return false;
+		}
+	}
 }

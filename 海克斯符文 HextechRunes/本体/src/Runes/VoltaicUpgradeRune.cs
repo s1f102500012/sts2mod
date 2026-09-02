@@ -1,3 +1,6 @@
+using MegaCrit.Sts2.Core.Models.Exceptions;
+using MegaCrit.Sts2.Core.Nodes.Combat;
+
 namespace HextechRunes;
 
 public sealed class VoltaicUpgradeRune : CardUpgradeRuneBase<Voltaic>
@@ -46,6 +49,23 @@ public sealed class VoltaicUpgradeRune : CardUpgradeRuneBase<Voltaic>
 					await OrbCmd.Channel<GlassOrb>(choiceContext, card.Owner);
 					break;
 			}
+		}
+	}
+
+	[HarmonyPatch(typeof(Voltaic), "OnPlay", typeof(PlayerChoiceContext), typeof(CardPlay))]
+	[HextechPatch("rune.voltaic", "升级伏特", Rune = typeof(VoltaicUpgradeRune))]
+	private static class VoltaicPatch
+	{
+		[HarmonyPrefix]
+		private static bool Prefix(Voltaic __instance, PlayerChoiceContext choiceContext, CardPlay cardPlay, ref Task __result)
+		{
+			if (!VoltaicUpgradeRune.ShouldUseUpgradedPlay(__instance))
+			{
+				return true;
+			}
+
+			__result = VoltaicUpgradeRune.PlayUpgraded(choiceContext, __instance, cardPlay);
+			return false;
 		}
 	}
 }

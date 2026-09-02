@@ -1,0 +1,81 @@
+Initializing Steam
+=================
+By submitting '海克斯大乱斗' to the workshop,
+you agree to the Steam Workshop terms of service:
+https://steamcommunity.com/sharedfiles/workshoplegalagreement
+=================
+Logged in as user '時穂'.
+Using workshop item ID 3747501308 from mod_id.txt
+Uploading '海克斯大乱斗' to the steam workshop with item ID 3747501308...
+Skipping workshop title update. Set updateTitle to true in workshop.json only when intentionally changing the Steam title.
+Skipping workshop description update. Set updateDescription to true in workshop.json only when intentionally changing the Steam description.
+Status: k_EItemUpdateStatusPreparingContent
+Status: k_EItemUpdateStatusUploadingContent
+Status: k_EItemUpdateStatusUploadingContent
+Status: k_EItemUpdateStatusUploadingContent, bytes processed: 0/1798144 (0.00%)
+Status: k_EItemUpdateStatusUploadingContent, bytes processed: 749568/1798144 (41.69%)
+Status: k_EItemUpdateStatusUploadingContent, bytes processed: 749568/1798144 (41.69%)
+Status: k_EItemUpdateStatusUploadingContent, bytes processed: 1798144/1798144 (100.00%)
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusCommittingChanges
+Status: k_EItemUpdateStatusInvalid
+Status: k_EItemUpdateStatusInvalid
+Error occurred while uploading to the workshop! Result: k_EResultTimeout

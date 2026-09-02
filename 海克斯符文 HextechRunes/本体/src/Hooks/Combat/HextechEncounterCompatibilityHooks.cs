@@ -1,4 +1,3 @@
-using HarmonyLib;
 using MegaCrit.Sts2.Core.Models.Monsters;
 using static HextechRunes.HextechHookReflection;
 
@@ -8,31 +7,16 @@ internal static class HextechEncounterCompatibilityHooks
 {
 	private const string EntomancerCastSfx = "event:/sfx/enemy/enemy_attacks/entomancer/entomancer_cast";
 
-	public static void Install(Harmony harmony)
-	{
-	#if STS2_107_1 && !STS2_108_OR_NEWER
-		MethodInfo? spitMove = TryResolveEntomancerSpitMove(typeof(Entomancer), warnIfMissing: true);
-		if (spitMove == null)
-		{
-			return;
-		}
-
-		harmony.Patch(
-			spitMove,
-			prefix: new HarmonyMethod(typeof(HextechEncounterCompatibilityHooks), nameof(EntomancerSpitMovePrefix)));
-	#endif
-	}
-
 	internal static bool ShouldRunOriginalEntomancerSpitMove(bool hasPersonalHive)
 	{
-#if STS2_107_1 && !STS2_108_OR_NEWER
+#if STS2_107_1
 		return hasPersonalHive;
 #else
 		return true;
 #endif
 	}
 
-	#if STS2_107_1 && !STS2_108_OR_NEWER
+#if STS2_107_1
 	internal static MethodInfo? TryResolveEntomancerSpitMove(Type entomancerType, bool warnIfMissing)
 	{
 		return TryGetMethod(
@@ -43,22 +27,35 @@ internal static class HextechEncounterCompatibilityHooks
 			typeof(IReadOnlyList<Creature>));
 	}
 
-	private static bool EntomancerSpitMovePrefix(Entomancer __instance, ref Task __result)
-	{
-		if (ShouldRunOriginalEntomancerSpitMove(__instance.Creature.HasPower<PersonalHivePower>()))
-		{
-			return true;
-		}
-
-		__result = EntomancerSpitMoveWithoutPersonalHive(__instance);
-		return false;
-	}
-
 	private static async Task EntomancerSpitMoveWithoutPersonalHive(Entomancer entomancer)
 	{
 		SfxCmd.Play(EntomancerCastSfx);
 		await CreatureCmd.TriggerAnim(entomancer.Creature, "Cast", 0.5f);
 		await PowerCmd.Apply<StrengthPower>(entomancer.Creature, 2m, entomancer.Creature, null);
+	}
+
+	// 0.107.1 的昆虫法师在没有私人蜂巢时 SpitMove 会空引用;0.108 起原版已修复。
+	[HarmonyPatch]
+	[HextechPatch("compat.entomancer-spit", "昆虫法师遭遇战兼容", Optional = true)]
+	private static class EntomancerSpitMovePatch
+	{
+		[HarmonyPrepare]
+		private static bool Prepare() => TryResolveEntomancerSpitMove(typeof(Entomancer), warnIfMissing: true) != null;
+
+		[HarmonyTargetMethod]
+		private static MethodBase TargetMethod() => TryResolveEntomancerSpitMove(typeof(Entomancer), warnIfMissing: false)!;
+
+		[HarmonyPrefix]
+		private static bool Prefix(Entomancer __instance, ref Task __result)
+		{
+			if (ShouldRunOriginalEntomancerSpitMove(__instance.Creature.HasPower<PersonalHivePower>()))
+			{
+				return true;
+			}
+
+			__result = EntomancerSpitMoveWithoutPersonalHive(__instance);
+			return false;
+		}
 	}
 #endif
 }

@@ -11,8 +11,6 @@
   "HEXTECH_FORGE_CHOICE_REWARD": "เลือกช่างหลอมค่าสถานะ",
   "HEXTECH_WAITING_FOR_PLAYERS": "กำลังรอผู้เล่นคนอื่นเลือก...",
   "HEXTECH_MAP_PREVIEW_HINT": "ยังไม่ได้เลือกเฮกซ์ — ปิดแผนที่เพื่อเลือกต่อ",
-  "HEXTECH_CONFIG_BUTTON": "ตั้งค่ารูนเฮกซ์เทค",
-  "HEXTECH_CONFIG_BUTTON_TOOLTIP": "ตั้งค่ากฎของเฮกซ์เทค เฮกซ์ศัตรู และช่างหลอมค่าสถานะ ที่ใช้เมื่อเล่นคนเดียวหรือเป็นเจ้าของห้องในโหมดหลายคน",
   "HEXTECH_CONFIG_TITLE": "ตั้งค่ารูนเฮกซ์เทค",
   "HEXTECH_CONFIG_TAB_COUNTS": "การเลือก",
   "HEXTECH_CONFIG_TAB_RUNE_POOLS": "กองเฮกซ์",

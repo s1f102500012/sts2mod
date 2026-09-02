@@ -1,0 +1,27 @@
+[h1] ベータ版について [/h1]
+このアイテムは Slay the Spire 2 の[b]ベータブランチ[/b]専用です。通常（公開）ブランチでプレイしている場合は、正式（Public）版をご購読ください：
+https://steamcommunity.com/sharedfiles/filedetails/?id=3747501308
+
+[h1] 対応言語 [/h1]
+English
+简体中文
+한국어 （翻訳協力:我有幸福症、oatone、Nark）
+Español
+日本語
+Português do Brasil （翻訳協力:floca）
+ภาษาไทย
+Русский
+
+[h1] 概要 [/h1]
+このMODは、《リーグ・オブ・レジェンド》から着想を得たヘクステック・ルーンシステムを《Slay the Spire 2》に追加します。《Slay the Spire 2》で人気の大型拡張MODです。
+
+現在、効果の異なるヘクステック・ルーンが300種類以上あります。プレイヤーは各フロアでランダムなヘクステック・ルーンを1つ選べると同時に、モンスターも同じレアリティのヘクステックをランダムに獲得し、双方が絶えず変化するルールの中で戦います。
+
+さらに、キャラクター専用ヘクステック、ステータス鍛造器、新規カード、統計フィードバック機能を追加し、毎回のプレイで異なるビルドの方向性と挑戦のテンポを楽しめます。
+
+[img]https://i.mji.rip/2026/06/19/7459c0449d26c3e1a35bd5b020bd3961.png[/img]
+[img]https://i.mji.rip/2026/06/19/a7431d3a5ca25b7c5fa80026a0ba2496.webp[/img]
+
+MODを気に入っていただけたら、Afdianで支援していただけます: https://ifdian.net/a/Lu-Ran
+Github: https://github.com/s1f102500012/sts2mod
+QQグループ: 1077728669

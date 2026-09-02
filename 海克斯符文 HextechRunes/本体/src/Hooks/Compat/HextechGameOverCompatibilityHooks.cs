@@ -8,52 +8,7 @@ namespace HextechRunes;
 
 internal static class HextechGameOverCompatibilityHooks
 {
-	public static void Install(Harmony harmony)
-	{
-		MethodInfo? createScoreLine = TryGetMethod(
-			typeof(NScoreLine),
-			nameof(NScoreLine.Create),
-			BindingFlags.Static | BindingFlags.Public,
-			warnIfMissing: false,
-			typeof(string),
-			typeof(string),
-			typeof(Texture2D));
-		if (createScoreLine == null)
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Game over score line compatibility hook skipped: missing NScoreLine.Create.");
-			return;
-		}
 
-		harmony.Patch(
-			createScoreLine,
-			finalizer: new HarmonyMethod(typeof(HextechGameOverCompatibilityHooks), nameof(NScoreLineCreateFinalizer)));
-	}
-
-	private static Exception? NScoreLineCreateFinalizer(
-		string label,
-		string score,
-		Texture2D? icon,
-		ref NScoreLine __result,
-		Exception? __exception)
-	{
-		if (__exception == null)
-		{
-			return null;
-		}
-
-		if (__exception is not InvalidCastException)
-		{
-			return __exception;
-		}
-
-		__result = CreateFallbackScoreLine(label, score, icon);
-		if (HextechRunLogBudget.TryConsume("compat.game-over-score-line-fallback", 5))
-		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] Game over score line fallback used: {__exception.GetType().Name}: {__exception.Message}");
-		}
-
-		return null;
-	}
 
 	private static NScoreLine CreateFallbackScoreLine(string label, string score, Texture2D? icon)
 	{
@@ -112,5 +67,37 @@ internal static class HextechGameOverCompatibilityHooks
 		HextechUiTheme.ApplyDefaultMegaLabelTheme(label);
 		label.SetTextAutoSize(text);
 		return label;
+	}
+
+	[HarmonyPatch(typeof(NScoreLine), nameof(NScoreLine.Create), typeof(string), typeof(string), typeof(Texture2D))]
+	[HextechPatch("compat.game-over-score-line", "结算记分行兼容", Optional = true)]
+	private static class ScoreLineCreatePatch
+	{
+		[HarmonyFinalizer]
+		private static Exception? Finalizer(
+			string label,
+			string score,
+			Texture2D? icon,
+			ref NScoreLine __result,
+			Exception? __exception)
+		{
+			if (__exception == null)
+			{
+				return null;
+			}
+
+			if (__exception is not InvalidCastException)
+			{
+				return __exception;
+			}
+
+			__result = CreateFallbackScoreLine(label, score, icon);
+			if (HextechRunLogBudget.TryConsume("compat.game-over-score-line-fallback", 5))
+			{
+				Log.Warn($"[{ModInfo.Id}][Mayhem] Game over score line fallback used: {__exception.GetType().Name}: {__exception.Message}");
+			}
+
+			return null;
+		}
 	}
 }
