@@ -66,7 +66,7 @@
   "ENTROPY_DECREASE_CHOICE_RELIC.description": "Add [gold]Entropy Decrease[/gold] to the card you just chose.",
   "ENTROPY_DECREASE_CHOICE_RELIC.flavor": "Choose an enchantment.",
   "ENCHANTMENT_MASTER_RUNE.title": "Enchantment Master",
-  "ENCHANTMENT_MASTER_RUNE.description": "You can now enchant the same card with multiple effects. Gain [blue]{PrismaticForgeCount}[/blue] random Prismatic enchantment forger and [blue]{GoldForgeCount}[/blue] random Gold enchantment forgers.",
+  "ENCHANTMENT_MASTER_RUNE.description": "Gain [blue]{PrismaticForgeCount}[/blue] random Prismatic enchantment forger and [blue]{GoldForgeCount}[/blue] random Gold enchantment forgers. At the end of each combat, add a random legal enchantment to a random card in your deck.",
   "ENCHANTMENT_MASTER_RUNE.flavor": "Sponsor item: A card has enough margin for more than one spell.",
   "DESPERATE_FINALE_RUNE.title": "Desperate Finale",
   "DESPERATE_FINALE_RUNE.description": "Gain [gold]Prophecy Projection[/gold]. Whenever you kill [gold]Final Chorale[/gold], gain [blue]20%[/blue] increased damage, block, and healing, then gain [blue]1[/blue] additional [gold]Prophecy Projection[/gold]. [gold]Final Chorale[/gold] summoned by a new [gold]Prophecy Projection[/gold] has [blue]300[/blue] more max HP.",

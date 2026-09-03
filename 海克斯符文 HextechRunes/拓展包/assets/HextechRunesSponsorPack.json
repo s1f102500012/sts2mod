@@ -3,7 +3,7 @@
   "name": "海克斯大乱斗：额外拓展包",
   "author": "Natsuki",
   "description": "为“海克斯大乱斗”启用部分风格更独立的赞助者物品内容。",
-  "version": "0.9.1",
+  "version": "0.9.2",
   "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,

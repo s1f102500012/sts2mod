@@ -7,6 +7,34 @@ FILE_STEM="HextechRunesSponsorPack"
 VARIANT_MANIFEST_NAME="hextech-runes-sponsor-pack-variants.manifest"
 TARGETS=(0.107.1 0.110.0 0.111.0)
 
+UPSTREAM_LOADER="$ROOT/../HextechRunes/loader"
+
+# 两份 loader 必须共源:除 mod id / 变体清单名 / 元数据键三个常量外完全一致。
+# 拓展包 loader 曾是本体的旧拷贝,静默落后一轮(无条件装 ReflectionHelper.ModTypes 后缀 →
+# 类型被贡献两次 → "Two AbstractModels X and X share an ID")。这道检查让"落后"在构建期显形。
+check_loader_drift() {
+	local file normalized
+	for file in LoaderBootstrap.cs LinuxNativeDependencyBootstrap.cs; do
+		if [[ ! -f "$UPSTREAM_LOADER/$file" ]]; then
+			print -u2 "Missing upstream loader source: $UPSTREAM_LOADER/$file"
+			exit 1
+		fi
+		normalized="$(sed \
+			-e 's/HextechRunesSponsorPack/HextechRunes/g' \
+			-e 's/hextech-runes-sponsor-pack-variants\.manifest/hextech-runes-variants.manifest/g' \
+			-e 's/HextechSponsorCompatibilityTarget/HextechCompatibilityTarget/g' \
+			"$ROOT/loader/$file")"
+		if ! diff -u "$UPSTREAM_LOADER/$file" <(print -r -- "$normalized"); then
+			print -u2 "Loader drift detected in $file (normalized diff above, upstream on the left)."
+			print -u2 "Re-sync $ROOT/loader/$file with $UPSTREAM_LOADER/$file."
+			exit 1
+		fi
+	done
+	echo "Loader parity with HextechRunes confirmed."
+}
+
+check_loader_drift
+
 MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
 VARIANT_PROJECT="$ROOT/src/$FILE_STEM.csproj"
 LOADER_PROJECT="$ROOT/loader/$FILE_STEM.Loader.csproj"

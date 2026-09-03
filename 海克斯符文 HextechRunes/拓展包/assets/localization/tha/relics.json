@@ -66,7 +66,7 @@
   "ENTROPY_DECREASE_CHOICE_RELIC.description": "Add [gold]Entropy Decrease[/gold] to the card you just chose.",
   "ENTROPY_DECREASE_CHOICE_RELIC.flavor": "Choose an enchantment.",
   "ENCHANTMENT_MASTER_RUNE.title": "เจ้าแห่งมนตร์",
-  "ENCHANTMENT_MASTER_RUNE.description": "ตอนนี้คุณสามารถร่ายมนตร์หลายอย่างใส่การ์ดใบเดียวกันได้ ได้รับช่างหลอมมนตร์พริสแมติกแบบสุ่ม [blue]{PrismaticForgeCount}[/blue] และช่างหลอมมนตร์โกลด์แบบสุ่ม [blue]{GoldForgeCount}[/blue]",
+  "ENCHANTMENT_MASTER_RUNE.description": "ได้รับช่างหลอมมนตร์พริสแมติกแบบสุ่ม [blue]{PrismaticForgeCount}[/blue] และช่างหลอมมนตร์โกลด์แบบสุ่ม [blue]{GoldForgeCount}[/blue] เมื่อจบการต่อสู้ ใส่มนตร์ที่ใช้ได้แบบสุ่มให้การ์ดแบบสุ่มในกองการ์ดของคุณ",
   "ENCHANTMENT_MASTER_RUNE.flavor": "ไอเทมสปอนเซอร์: การ์ดหนึ่งใบมีที่ว่างพอสำหรับคาถามากกว่าหนึ่งอย่าง",
   "DESPERATE_FINALE_RUNE.title": "บทอวสานสิ้นหวัง",
   "DESPERATE_FINALE_RUNE.description": "ได้รับ [gold]ภาพฉายคำพยากรณ์[/gold] ทุกครั้งที่คุณสังหาร [gold]บทเพลงประสานสุดท้าย[/gold] จะได้รับความเสียหาย บล็อก และการรักษาเพิ่มขึ้น [blue]20%[/blue] จากนั้นได้รับ [blue]1[/blue] [gold]ภาพฉายคำพยากรณ์[/gold] เพิ่มอีก [gold]บทเพลงประสานสุดท้าย[/gold] ที่ถูกอัญเชิญโดย [gold]ภาพฉายคำพยากรณ์[/gold] ใหม่จะมี HP สูงสุดมากขึ้น [blue]300[/blue]",

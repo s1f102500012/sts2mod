@@ -66,7 +66,7 @@
   "ENTROPY_DECREASE_CHOICE_RELIC.description": "为刚才选择的牌添加[gold]熵减[/gold]。",
   "ENTROPY_DECREASE_CHOICE_RELIC.flavor": "选择一种附魔。",
   "ENCHANTMENT_MASTER_RUNE.title": "附魔大师",
-  "ENCHANTMENT_MASTER_RUNE.description": "你现在可以给同一张牌附魔多重效果。获得[blue]{PrismaticForgeCount}[/blue]个随机棱彩附魔锻造器，获得[blue]{GoldForgeCount}[/blue]个随机黄金附魔锻造器。",
+  "ENCHANTMENT_MASTER_RUNE.description": "获得[blue]{PrismaticForgeCount}[/blue]个随机棱彩附魔锻造器，获得[blue]{GoldForgeCount}[/blue]个随机黄金附魔锻造器。战斗结束时，为牌组内的随机牌添加随机合法附魔。",
   "ENCHANTMENT_MASTER_RUNE.flavor": "赞助者物品：一张牌的空白边缘，足够写下不止一道咒文。",
   "DESPERATE_FINALE_RUNE.title": "绝望终曲",
   "DESPERATE_FINALE_RUNE.description": "获得[gold]预言显像[/gold]。每当你击杀[gold]终曲合声[/gold]时，获得[blue]20%[/blue]伤害、格挡与治疗加成，并获得[blue]1[/blue]个额外的[gold]预言显像[/gold]。由新的[gold]预言显像[/gold]召唤出的[gold]终曲合声[/gold]最大生命增加[blue]300[/blue]点。",

@@ -66,7 +66,7 @@
   "ENTROPY_DECREASE_CHOICE_RELIC.description": "Add [gold]Entropy Decrease[/gold] to the card you just chose.",
   "ENTROPY_DECREASE_CHOICE_RELIC.flavor": "Choose an enchantment.",
   "ENCHANTMENT_MASTER_RUNE.title": "인챈트의 대가",
-  "ENCHANTMENT_MASTER_RUNE.description": "이제 같은 카드에 여러 효과를 인챈트할 수 있습니다. 무작위 프리즘 인챈트 모루 [blue]{PrismaticForgeCount}[/blue]개와 무작위 황금 인챈트 모루 [blue]{GoldForgeCount}[/blue]개를 얻습니다.",
+  "ENCHANTMENT_MASTER_RUNE.description": "무작위 프리즘 인챈트 모루 [blue]{PrismaticForgeCount}[/blue]개와 무작위 황금 인챈트 모루 [blue]{GoldForgeCount}[/blue]개를 얻습니다. 전투가 끝날 때, 덱에 있는 무작위 카드에 무작위 유효 인챈트를 부여합니다.",
   "ENCHANTMENT_MASTER_RUNE.flavor": "후원자 물품: 카드의 여백에는 하나 이상의 주문을 적을 수 있습니다.",
   "DESPERATE_FINALE_RUNE.title": "절망의 피날레",
   "DESPERATE_FINALE_RUNE.description": "[gold]예언의 투영[/gold]을 얻습니다. [gold]최후의 합창[/gold]을 처치할 때마다 피해, 방어도, 회복량이 [blue]20%[/blue] 증가하고 추가 [gold]예언의 투영[/gold]을 [blue]1[/blue]개 얻습니다. 새로운 [gold]예언의 투영[/gold]이 소환하는 [gold]최후의 합창[/gold]은 최대 체력이 [blue]300[/blue] 증가합니다.",

@@ -48,6 +48,8 @@ public static class LoaderBootstrap
 
 	public static void Initialize()
 	{
+		LinuxNativeDependencyBootstrap.EnsureHarmonyRuntimeDependenciesVisible();
+
 		string? loaderDirectory = Path.GetDirectoryName(typeof(LoaderBootstrap).Assembly.Location);
 		if (string.IsNullOrWhiteSpace(loaderDirectory))
 		{
@@ -130,7 +132,6 @@ public static class LoaderBootstrap
 
 	private static void RegisterVariantAssembly(Assembly assembly)
 	{
-		InstallReflectionBridge();
 		lock (VariantAssembliesGate)
 		{
 			if (!VariantAssemblies.Any(candidate =>
@@ -195,6 +196,13 @@ public static class LoaderBootstrap
 		}
 	}
 
+	// 三级回退,且只走一条:
+	//   ① 0.108+ ModManager.AssociateAssemblyWithMod → 游戏自己把变体程序集并入 Mod.assemblies,类型发现随之生效;
+	//   ② 反射向 Mod.assemblies 追加;
+	//   ③ 0.107.1 只有单个 Mod.assembly 字段,且 ModManager 在初始化器返回后会用 loader 覆盖它,
+	//      只能在 OnModDetected 里替换,并补 ReflectionHelper.ModTypes 后缀让类型发现看到变体。
+	// ①② 成功后绝不再装 ReflectionHelper.ModTypes 后缀:两条路径同时贡献类型会让 ModelDb 把同一个类型
+	// 看成两个,进而触发 "Two AbstractModels X and X share an ID" 的自比较告警。
 	private static void AssociateVariantAssemblyWithGame(Assembly assembly)
 	{
 		_selectedVariantAssembly = assembly;
@@ -206,6 +214,7 @@ public static class LoaderBootstrap
 				AssociateAssemblyWithModMethod.Invoke(null, [ModId, assembly]);
 				if (IsAssemblyAssociatedWithMod(assembly))
 				{
+					Log.Info("[HextechRunesSponsorPack.Loader] Variant associated via ModManager.AssociateAssemblyWithMod.");
 					return;
 				}
 			}
@@ -219,12 +228,11 @@ public static class LoaderBootstrap
 
 		if (TryAssociateWithAssemblyList(assembly))
 		{
+			Log.Info("[HextechRunesSponsorPack.Loader] Variant associated by appending to Mod.assemblies.");
 			return;
 		}
 
-		// STS2 0.107.1 stores one Assembly rather than a list. Its ModManager
-		// overwrites that field with the loader after this initializer returns,
-		// so replace it in OnModDetected, after the host has finished loading.
+		InstallReflectionBridge();
 		if (LegacyModAssemblyField != null && !_legacyAssociationCallbackInstalled)
 		{
 			ModManager.OnModDetected += OnLegacyModDetected;

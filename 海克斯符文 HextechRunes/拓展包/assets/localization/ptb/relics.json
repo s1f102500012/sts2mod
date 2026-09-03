@@ -66,7 +66,7 @@
   "ENTROPY_DECREASE_CHOICE_RELIC.description": "Add [gold]Entropy Decrease[/gold] to the card you just chose.",
   "ENTROPY_DECREASE_CHOICE_RELIC.flavor": "Choose an enchantment.",
   "ENCHANTMENT_MASTER_RUNE.title": "Mestre dos Encantamentos",
-  "ENCHANTMENT_MASTER_RUNE.description": "Agora você pode encantar a mesma carta com vários efeitos. Ganhe [blue]{PrismaticForgeCount}[/blue] forjador de encantamento Prismático aleatório e [blue]{GoldForgeCount}[/blue] forjadores de encantamento de Ouro aleatórios.",
+  "ENCHANTMENT_MASTER_RUNE.description": "Ganhe [blue]{PrismaticForgeCount}[/blue] forjador de encantamento Prismático aleatório e [blue]{GoldForgeCount}[/blue] forjadores de encantamento de Ouro aleatórios. Ao fim de cada combate, adicione um encantamento válido aleatório a uma carta aleatória do seu deck.",
   "ENCHANTMENT_MASTER_RUNE.flavor": "Item do pacote extra: uma carta tem margem suficiente para mais de um feitiço.",
   "DESPERATE_FINALE_RUNE.title": "Final Desesperado",
   "DESPERATE_FINALE_RUNE.description": "Ganhe [gold]Projeção Profética[/gold]. Sempre que você matar [gold]Coral Final[/gold], ganhe [blue]20%[/blue] de aumento de dano, Bloqueio e cura, e então ganhe [blue]1[/blue] [gold]Projeção Profética[/gold] adicional. O [gold]Coral Final[/gold] invocado por uma nova [gold]Projeção Profética[/gold] tem [blue]300[/blue] PV máximos a mais.",

@@ -3,7 +3,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <AssemblyName>HextechRunesSponsorPack</AssemblyName>
     <RootNamespace>HextechRunesSponsorPack</RootNamespace>
-    <Version>0.9.1</Version>
+    <Version>0.9.2</Version>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <GameRoot>/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app</GameRoot>
@@ -15,40 +15,17 @@
     <GameDataDir Condition="'$(GameDataDir)' == ''">$(GameRoot)/Contents/Resources/data_sts2_macos_arm64</GameDataDir>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.104.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.105.1'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.106.1'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.107.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
+  <!-- 发布变体只有三个;符号集合按源码实际用到的最小化(STS2_107_1 / STS2_109_OR_NEWER)。 -->
   <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.107.1'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.108.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER</DefineConstants>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.109.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER;STS2_109_OR_NEWER</DefineConstants>
+    <DefineConstants>$(DefineConstants);STS2_107_1</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.110.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER</DefineConstants>
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(HextechSponsorSts2Target)' == '0.111.0'">
-    <DefineConstants>$(DefineConstants);STS2_104_OR_NEWER;STS2_105_OR_NEWER;STS2_106_OR_NEWER;STS2_107_OR_NEWER;STS2_107_1;STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER;STS2_111_OR_NEWER</DefineConstants>
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER;STS2_109_OR_NEWER;STS2_110_OR_NEWER;STS2_111_OR_NEWER</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>

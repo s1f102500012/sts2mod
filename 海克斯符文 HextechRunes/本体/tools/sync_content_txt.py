@@ -2,9 +2,10 @@
 """同步三个内容 txt 与注册表/本地化真值。
 
 真值来源:
-- 玩家符文: src/Content/HextechPlayerRuneRegistry.cs + 拓展包 ModEntry.cs 的 RegisterPlayerRune
+- 玩家符文: src/Content/HextechPlayerRuneRegistry.cs + 拓展包 SponsorCatalog.cs 的 PlayerRunes 表
 - 敌方海克斯: src/Content/HextechMonsterHexRegistry.cs
-- 锻造器: src/Content/HextechForgeRegistry.cs + 拓展包 RegisterForge
+- 锻造器: src/Content/HextechForgeRegistry.cs + 拓展包 SponsorCatalog.cs 的 Forges 表
+- 事件遗物: 拓展包 SponsorCatalog.cs 的 EventRelics 表
 - 标题/flavor/敌方描述: assets/localization/zhs/relics.json(本体+拓展包)
 - 标签中文: assets/localization/zhs/relic_collection.json 的 HEXTECH_TAG.*
 
@@ -125,7 +126,14 @@ class Truth:
         }
 
         registry = read(ROOT / "src" / "Content" / "HextechPlayerRuneRegistry.cs")
-        sponsor_src = read(SPONSOR / "src" / "ModEntry.cs")
+        # 拓展包的注册在 SponsorCatalog 的五张只读表里(元组表,行序即注册序)。
+        sponsor_src = read(SPONSOR / "src" / "Content" / "SponsorCatalog.cs")
+
+        def sponsor_table(name: str) -> str:
+            match = re.search(rf"{name}\s*=\s*\[(.*?)\];", sponsor_src, re.S)
+            if match is None:
+                raise SystemExit(f"SponsorCatalog.cs 里找不到 {name} 表,注册表结构变了,先更新本脚本。")
+            return match.group(1)
 
         # 玩家符文(注册表顺序 = 真值顺序;本体在前,拓展包在后)。
         self.player: list[dict] = []
@@ -149,8 +157,8 @@ class Truth:
                 }
             )
         for match in re.finditer(
-            r"RegisterPlayerRune<(\w+)>\(\s*HextechRarityTier\.(\w+),\s*tagKey:\s*\"(\w+)\"",
-            sponsor_src,
+            r"\(\s*typeof\((\w+)\),\s*HextechRarityTier\.(\w+),\s*\"(\w+)\"\s*\)",
+            sponsor_table("PlayerRunes"),
         ):
             self.player.append(
                 {
@@ -192,7 +200,7 @@ class Truth:
                 {"class": match.group(1), "rarity": match.group(2), "source": "main"}
             )
         for match in re.finditer(
-            r"RegisterForge<(\w+)>\(\s*HextechRarityTier\.(\w+)", sponsor_src
+            r"\(\s*typeof\((\w+)\),\s*HextechRarityTier\.(\w+)\s*\)", sponsor_table("Forges")
         ):
             self.forge.append(
                 {"class": match.group(1), "rarity": match.group(2), "source": "sponsor"}
@@ -201,7 +209,7 @@ class Truth:
         # 事件遗物(排除奥术锻造器的附魔三选一 ChoiceRelic:UI 伪遗物,不入清单)。
         self.event_relics = [
             match.group(1)
-            for match in re.finditer(r"RegisterEventRelic<(\w+)>", sponsor_src)
+            for match in re.finditer(r"typeof\((\w+)\)", sponsor_table("EventRelics"))
             if not match.group(1).endswith("ChoiceRelic")
         ]
 

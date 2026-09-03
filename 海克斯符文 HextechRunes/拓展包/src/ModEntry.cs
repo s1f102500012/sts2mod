@@ -1,21 +1,14 @@
-using System;
-using System.Linq;
-using HextechRunes;
+using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Modding;
 
 namespace HextechRunesSponsorPack;
 
-// ⚠️ 命名空间冻结约束(勿"规范化"重命名):
-// 本包多数内容类型(Runes/Relics/Events 下 14 个文件)有意声明 `namespace HextechRunes;`,与主模组共享
-// 命名空间以复用其基类/本地化键推导。这些类型的【类名】参与本地化大写 slug 键与 ModelId,
-// 【[SavedProperty] 属性名】参与联机 net-id 表与存档——改任何一个都会破坏存档/联机兼容。
-// 另:主模组的层级不可改为 HextechRunes.Xxx 形式——本包 MiracleEventForgePricePatch 按全名字符串
-// TypeByName("HextechRunes.HextechForgeShopPriceHelper") 查找主模组 internal 类,改层级即静默失效。
 [ModInitializer(nameof(Initialize))]
 public static class ModEntry
 {
 	private const string PrerequisiteAssemblyName = "HextechRunes";
+	private const string HarmonyId = "Natsuki.HextechRunesSponsorPack";
 
 	private static readonly object InitializeLock = new();
 	private static bool _waitingForPrerequisite;
@@ -62,8 +55,25 @@ public static class ModEntry
 		{
 			AppDomain.CurrentDomain.AssemblyLoad -= OnAssemblyLoad;
 			_waitingForPrerequisite = false;
+
+			// 延迟路径的失败模式:本体若在模组初始化阶段结束后才载入,模型与 SavedProperty 的注册窗口已经关闭,
+			// HextechRunesApi 的注册会抛 InvalidOperationException,并从 AssemblyLoad 事件处理器里冒出去。
+			// 符文不入池比崩溃好:这里只警告并退出。
+			if (IsModelRegistrationWindowClosed())
+			{
+				Log.Warn($"[{ModInfo.Id}] HextechRunes 加载过晚(模型注册窗口已关闭),拓展包内容未注册。", 2);
+				return;
+			}
+
 			RegisterAll();
 		}
+	}
+
+	// ModManager.State 在全部 mod 的 initializer 跑完之后才置 Initialized / Skipped
+	// (public static,0.107.1 第 500/527 行、0.111.0 第 523/550 行),所以"仍是 None"等价于"注册窗口还开着"。
+	private static bool IsModelRegistrationWindowClosed()
+	{
+		return ModManager.State != ModManagerState.None;
 	}
 
 	private static void RegisterAll()
@@ -73,33 +83,33 @@ public static class ModEntry
 			return;
 		}
 
-		BuiltInRepeatableEnchantments.Initialize();
 		if (!_contentRegistered)
 		{
-			RegisterContent();
+			// 注册按功能组隔离(SponsorCatalog.RegisterAll:先依赖后可获得内容,依赖失败的功能整组不入池),失败条目已各自 Warn。
+			// 补丁无条件照装:注册不是事务,失败时前面的内容已经入池,此时跳过补丁反而会留下
+			// "符文抽得到、依赖的补丁没装"的半初始化状态;每个补丁都以持有对应符文为前提,内容缺席只是空转。
+			int failures = SponsorCatalog.RegisterAll();
 			_contentRegistered = true;
+			if (failures > 0)
+			{
+				Log.Warn($"[{ModInfo.Id}] {failures} content registration(s) failed or were skipped; remaining content stays registered and patches are still applied.", 2);
+			}
 		}
 
-		EntropyEnchantmentHooks.Install();
-		AbyssalContractHooks.Install();
-		InstallOptionalFeature("IntegratedStrategyEvents compatibility", IntegratedStrategyEventsCompatibilityHooks.Install);
-		InstallOptionalFeature("Miracle event portrait", MiracleEventPortraitPatch.Install);
-		MiracleEventForgePricePatch.Install();
-		MiracleEventTriggerPatch.Install();
-		_registered = true;
-		Log.Info($"[{ModInfo.Id}] Loaded and registered HextechRunes sponsor-pack content.");
-	}
-
-	private static void InstallOptionalFeature(string name, Action install)
-	{
 		try
 		{
-			install();
+			Harmony harmony = new(HarmonyId);
+			SponsorPatcher.ApplyAll(harmony, typeof(ModEntry).Assembly);
+			SponsorPatcher.LogSummary();
+			SponsorPatcher.DumpIfRequested(harmony);
 		}
 		catch (Exception ex)
 		{
-			Log.Warn($"[{ModInfo.Id}] Optional feature '{name}' was disabled: {ex.GetType().Name}: {ex.Message}", 2);
+			Log.Warn($"[{ModInfo.Id}] Patch application failed: {ex.GetType().Name}: {ex.Message}", 2);
 		}
+
+		_registered = true;
+		Log.Info($"[{ModInfo.Id}] Loaded and registered HextechRunes sponsor-pack content.");
 	}
 
 	// 兼容本体与二创(synergy)版:两者都打包了程序集名为 "HextechRunes" 的 dll(暴露同样的 HextechRunesApi)。
@@ -107,78 +117,5 @@ public static class ModEntry
 	{
 		return AppDomain.CurrentDomain.GetAssemblies()
 			.Any(assembly => string.Equals(assembly.GetName().Name, PrerequisiteAssemblyName, StringComparison.Ordinal));
-	}
-
-	private static void RegisterContent()
-	{
-		HextechRunesApi.RegisterSavedPropertyCarrier<Evolution>();
-		HextechRunesApi.RegisterSavedPropertyCarrier<EntropyIncrease>();
-		HextechRunesApi.RegisterSavedPropertyCarrier<EntropyDecrease>();
-		HextechRunesApi.RegisterSavedPropertyCarrier<SponsorCompositeEnchantment>();
-		HextechRunesApi.RegisterEnchantmentIcon<Evolution>($"res://{ModInfo.Id}/images/enchantments/evolution.png");
-		HextechRunesApi.RegisterEnchantmentIcon<EntropyIncrease>($"res://{ModInfo.Id}/images/enchantments/plus.png");
-		HextechRunesApi.RegisterEnchantmentIcon<EntropyDecrease>($"res://{ModInfo.Id}/images/enchantments/minus.png");
-		HextechRunesApi.RegisterEnchantmentIcon<SponsorCompositeEnchantment>($"res://{ModInfo.Id}/images/relics/enchantmentMasterRune.png");
-		HextechRunesApi.RegisterForge<BasicForge>(HextechRarityTier.Gold, ModInfo.Id);
-		HextechRunesApi.RegisterForge<EnchantmentForge>(HextechRarityTier.Gold, ModInfo.Id);
-		HextechRunesApi.RegisterForge<EntropyForge>(HextechRarityTier.Gold, ModInfo.Id);
-		HextechRunesApi.RegisterForge<ArcaneForge>(HextechRarityTier.Prismatic, ModInfo.Id);
-		HextechRunesApi.RegisterForge<DollysMirrorForge>(HextechRarityTier.Prismatic, ModInfo.Id);
-		HextechRunesApi.RegisterForge<EvolutionForge>(HextechRarityTier.Prismatic, ModInfo.Id);
-		HextechRunesApi.RegisterForge<MysticForge>(HextechRarityTier.Prismatic, ModInfo.Id);
-		HextechRunesApi.RegisterPlayerRune<StarlightSparkleRune>(
-			HextechRarityTier.Gold,
-			tagKey: "COMPREHENSIVE",
-			assetModId: ModInfo.Id);
-		HextechRunesApi.RegisterPlayerRune<CosplayRune>(
-			HextechRarityTier.Prismatic,
-			tagKey: "COMPREHENSIVE",
-			assetModId: ModInfo.Id);
-		HextechRunesApi.RegisterPlayerRune<OtterAndFriendsRune>(
-			HextechRarityTier.Prismatic,
-			tagKey: "COMPREHENSIVE",
-			assetModId: ModInfo.Id);
-		HextechRunesApi.RegisterPlayerRune<RegretRune>(
-			HextechRarityTier.Prismatic,
-			tagKey: "SURVIVAL",
-			assetModId: ModInfo.Id);
-		HextechRunesApi.RegisterPlayerRune<GastritisRune>(
-			HextechRarityTier.Prismatic,
-			tagKey: "OUTPUT",
-			assetModId: ModInfo.Id);
-		HextechRunesApi.RegisterPlayerRune<EnchantmentMasterRune>(
-			HextechRarityTier.Prismatic,
-			tagKey: "COMPREHENSIVE",
-			assetModId: ModInfo.Id);
-		HextechRunesApi.RegisterPlayerRune<DesperateFinaleRune>(
-			HextechRarityTier.Prismatic,
-			tagKey: "COMPREHENSIVE",
-			assetModId: ModInfo.Id);
-		HextechRunesApi.RegisterPlayerRune<AbyssalContractRune>(
-			HextechRarityTier.Prismatic,
-			tagKey: "COMPREHENSIVE",
-			assetModId: ModInfo.Id);
-		// 信徒(棱彩,仅单人):IsAvailableForPlayer 内部按 !IsNetworkMultiplayerRun() 门控单人。
-		HextechRunesApi.RegisterPlayerRune<BelieverRune>(
-			HextechRarityTier.Prismatic,
-			tagKey: "COMPREHENSIVE",
-			assetModId: ModInfo.Id);
-		Log.Info($"[{ModInfo.Id}] Registered IntegratedStrategyEvents soft-collab rune content with runtime availability gating.");
-
-		HextechRunesApi.RegisterEventRelic<GoldStarRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<ArcaneCloneChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<ArcaneSoulsPowerChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<ArcaneRoyallyApprovedChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<DollyCardChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<DollyRelicChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<DollyPreviousPageRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<DollyNextPageRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<EntropyIncreaseChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<EntropyDecreaseChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<WarriorContractChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<HunterContractChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<RegentContractChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<NecrobinderContractChoiceRelic>(ModInfo.Id);
-		HextechRunesApi.RegisterEventRelic<AutomatonContractChoiceRelic>(ModInfo.Id);
 	}
 }
