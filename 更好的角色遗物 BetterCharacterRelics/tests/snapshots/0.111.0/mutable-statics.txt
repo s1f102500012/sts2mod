@@ -1,0 +1,2 @@
+BetterCharacterRelics.Patching.ReportedConflicts:System.Collections.Generic.HashSet`1[[System.String, System.Private.CoreLib, Version=9.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]
+BetterCharacterRelics.Patching._installed:System.Boolean

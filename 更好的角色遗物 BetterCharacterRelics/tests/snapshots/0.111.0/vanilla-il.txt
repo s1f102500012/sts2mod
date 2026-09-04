@@ -1,0 +1,21 @@
+MegaCrit.Sts2.Core.Localization.LocManager::Initialize()=4798D3C1E6FA62AE8CCB45F66AFD079EF64FCD66CF6FEA209ECA48B995AD5912
+MegaCrit.Sts2.Core.Models.AbstractModel::AfterEnergyResetLate(MegaCrit.Sts2.Core.Entities.Players.Player)=ED920C950FE4F32426697CB979BA7872F87ADC7988502E039843D0D61DDEAEC0
+MegaCrit.Sts2.Core.Models.AbstractModel::AfterPlayerTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Entities.Players.Player)=ED920C950FE4F32426697CB979BA7872F87ADC7988502E039843D0D61DDEAEC0
+MegaCrit.Sts2.Core.Models.AbstractModel::AfterRoomEntered(MegaCrit.Sts2.Core.Rooms.AbstractRoom)=ED920C950FE4F32426697CB979BA7872F87ADC7988502E039843D0D61DDEAEC0
+MegaCrit.Sts2.Core.Models.AbstractModel::BeforeCombatStartLate()=ED920C950FE4F32426697CB979BA7872F87ADC7988502E039843D0D61DDEAEC0
+MegaCrit.Sts2.Core.Models.RelicModel::get_HoverTips()=A9836BEF5B1D992BECFDB16F29F0B5AC475E8D9F33D45673CB05C20FBE9D8AE5
+MegaCrit.Sts2.Core.Models.RelicModel::get_HoverTipsExcludingRelic()=5FE881EA89BA396AC5A5C0A6D3813C73CCA50A775BE0B473E709B054775ABE2C
+MegaCrit.Sts2.Core.Models.Relics.BlackBlood::AfterCombatVictory(MegaCrit.Sts2.Core.Rooms.CombatRoom)=779991B1C2B4E05D617CA473C1F8D88B973AE11524044C57C8C042E8C76E5AA7
+MegaCrit.Sts2.Core.Models.Relics.BoundPhylactery::AfterEnergyResetLate(MegaCrit.Sts2.Core.Entities.Players.Player)=1CA13592E4D1D227EE91A38CEDA662C8CFA7A4993786F08B5B0A6DB8F9475F97
+MegaCrit.Sts2.Core.Models.Relics.BoundPhylactery::BeforeCombatStart()=844AA6C29EF304E4B00C86E368C3E51647EC5F380FC7D758A8C6AF978E017FDD
+MegaCrit.Sts2.Core.Models.Relics.BurningBlood::AfterCombatVictory(MegaCrit.Sts2.Core.Rooms.CombatRoom)=45388B4AAA5085B3F2A1D8829F2E4C2ED2934ACCDF074886BE53CAB34C7372E3
+MegaCrit.Sts2.Core.Models.Relics.CrackedCore::BeforeSideTurnStart(MegaCrit.Sts2.Core.GameActions.Multiplayer.PlayerChoiceContext,MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList`1[[MegaCrit.Sts2.Core.Entities.Creatures.Creature, sts2, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]],MegaCrit.Sts2.Core.Combat.ICombatState)=8E39278019232841954AAC5F921AB487391774B4A7EDDC6A0E700ACE18EF0B22
+MegaCrit.Sts2.Core.Models.Relics.DivineDestiny::AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList`1[[MegaCrit.Sts2.Core.Entities.Creatures.Creature, sts2, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]],MegaCrit.Sts2.Core.Combat.ICombatState)=BE507A0DB11D2560EFD4F61D3E5AFA5A922A4741FD19EE0211C3A49DE877621A
+MegaCrit.Sts2.Core.Models.Relics.DivineDestiny::get_CanonicalVars()=79989EA6AEEFA3DEC2386AACB0546C88C72A2C2AE267F017834DA4BDFA137328
+MegaCrit.Sts2.Core.Models.Relics.DivineRight::get_CanonicalVars()=31DD0DDAA6A37AFAB9E2225261AA86101BE5490D80A8D060BED5856F0D773789
+MegaCrit.Sts2.Core.Models.Relics.InfusedCore::AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList`1[[MegaCrit.Sts2.Core.Entities.Creatures.Creature, sts2, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]],MegaCrit.Sts2.Core.Combat.ICombatState)=78ABF68EC905822E46A4ACBEBECC210F83CAC82F1083C65DA21DB1E92817A23D
+MegaCrit.Sts2.Core.Models.Relics.PhylacteryUnbound::AfterSideTurnStart(MegaCrit.Sts2.Core.Combat.CombatSide,System.Collections.Generic.IReadOnlyList`1[[MegaCrit.Sts2.Core.Entities.Creatures.Creature, sts2, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]],MegaCrit.Sts2.Core.Combat.ICombatState)=C2506BE7F54C75316C59A8AAD85246E24023E53088DBC26F8577B3A4D9EAA3DE
+MegaCrit.Sts2.Core.Models.Relics.RingOfTheDrake::ModifyHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)=099015BE32E0F4081CFC6149D9E64EC216AD0241FF86C46E3EAB9107D11D915A
+MegaCrit.Sts2.Core.Models.Relics.RingOfTheDrake::get_CanonicalVars()=C10CF33CA38857CAAD083301ED9F50E5F02BDEE4689704013E8B426BB78F2AFB
+MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake::ModifyHandDraw(MegaCrit.Sts2.Core.Entities.Players.Player,System.Decimal)=13847546FAA321BEA913DBF3422E6ADA6DEA98E0ED480EE67EA859CF60858E1C
+MegaCrit.Sts2.Core.Models.Relics.RingOfTheSnake::get_CanonicalVars()=21AB839403DFF03A42A6D704E83945CE24D4C2046978AA70185AAEC5B540C2B9

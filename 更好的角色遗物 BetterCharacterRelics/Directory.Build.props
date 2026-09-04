@@ -1,0 +1,26 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Version>1.1.3</Version>
+    <AssemblyVersion>1.1.3.0</AssemblyVersion>
+    <FileVersion>1.1.3.0</FileVersion>
+    <Authors>Natsuki</Authors>
+    <GameVersion Condition="'$(GameVersion)' == ''">0.107.1</GameVersion>
+    <GameDataDir Condition="'$(GameDataDir)' == ''">$(MSBuildThisFileDirectory)../HextechRunes/versioned-dll-backups/$(GameVersion)/game-refs</GameDataDir>
+    <BaseIntermediateOutputPath>obj/$(GameVersion)/</BaseIntermediateOutputPath>
+    <OutputPath>bin/$(Configuration)/$(GameVersion)/</OutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);obj/**;bin/**</DefaultItemExcludes>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="sts2" HintPath="$(GameDataDir)/sts2.dll" Private="false" />
+    <Reference Include="GodotSharp" HintPath="$(GameDataDir)/GodotSharp.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(GameDataDir)/0Harmony.dll" Private="false" />
+  </ItemGroup>
+  <Target Name="ValidateGameTarget" BeforeTargets="ResolveReferences">
+    <Error Condition="'$(GameVersion)' != '0.107.1' and '$(GameVersion)' != '0.111.0'" Text="Supported game targets: 0.107.1, 0.111.0." />
+    <Error Condition="!Exists('$(GameDataDir)/sts2.dll')" Text="Missing target references: $(GameDataDir)" />
+  </Target>
+</Project>

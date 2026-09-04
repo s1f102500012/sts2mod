@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <AssemblyName>BetterCharacterRelics.Loader</AssemblyName>
+    <RootNamespace>BetterCharacterRelics.Loader</RootNamespace>
+  </PropertyGroup>
+  <Target Name="ValidateLoaderTarget" BeforeTargets="ResolveReferences">
+    <Error Condition="'$(GameVersion)' != '0.107.1'" Text="The loader must use the oldest supported references." />
+  </Target>
+</Project>

@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>BetterCharacterRelics.Tests</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../src/BetterCharacterRelics.csproj" />
+    <Compile Include="../loader/LoaderBootstrap.cs" Link="LoaderBootstrap.cs" />
+    <Reference Include="sts2" HintPath="$(GameDataDir)/sts2.dll" Private="true" />
+    <Reference Include="GodotSharp" HintPath="$(GameDataDir)/GodotSharp.dll" Private="true" />
+    <Reference Include="0Harmony" HintPath="$(GameDataDir)/0Harmony.dll" Private="true" />
+    <Reference Include="Steamworks.NET" HintPath="$(GameDataDir)/Steamworks.NET.dll" Private="true" />
+  </ItemGroup>
+</Project>

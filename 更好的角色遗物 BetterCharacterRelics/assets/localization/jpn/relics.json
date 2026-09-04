@@ -1,0 +1,12 @@
+{
+  "BURNING_BLOOD.description": "戦闘終了時、HPを[blue]6[/blue]回復する。戦闘終了時のHPが[blue]50%[/blue]以下なら、代わりにHPを[blue]9[/blue]回復する。",
+  "BLACK_BLOOD.description": "戦闘終了時、HPを[blue]12[/blue]回復する。戦闘終了時のHPが[blue]50%[/blue]以下なら、代わりにHPを[blue]18[/blue]回復する。",
+  "RING_OF_THE_SNAKE.description": "戦闘開始時、追加でカードを[blue]3[/blue]枚引き、カードを[blue]1[/blue]枚選んで捨て札に置く。",
+  "RING_OF_THE_DRAKE.description": "戦闘の最初の[blue]3[/blue]ターンの開始時、追加でカードを[blue]3[/blue]枚引き、カードを[blue]1[/blue]枚選んで捨て札に置く。",
+  "DIVINE_RIGHT.description": "戦闘開始時、{Stars:starIcons()}を得る。自分のターン開始時、{MinStars:starIcons()}未満なら、{TurnStartStars:starIcons()}を得る。",
+  "DIVINE_DESTINY.description": "戦闘開始時、{Stars:starIcons()}を得る。自分のターン開始時、{MinStars:starIcons()}未満なら、{TurnStartStars:starIcons()}を得る。",
+  "BOUND_PHYLACTERY.description": "自分のターン開始時、[gold]召喚[/gold][blue]1[/blue]。オスティが生存していれば、代わりに[gold]召喚[/gold][blue]2[/blue]。",
+  "PHYLACTERY_UNBOUND.description": "戦闘開始時、[gold]召喚[/gold][blue]5[/blue]。自分のターン開始時、[gold]召喚[/gold][blue]2[/blue]。オスティが生存していれば、代わりに[gold]召喚[/gold][blue]4[/blue]。",
+  "CRACKED_CORE.description": "戦闘開始時、[blue]1[/blue]個の[gold]ライトニング[/gold]を生成する。自分の3ターン目の開始時、集中力を[blue]1[/blue]得る。",
+  "INFUSED_CORE.description": "戦闘開始時、[blue]3[/blue]個の[gold]ライトニング[/gold]を生成し、集中力を[blue]1[/blue]得る。"
+}
