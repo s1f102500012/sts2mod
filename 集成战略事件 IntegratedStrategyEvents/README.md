@@ -2,7 +2,9 @@
 
 RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by Arknights Integrated Strategies. 同一个模组包支持 STS2 0.107.1、0.110.1 与 0.111.0，并依赖 RitsuLib 0.5.18（Workshop 3747602295）。
 
-当前版本 0.5.6；模型清单变化，不能与 0.5.5 混版本联机。见 [更新说明](CHANGELOG.md) 与 [补丁裁决及验证方式](docs/patch-decisions.md)。
+当前版本 0.5.6；模型清单变化，不能与 0.5.5 混版本联机。见 [更新说明](CHANGELOG.md)。
+
+本目录提供源码、资源、构建工具及回归测试，不包含游戏程序集、RitsuLib 二进制、内部分析资料或发行包。自行构建需准备对应版本的游戏引用与 RitsuLib，并按本机安装位置调整构建脚本中的路径；补丁、模型和存档属性的回归快照位于 `tests/snapshots/`。
 
 ## Structure
 
