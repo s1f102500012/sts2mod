@@ -1,6 +1,5 @@
 using System.Reflection;
 using Godot;
-using HarmonyLib;
 using MegaCrit.Sts2.Core.Logging;
 using MegaCrit.Sts2.Core.Nodes;
 using MegaCrit.Sts2.Core.Nodes.Audio;
@@ -15,7 +14,7 @@ internal static class IntegratedStrategyEndlessFinaleMusicController
 	private const float VolumeScale = 0.82f;
 
 	private static readonly FieldInfo? RunMusicProxyField =
-		AccessTools.Field(typeof(NRunMusicController), "_proxy");
+		IntegratedStrategyPrivateMembers.Field(typeof(NRunMusicController), "_proxy");
 
 	private static AudioStreamPlayer? _player;
 	private static bool _isPlaying;
@@ -144,23 +143,5 @@ internal static class IntegratedStrategyEndlessFinaleMusicController
 		}
 
 		_player.Play();
-	}
-}
-
-[HarmonyPatch(typeof(NGame), nameof(NGame.ReturnToMainMenu))]
-internal static class IntegratedStrategyEndlessFinaleMusicReturnToMainMenuPatch
-{
-	private static void Prefix()
-	{
-		IntegratedStrategyEndlessFinaleMusicController.Stop(restoreGameMusic: false);
-	}
-}
-
-[HarmonyPatch(typeof(NGame), nameof(NGame.ReturnToMainMenuAfterRun))]
-internal static class IntegratedStrategyEndlessFinaleMusicReturnToMainMenuAfterRunPatch
-{
-	private static void Prefix()
-	{
-		IntegratedStrategyEndlessFinaleMusicController.Stop(restoreGameMusic: false);
 	}
 }

@@ -8,7 +8,7 @@ namespace IntegratedStrategyEvents.UI;
 internal static class IntegratedStrategyEventLayout
 {
 	private static readonly AccessTools.FieldRef<NEventLayout, EventModel?> EventRef =
-		AccessTools.FieldRefAccess<NEventLayout, EventModel?>("_event");
+		IntegratedStrategyPrivateMembers.FieldRef<NEventLayout, EventModel?>("_event");
 
 	public static bool IsIntegratedStrategyEvent(NEventLayout layout)
 	{
@@ -17,6 +17,6 @@ internal static class IntegratedStrategyEventLayout
 
 	public static IntegratedStrategyEventModel? GetIntegratedStrategyEvent(NEventLayout layout)
 	{
-		return EventRef(layout) as IntegratedStrategyEventModel;
+		return IntegratedStrategyPatcher.IsAvailable("event-ui") ? EventRef(layout) as IntegratedStrategyEventModel : null;
 	}
 }

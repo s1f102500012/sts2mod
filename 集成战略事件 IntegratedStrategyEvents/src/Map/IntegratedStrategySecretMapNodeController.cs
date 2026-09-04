@@ -18,12 +18,8 @@ namespace IntegratedStrategyEvents.Map;
 
 internal static class IntegratedStrategySecretMapNodeController
 {
-	private const string SecretMapNodesRngName = "integrated_strategy_secret_map_nodes";
-
 	private const string SecretTreeHoleEventRngName = "integrated_strategy_secret_tree_hole_event";
 
-	private const int MinimumSecretNodes = 1;
-	private const int MaximumSecretNodes = 3;
 	private const string SecretIconPath = $"res://{ModInfo.ModId}/images/map/map_secret.png";
 	private const string SecretOutlinePath = $"res://{ModInfo.ModId}/images/map/map_secret_outline.png";
 	private static readonly Vector2 SecretMapIconSize = new(48f, 48f);
@@ -82,6 +78,12 @@ internal static class IntegratedStrategySecretMapNodeController
 		}
 
 		LogCompatibleExternalMapType(map);
+		if (actIndex == 0)
+		{
+			int missing = SecretNodePlacement.PrepareFirstAct(map, CreateSecretNodeSeed(state, actIndex));
+			if (missing > 0)
+				Log.Warn($"{ModInfo.LogPrefix} First-act map has insufficient movable late nodes; {missing} secret node(s) cannot be placed without changing protected nodes.");
+		}
 		SecretNodeStore store = SecretNodes.GetOrCreateValue(state);
 		HashSet<MapCoord> selectedCoords = SelectSecretNodeCoords(state, map, actIndex);
 		store.Set(actIndex, selectedCoords);
@@ -390,21 +392,7 @@ internal static class IntegratedStrategySecretMapNodeController
 			return [prophetHornCoord];
 		}
 
-		List<MapPoint> candidates = map.GetAllMapPoints()
-			.Where(static point => point.PointType == MapPointType.Unknown && point.CanBeModified)
-			.OrderBy(static point => point.coord.row)
-			.ThenBy(static point => point.coord.col)
-			.ToList();
-		if (candidates.Count == 0)
-		{
-			return [];
-		}
-
-		Rng rng = new(CreateSecretNodeSeed(state, actIndex), SecretMapNodesRngName);
-		rng.Shuffle(candidates);
-		int maxCount = Math.Min(MaximumSecretNodes, candidates.Count);
-		int count = rng.NextInt(MinimumSecretNodes, maxCount + 1);
-		return candidates.Take(count).Select(static point => point.coord).ToHashSet();
+		return SecretNodePlacement.Select(map, actIndex, CreateSecretNodeSeed(state, actIndex));
 	}
 
 	private static SecretNodeEvent SelectTreeHoleEvent(RunState state)
@@ -435,7 +423,7 @@ internal static class IntegratedStrategySecretMapNodeController
 	{
 		return IntegratedStrategyStableRng.CreateSeed(
 			state.Rng.Seed,
-			SecretMapNodesRngName,
+			SecretNodePlacement.RngName,
 			unchecked((uint)actIndex));
 	}
 
@@ -576,33 +564,11 @@ internal static class IntegratedStrategySecretMapNodeController
 	}
 }
 
-[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Hooks.Hook), nameof(MegaCrit.Sts2.Core.Hooks.Hook.AfterMapGenerated))]
-internal static class IntegratedStrategyTreeHoleEarlyRestorePatch
-{
-	[HarmonyPriority(Priority.First)]
-	private static void Prefix(IRunState runState, ActMap map, int actIndex)
-	{
-		// 此时 GenerateMap 的返回值尚未赋给 RunState.Map；需要重建的旧树洞图留到
-		// NMapScreen.SetMap 后处理，避免这里写入的替代地图随后被原版覆盖。
-		IntegratedStrategyTreeHoleController.TryRestoreSavedSessionForCurrentRun(
-			map,
-			allowMapRebuild: false);
-	}
-}
-
-[HarmonyPatch(typeof(MegaCrit.Sts2.Core.Hooks.Hook), nameof(MegaCrit.Sts2.Core.Hooks.Hook.AfterMapGenerated))]
-internal static class IntegratedStrategySecretMapNodeGenerationPatch
-{
-	private static void Prefix(IRunState runState, ActMap map, int actIndex)
-	{
-		IntegratedStrategySecretMapNodeController.MarkSecretNodes(runState, map, actIndex);
-	}
-}
-
 [HarmonyPatch(typeof(RoomSet), nameof(RoomSet.EnsureNextEventIsValid))]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapNodeEventPatch", "forced-events", "现有全局地图规则")]
 internal static class IntegratedStrategySecretMapNodeEventPatch
 {
-	[HarmonyPriority(Priority.First)]
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(RoomSet __instance, RunState runState)
 	{
 		if (!IntegratedStrategySecretMapNodeController.IsAtSecretNode(runState))
@@ -617,6 +583,7 @@ internal static class IntegratedStrategySecretMapNodeEventPatch
 }
 
 [HarmonyPatch(typeof(NNormalMapPoint), "UpdateIcon")]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapNodeIconPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategySecretMapNodeIconPatch
 {
 	private static void Postfix(NNormalMapPoint __instance)
@@ -626,6 +593,7 @@ internal static class IntegratedStrategySecretMapNodeIconPatch
 }
 
 [HarmonyPatch(typeof(NNormalMapPoint), "RefreshColorInstantly")]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapNodeColorPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategySecretMapNodeColorPatch
 {
 	private static void Postfix(NNormalMapPoint __instance)
@@ -635,8 +603,10 @@ internal static class IntegratedStrategySecretMapNodeColorPatch
 }
 
 [HarmonyPatch(typeof(NNormalMapPoint), "AnimHover")]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapNodeHoverPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategySecretMapNodeHoverPatch
 {
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(NNormalMapPoint __instance)
 	{
 		return !IntegratedStrategySecretMapNodeController.TryAnimateSecretNodeHover(__instance);
@@ -644,8 +614,10 @@ internal static class IntegratedStrategySecretMapNodeHoverPatch
 }
 
 [HarmonyPatch(typeof(NNormalMapPoint), "AnimUnhover")]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapNodeUnhoverPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategySecretMapNodeUnhoverPatch
 {
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(NNormalMapPoint __instance)
 	{
 		return !IntegratedStrategySecretMapNodeController.TryAnimateSecretNodeUnhover(__instance);

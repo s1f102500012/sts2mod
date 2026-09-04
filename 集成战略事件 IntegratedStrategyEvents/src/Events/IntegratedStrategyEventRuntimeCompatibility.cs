@@ -1,7 +1,6 @@
 using Godot;
 using HarmonyLib;
 using IntegratedStrategyEvents.Compatibility;
-using System.Reflection;
 using MegaCrit.Sts2.Core.Assets;
 using MegaCrit.Sts2.Core.Events;
 using MegaCrit.Sts2.Core.Helpers;
@@ -31,21 +30,12 @@ internal static class IntegratedStrategyEventRuntimeCompatibility
 	private static Dictionary<string, string> BuildEventLocalization()
 	{
 		Dictionary<string, string> entries = new(StringComparer.Ordinal);
-		foreach (Type eventType in IntegratedStrategyContentCatalog.EventTypes)
+		foreach ((Type eventType, Func<List<(string, string)>?> createLocalization) in IntegratedStrategyContentCatalog.EventDefinitions)
 		{
-			MethodInfo? createLocalization = eventType.GetMethod(
-				"CreateLocalization",
-				BindingFlags.Static | BindingFlags.NonPublic);
-			if (createLocalization == null)
-			{
-				continue;
-			}
-
 			// 用 ModelDb 的真实 entry 作前缀：RitsuLib 注册的事件会拿到带 mod 前缀的固定 entry，
 			// 仅 Inject 的事件保持原版 slug，两种情况都与游戏查表用的 Id.Entry 一致。
 			string eventKey = ModelDb.GetEntry(eventType);
-			List<(string, string)>? localization = createLocalization.Invoke(null, null) as List<(string, string)>;
-			foreach ((string relativeKey, string value) in IntegratedStrategyRichText.ApplyFontSizes(localization) ?? [])
+			foreach ((string relativeKey, string value) in IntegratedStrategyRichText.ApplyFontSizes(createLocalization()) ?? [])
 			{
 				entries[$"{eventKey}.{relativeKey}"] = value;
 			}
@@ -55,68 +45,11 @@ internal static class IntegratedStrategyEventRuntimeCompatibility
 	}
 }
 
-[HarmonyPatch(typeof(LocManager), nameof(LocManager.Initialize))]
-internal static class IntegratedStrategyEventLocManagerInitializePatch
-{
-	private static void Postfix()
-	{
-		IntegratedStrategyEventRuntimeCompatibility.Install();
-	}
-}
-
-[HarmonyPatch(typeof(EventModel), nameof(EventModel.GetAssetPaths))]
-internal static class IntegratedStrategyEventAssetPathsPatch
-{
-	private static void Postfix(EventModel __instance, IRunState runState, ref IEnumerable<string> __result)
-	{
-		if (TestMode.IsOn || __instance is not IntegratedStrategyEventModel eventModel)
-		{
-			return;
-		}
-
-		string? portraitPath = eventModel.CustomInitialPortraitPath;
-		if (string.IsNullOrWhiteSpace(portraitPath))
-		{
-			return;
-		}
-
-		string defaultPortraitPath = $"res://images/events/{__instance.Id.Entry.ToLowerInvariant()}.png";
-		List<string> paths = __result
-			.Where(path => !string.Equals(path, defaultPortraitPath, StringComparison.Ordinal))
-			.ToList();
-		if (!paths.Contains(portraitPath, StringComparer.Ordinal))
-		{
-			paths.Add(portraitPath);
-		}
-
-		__result = paths;
-	}
-}
-
-[HarmonyPatch(typeof(EventModel), nameof(EventModel.CreateInitialPortrait))]
-internal static class IntegratedStrategyEventCreateInitialPortraitPatch
-{
-	private static bool Prefix(EventModel __instance, ref Texture2D __result)
-	{
-		if (__instance is not IntegratedStrategyEventModel eventModel)
-		{
-			return true;
-		}
-
-		string? portraitPath = eventModel.CustomInitialPortraitPath;
-		if (string.IsNullOrWhiteSpace(portraitPath))
-		{
-			return true;
-		}
-
-		__result = PreloadManager.Cache.GetTexture2D(portraitPath);
-		return false;
-	}
-}
-
 [HarmonyPatch(typeof(EventOption), "AddLocVars")]
+[IntegratedStrategyPatch("IntegratedStrategyEventOptionAddLocVarsPatch", "content", "本模组内容")]
 internal static class IntegratedStrategyEventOptionAddLocVarsPatch
 {
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(EventOption __instance, EventModel eventModel)
 	{
 		if (eventModel is not IntegratedStrategyEventModel)

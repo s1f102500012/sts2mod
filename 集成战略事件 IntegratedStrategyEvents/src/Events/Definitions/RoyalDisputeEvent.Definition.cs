@@ -5,7 +5,7 @@ public sealed partial class RoyalDisputeEvent
 {
 	protected override IntegratedStrategyEventDefinition Definition { get; } = IntegratedStrategyEventDefinition.ForEventPortrait("royal_dispute.png", CreateLocalization);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		return IntegratedStrategyEventLocalization.ForCurrentLanguage(
 			new EventLoc(

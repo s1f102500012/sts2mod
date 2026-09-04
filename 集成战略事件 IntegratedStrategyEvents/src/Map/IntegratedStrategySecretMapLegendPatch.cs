@@ -232,6 +232,7 @@ internal static class IntegratedStrategySecretMapLegendController
 }
 
 [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen._Ready))]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapLegendReadyPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategySecretMapLegendReadyPatch
 {
 	private static void Postfix(NMapScreen __instance)
@@ -241,6 +242,7 @@ internal static class IntegratedStrategySecretMapLegendReadyPatch
 }
 
 [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen.Open))]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapLegendOpenPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategySecretMapLegendOpenPatch
 {
 	private static void Postfix(NMapScreen __instance)
@@ -250,8 +252,10 @@ internal static class IntegratedStrategySecretMapLegendOpenPatch
 }
 
 [HarmonyPatch(typeof(NMapLegendItem), "SetMapPointType")]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapLegendTypePatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategySecretMapLegendTypePatch
 {
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(NMapLegendItem __instance, string name)
 	{
 		return !IntegratedStrategySecretMapLegendController.TrySetSecretLegendPointType(__instance, name);
@@ -259,8 +263,10 @@ internal static class IntegratedStrategySecretMapLegendTypePatch
 }
 
 [HarmonyPatch(typeof(NMapLegendItem), "SetLocalizedFields")]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapLegendLocalizationPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategySecretMapLegendLocalizationPatch
 {
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(NMapLegendItem __instance, string name)
 	{
 		return !IntegratedStrategySecretMapLegendController.TrySetSecretLegendLocalization(__instance, name);
@@ -268,8 +274,10 @@ internal static class IntegratedStrategySecretMapLegendLocalizationPatch
 }
 
 [HarmonyPatch(typeof(NNormalMapPoint), "OnHighlightPointType")]
+[IntegratedStrategyPatch("IntegratedStrategySecretMapNodeHighlightPatch", "map-rules", "现有全局地图规则")]
 internal static class IntegratedStrategySecretMapNodeHighlightPatch
 {
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(NNormalMapPoint __instance, MapPointType pointType)
 	{
 		return !IntegratedStrategySecretMapLegendController.TryHandleSecretHighlight(__instance, pointType);

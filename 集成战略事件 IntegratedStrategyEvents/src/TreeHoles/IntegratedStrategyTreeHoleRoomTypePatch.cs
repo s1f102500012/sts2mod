@@ -8,8 +8,10 @@ using MegaCrit.Sts2.Core.Runs;
 namespace IntegratedStrategyEvents.TreeHoles;
 
 [HarmonyPatch(typeof(RunManager), "RollRoomTypeFor")]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleRoomTypePatch", "temporary-map", "本模组树洞或终局会话")]
 internal static class IntegratedStrategyTreeHoleRoomTypePatch
 {
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(MapPointType pointType, ref RoomType __result)
 	{
 		if (pointType != MapPointType.Unknown)

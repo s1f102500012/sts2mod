@@ -44,9 +44,6 @@ public sealed class SaintguardShieldPower : PowerModel, IModPowerAssetOverrides
 	{
 		_ = dealer;
 		_ = cardSource;
-#if STS2_109_OR_NEWER
-		_ = cardPlay;
-#endif
 		if (target != Owner || amount <= 0m || Amount <= 0 || props.HasFlag(ValueProp.Unpowered))
 		{
 			return 0m;

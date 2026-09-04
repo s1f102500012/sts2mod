@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using Godot;
 using IntegratedStrategyEvents.Powers;
@@ -182,19 +183,32 @@ public sealed class IzumikOffspring : MonsterModel
 		return monster.CanonicalInstance is EyeWithTeeth or Parafright;
 	}
 
+	private static readonly ConcurrentDictionary<Type, bool> UnsafeMoveStateMachineByType = new();
+
 	private static bool HasUnsafeMoveStateMachine(MonsterModel monster)
 	{
-		MethodInfo? generateMoveStateMachine = monster.GetType().GetMethod(
-			"GenerateMoveStateMachine",
-			BindingFlags.Instance | BindingFlags.NonPublic);
-		if (generateMoveStateMachine == null)
-		{
-			return true;
-		}
+		return IsUnsafeMoveStateMachine(monster.GetType(), () => ProbeMoveStateMachine(monster));
+	}
 
+	// 探测结果只取决于怪物类型，每个类型探一次；变身 roll 会对全部原版怪重复求值，
+	// 不缓存就是每次重建几十台状态机。
+	internal static bool IsUnsafeMoveStateMachine(Type monsterType, Func<bool> probe)
+	{
+		// 非原版类型一律判为不安全：绝不为了判定去调用第三方模组自己的方法。
+		return monsterType.Assembly != VanillaAssembly ||
+			UnsafeMoveStateMachineByType.GetOrAdd(monsterType, _ => probe());
+	}
+
+	private static bool ProbeMoveStateMachine(MonsterModel monster)
+	{
 		try
 		{
-			if (generateMoveStateMachine.Invoke(monster, null) is not MonsterMoveStateMachine stateMachine)
+			// MonsterModel.MoveStateMachine 只由 SetUpForCombat 赋值一次，模型库里的
+			// canonical 实例上恒为 null，因此仍需调用生成方法；已构造好的直接读。
+			MethodInfo? generateMoveStateMachine =
+				IntegratedStrategyPrivateMembers.Method(typeof(MonsterModel), "GenerateMoveStateMachine");
+			if ((monster.MoveStateMachine ??
+				generateMoveStateMachine?.Invoke(monster, null)) is not MonsterMoveStateMachine stateMachine)
 			{
 				return true;
 			}

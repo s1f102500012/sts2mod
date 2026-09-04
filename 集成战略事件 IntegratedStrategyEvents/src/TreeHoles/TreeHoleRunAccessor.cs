@@ -14,31 +14,37 @@ internal static class TreeHoleRunAccessor
 {
 	private static readonly AsyncLocal<TreeHoleResumeRoom> ResumeRoomForSave = new();
 	private static readonly MethodInfo? RunManagerClearScreensMethod =
-		AccessTools.Method(typeof(RunManager), "ClearScreens");
+		IntegratedStrategyPrivateMembers.Method(typeof(RunManager), "ClearScreens");
 	private static readonly MethodInfo? RunManagerFadeInMethod =
-		AccessTools.Method(typeof(RunManager), "FadeIn", [typeof(bool)]);
+		IntegratedStrategyPrivateMembers.Method(typeof(RunManager), "FadeIn");
 	private static readonly MethodInfo? RunManagerExitCurrentRoomsMethod =
-		AccessTools.Method(typeof(RunManager), "ExitCurrentRooms");
+		IntegratedStrategyPrivateMembers.Method(typeof(RunManager), "ExitCurrentRooms");
 	private static readonly MethodInfo? RunManagerEnterRoomInternalMethod =
-		AccessTools.Method(typeof(RunManager), "EnterRoomInternal", [typeof(AbstractRoom), typeof(bool)]);
+		IntegratedStrategyPrivateMembers.Method(typeof(RunManager), "EnterRoomInternal");
 	private static readonly MethodInfo? RunManagerWinRunMethod =
-		AccessTools.Method(typeof(RunManager), "WinRun");
+		IntegratedStrategyPrivateMembers.Method(typeof(RunManager), "WinRun");
 	private static readonly FieldInfo? ActRoomsField =
-		AccessTools.Field(typeof(ActModel), "_rooms");
+		IntegratedStrategyPrivateMembers.Field(typeof(ActModel), "_rooms");
 	private static readonly FieldInfo? MapPointHistoryField =
-		AccessTools.Field(typeof(RunState), "_mapPointHistory");
+		IntegratedStrategyPrivateMembers.Field(typeof(RunState), "_mapPointHistory");
 
 	public static void ClearScreens(RunManager runManager)
 	{
-		RunManagerClearScreensMethod?.Invoke(runManager, null);
+		IntegratedStrategyPresentation.Run(() => RunManagerClearScreensMethod?.Invoke(runManager, null), "clear transition screens");
 	}
+
+	public static Task FadeOut() => IntegratedStrategyPresentation.RunAsync(async () =>
+	{
+		if (MegaCrit.Sts2.Core.TestSupport.TestMode.IsOff && MegaCrit.Sts2.Core.Nodes.NGame.Instance != null)
+			await MegaCrit.Sts2.Core.Nodes.NGame.Instance.Transition.RoomFadeOut();
+	}, "fade out temporary map");
 
 	public static async Task FadeIn(RunManager runManager, bool showTransition)
 	{
-		if (RunManagerFadeInMethod?.Invoke(runManager, [showTransition]) is Task task)
+		await IntegratedStrategyPresentation.RunAsync(async () =>
 		{
-			await task;
-		}
+			if (RunManagerFadeInMethod?.Invoke(runManager, [showTransition]) is Task task) await task;
+		}, "fade in temporary map");
 	}
 
 	public static async Task ExitCurrentRooms(RunManager runManager)

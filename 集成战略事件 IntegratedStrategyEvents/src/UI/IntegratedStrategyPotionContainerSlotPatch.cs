@@ -8,12 +8,13 @@ namespace IntegratedStrategyEvents.UI;
 internal static class IntegratedStrategyPotionContainerSlotUi
 {
 	private static readonly AccessTools.FieldRef<NPotionContainer, List<NPotionHolder>> HoldersRef =
-		AccessTools.FieldRefAccess<NPotionContainer, List<NPotionHolder>>("_holders");
+		IntegratedStrategyPrivateMembers.FieldRef<NPotionContainer, List<NPotionHolder>>("_holders");
 	private static readonly MethodInfo? UpdateNavigationMethod =
-		AccessTools.Method(typeof(NPotionContainer), "UpdateNavigation");
+		IntegratedStrategyPrivateMembers.Method(typeof(NPotionContainer), "UpdateNavigation");
 
 	public static void ShrinkTo(NPotionContainer container, int newMaxPotionSlots)
 	{
+		if (!IntegratedStrategyPatcher.IsAvailable("potion-ui")) return;
 		List<NPotionHolder> holders = HoldersRef(container);
 		int targetCount = Math.Max(0, newMaxPotionSlots);
 		if (holders.Count <= targetCount)
@@ -46,6 +47,7 @@ internal static class IntegratedStrategyPotionContainerSlotUi
 }
 
 [HarmonyPatch(typeof(NPotionContainer), "GrowPotionHolders")]
+[IntegratedStrategyPatch("IntegratedStrategyPotionContainerGrowPotionHoldersPatch", "potion-ui", "药水槽缩减显示")]
 internal static class IntegratedStrategyPotionContainerGrowPotionHoldersPatch
 {
 	private static void Postfix(NPotionContainer __instance, int newMaxPotionSlots)

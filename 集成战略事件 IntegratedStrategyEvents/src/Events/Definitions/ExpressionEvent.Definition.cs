@@ -10,7 +10,7 @@ public sealed partial class ExpressionEvent
 			IntegratedStrategyEventLayoutProfile.StandardNarrowSlightlyShiftedRight,
 			AlignHoverTipsRight: true);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		return IntegratedStrategyEventLocalization.ForCurrentLanguage(
 			new EventLoc(

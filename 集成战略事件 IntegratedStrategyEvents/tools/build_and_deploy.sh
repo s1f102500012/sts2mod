@@ -5,7 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 FILE_STEM="IntegratedStrategyEvents"
 VARIANT_MANIFEST_NAME="integrated-strategy-events-variants.manifest"
-TARGETS=(0.107.1 0.110.1)
+TARGETS=(0.107.1 0.110.1 0.111.0)
 
 MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
 VARIANT_PROJECT="$ROOT/src/$FILE_STEM.csproj"
@@ -22,7 +22,7 @@ GAME_RELEASE_INFO="$GAME_APP/Contents/Resources/release_info.json"
 MOD_DIR="$GAME_APP/Contents/MacOS/mods/$FILE_STEM"
 RITSULIB_WORKSHOP_ROOT="/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295"
 RITSULIB_ROOT="${RITSULIB_ROOT:-$RITSULIB_WORKSHOP_ROOT}"
-RITSULIB_REQUIRED_VERSION="0.5.10"
+RITSULIB_REQUIRED_VERSION="0.5.18"
 INTEGRATED_STRATEGY_DEPLOY="${INTEGRATED_STRATEGY_DEPLOY:-1}"
 
 DEFAULT_GODOT_EDITOR="$ROOT/../.tools/godot-4.5.1/Godot_mono.app/Contents/MacOS/Godot"
@@ -156,6 +156,8 @@ for target in "${TARGETS[@]}"; do
 	cp "$output/$FILE_STEM.dll" "$variant_dir/$FILE_STEM.dll"
 done
 
+zsh "$ROOT/tools/run_design_guardrails.sh"
+
 loader_refs="$REFS_ROOT/0.107.1/game-refs"
 loader_output="$BUILD_ROOT/loader"
 mkdir -p "$loader_output"
@@ -171,7 +173,8 @@ python3 "$ROOT/tools/multi_version/generate_variant_manifest.py" \
 	--mod-id "$FILE_STEM" \
 	--manifest-name "$VARIANT_MANIFEST_NAME" \
 	--target "0.107.1" \
-	--target "0.110.1"
+	--target "0.110.1" \
+	--target "0.111.0"
 
 GAME_GODOT_VERSION="$("$GAME_BIN" --version 2>/dev/null | head -n 1)"
 IMPORT_GODOT_VERSION="$("$GODOT_EDITOR" --version 2>/dev/null | head -n 1)"

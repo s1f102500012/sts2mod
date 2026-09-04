@@ -5,7 +5,7 @@ public sealed partial class ForSurvivalEvent
 {
 	protected override IntegratedStrategyEventDefinition Definition { get; } = IntegratedStrategyEventDefinition.ForEventPortrait("for_survival.png", CreateLocalization);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		return IntegratedStrategyEventLocalization.ForCurrentLanguage(
 			new EventLoc(

@@ -1,5 +1,7 @@
 using Godot;
 using MegaCrit.Sts2.Core.Models;
+using MegaCrit.Sts2.Core.Random;
+using MegaCrit.Sts2.Core.Rooms;
 
 namespace IntegratedStrategyEvents.Encounters;
 
@@ -10,10 +12,18 @@ public sealed class CalendarKingsPincerBossEncounter :
 
 	public override string BossNodePath => BossNodePathBase;
 
+	protected override bool UseProgrammaticCombatBackground => true;
+
+	protected override BackgroundAssets? BuildProgrammaticCombatBackground(ActModel parentAct, Rng rng)
+	{
+		return new BackgroundAssets("the_insatiable_boss", rng);
+	}
+
 	public override IEnumerable<string> ExtraAssetPaths =>
 	[
 		BossNodePathBase + ".png",
-		BossNodePathBase + "_outline.png"
+		BossNodePathBase + "_outline.png",
+		IntegratedStrategyBossMusic.CalendarKingsTrackPath
 	];
 
 	public override IEnumerable<MonsterModel> AllPossibleMonsters =>

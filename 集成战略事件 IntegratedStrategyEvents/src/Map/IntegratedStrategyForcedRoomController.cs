@@ -14,7 +14,7 @@ namespace IntegratedStrategyEvents.Map;
 internal static class IntegratedStrategyForcedRoomController
 {
 	private static readonly AccessTools.FieldRef<RunState, HashSet<ModelId>> VisitedEventIdsRef =
-		AccessTools.FieldRefAccess<RunState, HashSet<ModelId>>("_visitedEventIds");
+		IntegratedStrategyPrivateMembers.FieldRef<RunState, HashSet<ModelId>>("_visitedEventIds");
 
 	public static bool HandleCreateRoom(
 		RoomType roomType,

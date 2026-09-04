@@ -14,7 +14,7 @@ namespace IntegratedStrategyEvents.Encounters;
 internal class EncounterMusicController
 {
 	private static readonly FieldInfo? RunMusicProxyField =
-		AccessTools.Field(typeof(NRunMusicController), "_proxy");
+		IntegratedStrategyPrivateMembers.Field(typeof(NRunMusicController), "_proxy");
 
 	private readonly string _playerName;
 	private readonly string _trackPath;

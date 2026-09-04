@@ -211,7 +211,22 @@ internal static class TreeHoleSessionManager
 		bool allowMapRebuild = true)
 	{
 		RunState? state = RunManager.Instance.DebugOnlyGetState();
-		if (state == null || !SessionStore.TryGetPendingRestore(state, out TreeHoleRestoreSnapshot snapshot))
+		return state != null && TryRestoreSavedSession(state, map, allowMapRebuild);
+	}
+
+	internal static ActMap RestoreMapForGeneration(RunState state, ActMap map)
+	{
+		if (!IntegratedStrategyPatcher.IsAvailable("temporary-map")) return map;
+		ActMap restoredMap = map;
+		if (SessionStore.TryGetPendingRestore(state, out TreeHoleRestoreSnapshot snapshot) &&
+			snapshot.Kind == TreeHoleSaveKind.TreeHole && !MatchesSavedTemporaryMap(map, snapshot) && snapshot.TreeHoleMapSeed != 0)
+			restoredMap = IntegratedStrategyTreeHoleActMap.Create(new Rng(snapshot.TreeHoleMapSeed, TreeHoleSeedFactory.TreeHoleMapRngName));
+		return TryRestoreSavedSession(state, restoredMap, allowMapRebuild: false, notifyLocation: false) ? restoredMap : map;
+	}
+
+	private static bool TryRestoreSavedSession(RunState state, ActMap map, bool allowMapRebuild, bool notifyLocation = true)
+	{
+		if (!SessionStore.TryGetPendingRestore(state, out TreeHoleRestoreSnapshot snapshot))
 		{
 			return false;
 		}
@@ -231,7 +246,6 @@ internal static class TreeHoleSessionManager
 			sessionMap = IntegratedStrategyTreeHoleActMap.Create(new Rng(
 				snapshot.TreeHoleMapSeed,
 				TreeHoleSeedFactory.TreeHoleMapRngName));
-			state.Map = sessionMap;
 			rebuiltSessionMap = true;
 			sessionMapMatches = MatchesSavedTemporaryMap(sessionMap, snapshot);
 		}
@@ -301,9 +315,10 @@ internal static class TreeHoleSessionManager
 
 		state.ActFloor = snapshot.CurrentActFloor;
 		SessionStore.RemovePendingRestore(state);
-		RefreshLocationSynchronizers(state);
+		if (notifyLocation) RefreshLocationSynchronizers(state);
 		if (rebuiltSessionMap)
 		{
+			state.Map = sessionMap;
 			SetMapScreen(sessionMap, state, initMarker: snapshot.CurrentMapCoord.HasValue);
 		}
 
@@ -522,8 +537,6 @@ internal static class TreeHoleSessionManager
 
 	public static void RestoreOriginalMapForArchitect(RunState state, EndlessFinaleSession session)
 	{
-		TreeHoleFinaleMusicCoordinator.StopBeforeArchitectHandoff(session);
-
 		SessionStore.RemoveFinaleSession(state);
 		SessionStore.RemovePendingFinaleEntry(state);
 		state.Map = session.OriginalMap;
@@ -539,6 +552,7 @@ internal static class TreeHoleSessionManager
 		RefreshLocationSynchronizers(state);
 		SessionStore.AddPendingArchitectCompletion(state);
 		ResetActChangeTransitionMemory();
+		TreeHoleFinaleMusicCoordinator.StopBeforeArchitectHandoff(session);
 		Log.Info($"{ModInfo.LogPrefix} Returned from {session.DestinationActName} finale before entering The Architect.");
 	}
 
@@ -684,6 +698,11 @@ internal static class TreeHoleSessionManager
 
 	public static void SetMapScreen(ActMap map, RunState state, bool initMarker)
 	{
+		IntegratedStrategyPresentation.Run(() => SetMapScreenCore(map, state, initMarker), "refresh temporary map");
+	}
+
+	private static void SetMapScreenCore(ActMap map, RunState state, bool initMarker)
+	{
 		NMapScreen? mapScreen = NMapScreen.Instance;
 		if (mapScreen == null)
 		{
@@ -782,9 +801,9 @@ internal static class TreeHoleSessionManager
 			state.Players.FirstOrDefault();
 		if (requester == null)
 		{
-			Log.Warn($"{ModInfo.LogPrefix} Falling back to local tree-hole return because no player was available.");
-			RestoreOriginalMap(state, session);
-			return true;
+			Log.Error($"{ModInfo.LogPrefix} Cannot queue tree-hole return without an action owner.");
+			SessionStore.RemovePendingTreeHoleReturn(state);
+			return false;
 		}
 
 		IntegratedStrategyTemporaryMapAction.EnqueueTreeHoleReturn(requester);

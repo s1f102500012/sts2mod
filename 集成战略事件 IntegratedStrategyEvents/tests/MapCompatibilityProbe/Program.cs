@@ -5,6 +5,7 @@ using MegaCrit.Sts2.Core.Multiplayer.Game;
 
 ExternalMainMap map = new();
 Assembly modAssembly = typeof(IntegratedStrategyEventsInterop).Assembly;
+SecretNodePlacementProbe.Run(modAssembly);
 Type controller = modAssembly.GetType(
 	"IntegratedStrategyEvents.Map.IntegratedStrategySecretMapNodeController",
 	throwOnError: true)!;

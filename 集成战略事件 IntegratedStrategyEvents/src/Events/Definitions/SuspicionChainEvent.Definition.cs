@@ -9,7 +9,7 @@ public sealed partial class SuspicionChainEvent
 			CreateLocalization,
 			IntegratedStrategyEventLayoutProfile.StandardLowered);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		return IntegratedStrategyEventLocalization.ForCurrentLanguage(
 			new EventLoc(

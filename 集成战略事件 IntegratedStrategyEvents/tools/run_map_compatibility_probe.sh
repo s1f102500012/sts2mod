@@ -8,7 +8,7 @@ REFS_ROOT="$ROOT/../HextechRunes/versioned-dll-backups"
 RITSULIB_ROOT="${RITSULIB_ROOT:-/Users/iniad/Library/Application Support/Steam/steamapps/workshop/content/2868840/3747602295}"
 GAME_APP="${STS2_GAME_APP:-/Users/iniad/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app}"
 GAME_RUNTIME_DATA="${STS2_GAME_RUNTIME_DATA:-$GAME_APP/Contents/Resources/data_sts2_macos_$(uname -m)}"
-TARGETS=(0.107.1 0.110.1)
+TARGETS=(0.107.1 0.110.1 0.111.0)
 
 if (( ${+commands[dotnet]} )); then
 	DOTNET_BIN="${commands[dotnet]}"

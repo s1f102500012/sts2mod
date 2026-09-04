@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.Models;
 namespace IntegratedStrategyEvents.ConsoleCommands;
 
 [HarmonyPatch(typeof(FightConsoleCmd), nameof(FightConsoleCmd.Process))]
+[IntegratedStrategyPatch("IntegratedStrategyFightConsoleProcessPatch", "content", "本模组内容")]
 internal static class IntegratedStrategyFightConsoleProcessPatch
 {
 	[HarmonyPrefix]
@@ -21,6 +22,7 @@ internal static class IntegratedStrategyFightConsoleProcessPatch
 }
 
 [HarmonyPatch(typeof(FightConsoleCmd), nameof(FightConsoleCmd.GetArgumentCompletions))]
+[IntegratedStrategyPatch("IntegratedStrategyFightConsoleCompletionPatch", "content", "本模组内容")]
 internal static class IntegratedStrategyFightConsoleCompletionPatch
 {
 	[HarmonyPostfix]

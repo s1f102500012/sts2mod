@@ -14,7 +14,7 @@ public sealed partial class GoodsFromTheMouthEvent
 			CreateLocalization,
 			PortraitLayout);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		return IntegratedStrategyEventLocalization.ForCurrentLanguage(
 			new EventLoc(

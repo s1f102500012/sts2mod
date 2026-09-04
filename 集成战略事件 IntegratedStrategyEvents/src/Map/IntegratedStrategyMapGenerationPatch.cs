@@ -13,6 +13,7 @@ using MegaCrit.Sts2.Core.Runs;
 namespace IntegratedStrategyEvents.Map;
 
 [HarmonyPatch(typeof(ActModel), nameof(ActModel.GetNumberOfRooms))]
+[IntegratedStrategyPatch("IntegratedStrategyMapLengthPatch", "map-rules", "现有全局地图规则")]
 internal static class IntegratedStrategyMapLengthPatch
 {
 	private const int ExtraRooms = 1;
@@ -27,6 +28,7 @@ internal static class IntegratedStrategyMapLengthPatch
 }
 
 [HarmonyPatch(typeof(RoomSet), nameof(RoomSet.EnsureNextEventIsValid))]
+[IntegratedStrategyPatch("IntegratedStrategyFirstEventPatch", "forced-events", "现有全局地图规则")]
 internal static class IntegratedStrategyFirstEventPatch
 {
 	private const string SecondActOpeningEventRngName = "integrated_strategy_second_act_opening_event";
@@ -77,6 +79,7 @@ internal static class IntegratedStrategyFirstEventPatch
 		return false;
 	}
 
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(RoomSet __instance, RunState runState)
 	{
 		if (__instance.events.Count == 0)
@@ -287,31 +290,11 @@ internal static class IntegratedStrategyFirstEventPatch
 	private sealed record FirstEventChoice(FirstEventBranch Branch);
 }
 
-[HarmonyPatch]
+[HarmonyPatch(typeof(Overgrowth), nameof(ActModel.GetMapPointTypes), [typeof(MegaCrit.Sts2.Core.Random.Rng)])]
+[IntegratedStrategyPatch("IntegratedStrategyMapPointTypeCountsPatch", "map-rules", "现有全局地图规则", Optional = true, AdditionalTargets = new Type[] { typeof(Underdocks), typeof(Hive), typeof(Glory), typeof(DeprecatedAct) })]
 internal static class IntegratedStrategyMapPointTypeCountsPatch
 {
 	private const int ExtraUnknownNodes = 2;
-
-	private static IEnumerable<MethodBase> TargetMethods()
-	{
-		Type[] actTypes =
-		[
-			typeof(Overgrowth),
-			typeof(Underdocks),
-			typeof(Hive),
-			typeof(Glory),
-			typeof(DeprecatedAct)
-		];
-
-		foreach (Type actType in actTypes)
-		{
-			MethodInfo? method = AccessTools.Method(actType, nameof(ActModel.GetMapPointTypes), [typeof(MegaCrit.Sts2.Core.Random.Rng)]);
-			if (method != null)
-			{
-				yield return method;
-			}
-		}
-	}
 
 	private static void Postfix(ref MapPointTypeCounts __result)
 	{
@@ -324,6 +307,7 @@ internal static class IntegratedStrategyMapPointTypeCountsPatch
 }
 
 [HarmonyPatch(typeof(UnknownMapPointOdds), nameof(UnknownMapPointOdds.Roll))]
+[IntegratedStrategyPatch("IntegratedStrategyUnknownRoomOddsPatch", "map-rules", "现有全局地图规则")]
 internal static class IntegratedStrategyUnknownRoomOddsPatch
 {
 	private const float VanillaMonsterOdds = 0.10f;

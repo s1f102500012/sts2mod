@@ -26,6 +26,8 @@ internal static class TreeHoleEntryCoordinator
 
 	public static Task EnterFromEvent(Player owner, string destinationActName, string stageLabel)
 	{
+		if (!IntegratedStrategyPatcher.IsAvailable("temporary-map"))
+			throw new InvalidOperationException("Temporary maps are unavailable; see the startup compatibility report.");
 		NetGameType gameType = RunManager.Instance.NetService.Type;
 		Log.Info(
 			$"{ModInfo.LogPrefix} Tree-hole entry requested for {destinationActName} " +
@@ -62,6 +64,8 @@ internal static class TreeHoleEntryCoordinator
 
 	private static async Task EnterFromEventDeferred(Player owner, string destinationActName, string stageLabel)
 	{
+		if (!IntegratedStrategyPatcher.IsAvailable("temporary-map"))
+			throw new InvalidOperationException("Temporary maps are unavailable; see the startup compatibility report.");
 		RunManager runManager = RunManager.Instance;
 		if (owner.RunState is not RunState state)
 		{
@@ -91,12 +95,7 @@ internal static class TreeHoleEntryCoordinator
 				return;
 			}
 
-			await WaitForEventOptionSettlement(state, destinationActName);
-
-			if (TestMode.IsOff && NGame.Instance != null)
-			{
-				await NGame.Instance.Transition.RoomFadeOut();
-			}
+			if (!await WaitForEventOptionSettlement(state, destinationActName)) return;
 
 			Log.Info($"{ModInfo.LogPrefix} Preparing to enter {destinationActName} tree-hole.");
 			SerializableActModel originalActSave = state.Act.ToSave();
@@ -124,6 +123,7 @@ internal static class TreeHoleEntryCoordinator
 			state.ClearVisitedMapCoordsDebug();
 			state.AddVisitedMapCoord(treeHoleMap.StartingMapPoint.coord);
 			TreeHoleSessionManager.RefreshLocationSynchronizers(state);
+			await TreeHoleRunAccessor.FadeOut();
 			TreeHoleSessionManager.SetMapScreen(treeHoleMap, state, initMarker: false);
 
 			Log.Info($"{ModInfo.LogPrefix} Entering {destinationActName} tree-hole.");
@@ -140,42 +140,22 @@ internal static class TreeHoleEntryCoordinator
 		}
 	}
 
-	// 联机下同步的树洞进入动作可能先于共享事件的选项消息被处理；此时直接拆房会让
-	// EventSynchronizer 留下未完成的事件克隆（下个事件开始时告警，慢端还会丢失
-	// Finish 之前的效果）。拆房前等待本端全部事件克隆完成，超时才放行并告警。
-	internal static async Task WaitForEventOptionSettlement(
+	// 同步切图动作与事件选项消息属于不同流程；必须等所有事件克隆完成，不能按本机帧数强制拆房。
+	internal static async Task<bool> WaitForEventOptionSettlement(
 		RunState state,
 		string destinationActName)
 	{
 		if (state.CurrentRoom is not EventRoom)
 		{
-			return;
+			return true;
 		}
 
 		EventSynchronizer synchronizer = RunManager.Instance.EventSynchronizer;
 		Log.Info($"{ModInfo.LogPrefix} Waiting for {destinationActName} event option settlement.");
-		await synchronizer.AwaitPendingOptionTasks();
-		const int maxFrames = 600;
-		int waitedFrames = 0;
-		for (;
-			waitedFrames < maxFrames && synchronizer.Events.Any(static e => !e.IsFinished);
-			waitedFrames++)
-		{
-			await TreeHoleSessionManager.AwaitNextProcessFrame();
-			await synchronizer.AwaitPendingOptionTasks();
-		}
-
-		if (synchronizer.Events.Any(static e => !e.IsFinished))
-		{
-			Log.Warn(
-				$"{ModInfo.LogPrefix} Entering {destinationActName} with unfinished event clones after " +
-				$"waiting {maxFrames} frames; proceeding anyway.");
-		}
-		else
-		{
-			Log.Info(
-				$"{ModInfo.LogPrefix} Event option settlement completed for {destinationActName} " +
-				$"after {waitedFrames} frame(s).");
-		}
+		return await TreeHoleTransitionSettlement.Await(
+			() => synchronizer.Events.All(static e => e.IsFinished),
+			synchronizer.AwaitPendingOptionTasks,
+			TreeHoleSessionManager.AwaitNextProcessFrame,
+			() => ReferenceEquals(RunManager.Instance.DebugOnlyGetState(), state));
 	}
 }

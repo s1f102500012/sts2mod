@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Saves.Runs;
 namespace IntegratedStrategyEvents.TreeHoles;
 
 [HarmonyPatch(typeof(RunManager), nameof(RunManager.ToSave))]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleSavePatch", "temporary-map", "本模组树洞或终局会话")]
 internal static class IntegratedStrategyTreeHoleSavePatch
 {
 	[HarmonyBefore(ModInfo.RitsuLibCoreHarmonyId)]
@@ -64,6 +65,7 @@ internal static class IntegratedStrategyTreeHoleSavePatch
 }
 
 [HarmonyPatch(typeof(RunState), nameof(RunState.FromSerializable))]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleLoadPatch", "temporary-map", "本模组树洞或终局会话")]
 internal static class IntegratedStrategyTreeHoleLoadPatch
 {
 	[HarmonyAfter(ModInfo.RitsuLibCoreHarmonyId)]

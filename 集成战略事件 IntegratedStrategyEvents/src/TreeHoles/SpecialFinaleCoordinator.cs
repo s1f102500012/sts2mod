@@ -279,6 +279,7 @@ internal static class SpecialFinaleCoordinator
 
 	internal static Task EnterSpecialFinaleFromSyncedAction(Player owner, SpecialFinaleKind finaleKind)
 	{
+		if (!IntegratedStrategyPatcher.IsAvailable("temporary-map")) throw new InvalidOperationException("Temporary maps unavailable.");
 		if (owner.RunState is not RunState state)
 		{
 			Log.Warn($"{ModInfo.LogPrefix} Tried to enter special finale without a run state.");
@@ -362,6 +363,8 @@ internal static class SpecialFinaleCoordinator
 	{
 		try
 		{
+			if (!IntegratedStrategyPatcher.IsAvailable("temporary-map"))
+				throw new InvalidOperationException("Temporary maps are unavailable; see the startup compatibility report.");
 			await TreeHoleSessionManager.AwaitNextProcessFrame();
 			if (!ReferenceEquals(runManager.DebugOnlyGetState(), state) ||
 				GetSpecialFinaleEntryKind(state) != finaleKind)
@@ -370,10 +373,6 @@ internal static class SpecialFinaleCoordinator
 				return;
 			}
 
-			if (TestMode.IsOff && NGame.Instance != null)
-			{
-				await NGame.Instance.Transition.RoomFadeOut();
-			}
 
 			TreeHoleRunAccessor.ClearScreens(runManager);
 			ActMap finaleMap = CreateFinaleMap(finaleKind, state);
@@ -397,6 +396,7 @@ internal static class SpecialFinaleCoordinator
 				await HealPlayersToFull(state);
 			}
 			TreeHoleSessionManager.RefreshLocationSynchronizers(state);
+			await TreeHoleRunAccessor.FadeOut();
 			TreeHoleSessionManager.SetMapScreen(finaleMap, state, initMarker: false);
 
 			Log.Info($"{ModInfo.LogPrefix} Entering {session.DestinationActName} finale act.");
@@ -419,6 +419,8 @@ internal static class SpecialFinaleCoordinator
 		string destinationActName,
 		string stageLabel)
 	{
+		if (!IntegratedStrategyPatcher.IsAvailable("temporary-map"))
+			throw new InvalidOperationException("Temporary maps are unavailable; see the startup compatibility report.");
 		RunManager runManager = RunManager.Instance;
 		if (owner.RunState is not RunState state)
 		{
@@ -446,12 +448,8 @@ internal static class SpecialFinaleCoordinator
 				return;
 			}
 
-			await TreeHoleEntryCoordinator.WaitForEventOptionSettlement(state, destinationActName);
+			if (!await TreeHoleEntryCoordinator.WaitForEventOptionSettlement(state, destinationActName)) return;
 
-			if (TestMode.IsOff && NGame.Instance != null)
-			{
-				await NGame.Instance.Transition.RoomFadeOut();
-			}
 
 			Log.Info($"{ModInfo.LogPrefix} Preparing to enter {destinationActName} Prophet Horn fragment.");
 			await TreeHoleRunAccessor.ExitCurrentRooms(runManager);
@@ -473,6 +471,7 @@ internal static class SpecialFinaleCoordinator
 			state.ClearVisitedMapCoordsDebug();
 			state.AddVisitedMapCoord(fragmentMap.StartingMapPoint.coord);
 			TreeHoleSessionManager.RefreshLocationSynchronizers(state);
+			await TreeHoleRunAccessor.FadeOut();
 			TreeHoleSessionManager.SetMapScreen(fragmentMap, state, initMarker: false);
 
 			Log.Info($"{ModInfo.LogPrefix} Entering {destinationActName} Prophet Horn fragment.");
@@ -493,10 +492,6 @@ internal static class SpecialFinaleCoordinator
 		RunState state,
 		EndlessFinaleSession session)
 	{
-		if (TestMode.IsOff && NGame.Instance != null)
-		{
-			await NGame.Instance.Transition.RoomFadeOut();
-		}
 
 		TreeHoleRunAccessor.ClearScreens(runManager);
 		TreeHoleSessionManager.RestoreOriginalMapFromFinale(state, session);

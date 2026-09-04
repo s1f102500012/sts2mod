@@ -1,6 +1,5 @@
 using System.Text.Json;
 using Godot;
-using HarmonyLib;
 using IntegratedStrategyEvents.Compatibility;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Localization;
@@ -77,14 +76,5 @@ internal static class IntegratedStrategyEncounterLocalization
 			isChinese
 				? "{character}倒在了[gold]{encounter}[/gold]之中。"
 				: "{character} fell in [gold]{encounter}[/gold].");
-	}
-}
-
-[HarmonyPatch(typeof(LocManager), nameof(LocManager.Initialize))]
-internal static class IntegratedStrategyEncounterLocManagerInitializePatch
-{
-	private static void Postfix()
-	{
-		IntegratedStrategyEncounterLocalization.Install();
 	}
 }

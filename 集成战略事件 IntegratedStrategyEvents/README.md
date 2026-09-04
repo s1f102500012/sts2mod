@@ -1,10 +1,12 @@
 # 集成战略事件
 
-RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by Arknights Integrated Strategies. 同一个模组包支持 STS2 0.107.1 与 0.110.1，并依赖 RitsuLib 0.5.10（Workshop 3747602295）。
+RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by Arknights Integrated Strategies. 同一个模组包支持 STS2 0.107.1、0.110.1 与 0.111.0，并依赖 RitsuLib 0.5.18（Workshop 3747602295）。
+
+当前版本 0.5.6；模型清单变化，不能与 0.5.5 混版本联机。见 [更新说明](CHANGELOG.md) 与 [补丁裁决及验证方式](docs/patch-decisions.md)。
 
 ## Structure
 
-- `src/Events/IntegratedStrategyEventModel.cs`: shared BaseLib event identity, owner, localization, act, and spawn-rule integration.
+- `src/Events/IntegratedStrategyEventModel.cs`: shared RitsuLib event identity, owner, localization, act, and spawn-rule integration.
 - `src/Events/IntegratedStrategyEventModel.*.cs`: focused event-facing helpers for navigation, option previews, HP/gold, rewards, and deck operations.
 - `src/Events/IntegratedStrategyEventDefinition.cs`: event portrait factory, localization, and layout definition contract.
 - `src/Events/IntegratedStrategyEventLocalization.cs`: shared current-language selection for event definition localization.
@@ -38,7 +40,7 @@ RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by 
 - `assets/IntegratedStrategyEvents.json`: manifest.
 - `assets/images/events/`: imported event portrait images. Use 16:9 PNGs when possible.
 - `loader/`: stable root loader that selects a separately compiled implementation from `lib/<game-version>/`.
-- `tools/build_and_deploy.sh`: builds both game-version variants, packs resources, validates the bundle, and deploys it.
+- `tools/build_and_deploy.sh`: builds all three game-version variants, packs resources, validates the bundle, and deploys it.
 - `tools/validate_event_structure.sh`: checks that event flows, definitions, and assets stay separated.
 
 ## Adding Events
@@ -52,7 +54,7 @@ RitsuLib-based event-content mod for adding Slay the Spire 2 events inspired by 
 7. Add the new event type to `IntegratedStrategyContentCatalog.Events.cs`.
 8. Add act restrictions in `IntegratedStrategyEventSpawnRules.Acts.cs` and resource/deck gates in `IntegratedStrategyEventSpawnRules.Gates.cs` when the event should not be globally eligible.
 9. Keep `event_options.txt`, `event_descriptions.txt`, and `event_refresh_conditions.txt` in sync as human review summaries.
-10. Run `tools/validate_event_structure.sh`, then `tools/build_and_deploy.sh`; both 0.107.1 and 0.110.1 variants must compile.
+10. Run `tools/validate_event_structure.sh`, then `tools/build_and_deploy.sh`; all 0.107.1, 0.110.1 and 0.111.0 variants must compile.
 
 ## Adding Event Relics
 

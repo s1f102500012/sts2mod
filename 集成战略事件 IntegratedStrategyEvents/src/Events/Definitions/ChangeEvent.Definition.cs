@@ -9,7 +9,7 @@ public sealed partial class ChangeEvent
 			CreateLocalization,
 			IntegratedStrategyEventLayoutProfile.StandardNarrow);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		return IntegratedStrategyEventLocalization.ForCurrentLanguage(
 			new EventLoc(

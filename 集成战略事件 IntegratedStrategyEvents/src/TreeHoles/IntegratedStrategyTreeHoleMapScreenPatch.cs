@@ -11,11 +11,11 @@ using MegaCrit.Sts2.Core.Runs;
 namespace IntegratedStrategyEvents.TreeHoles;
 
 [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen.SetMap))]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleMapScreenPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategyTreeHoleMapScreenPatch
 {
 	private static void Postfix(NMapScreen __instance, ActMap map)
 	{
-		IntegratedStrategyTreeHoleController.TryRestoreSavedSessionForCurrentRun(map);
 
 		if (IntegratedStrategyTreeHoleController.TryRestoreCompletedCurrentRun())
 		{
@@ -90,7 +90,7 @@ internal static class IntegratedStrategyTreeHoleMapScreenPatch
 
 	private static void StyleEndlessFinaleBossNode(NMapScreen screen)
 	{
-		if (AccessTools.Field(typeof(NMapScreen), "_bossPointNode")?.GetValue(screen) is not NBossMapPoint bossPoint)
+		if (IntegratedStrategyPrivateMembers.Field(typeof(NMapScreen), "_bossPointNode")?.GetValue(screen) is not NBossMapPoint bossPoint)
 		{
 			return;
 		}
@@ -102,10 +102,10 @@ internal static class IntegratedStrategyTreeHoleMapScreenPatch
 
 	internal static void EnsureEndlessFinaleBossTravelable(NMapScreen screen)
 	{
-		if (AccessTools.Field(typeof(NMapScreen), "_map")?.GetValue(screen) is not ActMap map ||
+		if (IntegratedStrategyPrivateMembers.Field(typeof(NMapScreen), "_map")?.GetValue(screen) is not ActMap map ||
 			!IsEndlessFinaleMap(map) ||
-			AccessTools.Field(typeof(NMapScreen), "_runState")?.GetValue(screen) is not RunState state ||
-			AccessTools.Field(typeof(NMapScreen), "_bossPointNode")?.GetValue(screen) is not NBossMapPoint bossPoint ||
+			IntegratedStrategyPrivateMembers.Field(typeof(NMapScreen), "_runState")?.GetValue(screen) is not RunState state ||
+			IntegratedStrategyPrivateMembers.Field(typeof(NMapScreen), "_bossPointNode")?.GetValue(screen) is not NBossMapPoint bossPoint ||
 			state.VisitedMapCoords.Count == 0)
 		{
 			return;
@@ -142,7 +142,7 @@ internal static class IntegratedStrategyTreeHoleMapScreenPatch
 
 	private static void HideSpecialPoint(NMapScreen screen, string fieldName)
 	{
-		if (AccessTools.Field(typeof(NMapScreen), fieldName)?.GetValue(screen) is CanvasItem item)
+		if (IntegratedStrategyPrivateMembers.Field(typeof(NMapScreen), fieldName)?.GetValue(screen) is CanvasItem item)
 		{
 			item.Hide();
 			item.ProcessMode = Node.ProcessModeEnum.Disabled;
@@ -151,7 +151,7 @@ internal static class IntegratedStrategyTreeHoleMapScreenPatch
 
 	private static void HideSpecialPaths(NMapScreen screen, params MapCoord[] hiddenCoords)
 	{
-		object? pathsValue = AccessTools.Field(typeof(NMapScreen), "_paths")?.GetValue(screen);
+		object? pathsValue = IntegratedStrategyPrivateMembers.Field(typeof(NMapScreen), "_paths")?.GetValue(screen);
 		if (pathsValue is not IDictionary paths)
 		{
 			return;
@@ -185,20 +185,21 @@ internal static class IntegratedStrategyTreeHoleMapScreenPatch
 }
 
 [HarmonyPatch(typeof(NMapScreen), nameof(NMapScreen.Open))]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleMapOpenPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategyTreeHoleMapOpenPatch
 {
 	private static void Postfix()
 	{
 		if (RunManager.Instance.DebugOnlyGetState()?.Map is { } map)
 		{
-			IntegratedStrategyTreeHoleController.TryRestoreSavedSessionForCurrentRun(map);
-		}
+			}
 
 		IntegratedStrategyTreeHoleController.TryRestoreCompletedCurrentRun();
 	}
 }
 
 [HarmonyPatch(typeof(NMapScreen), "RecalculateTravelability")]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleMapTravelabilityPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategyTreeHoleMapTravelabilityPatch
 {
 	private static void Postfix(NMapScreen __instance)
@@ -211,6 +212,7 @@ internal static class IntegratedStrategyTreeHoleMapTravelabilityPatch
 }
 
 [HarmonyPatch(typeof(RunManager), nameof(RunManager.ProceedFromTerminalRewardsScreen))]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleTerminalRewardsProceedPatch", "temporary-map", "本模组树洞或终局会话")]
 internal static class IntegratedStrategyTreeHoleTerminalRewardsProceedPatch
 {
 	private static void Postfix(ref Task __result)
@@ -232,6 +234,7 @@ internal static class IntegratedStrategyTreeHoleTerminalRewardsProceedPatch
 // 上面的补丁对宝箱终点永远不触发（玩家反馈：终点为宝箱时无法离开树洞）。
 // 在按钮回调上补一个对称入口。
 [HarmonyPatch(typeof(NTreasureRoom), "OnProceedButtonReleased")]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleTreasureProceedPatch", "temporary-map", "本模组树洞或终局会话")]
 internal static class IntegratedStrategyTreeHoleTreasureProceedPatch
 {
 	private static void Postfix()
@@ -241,6 +244,7 @@ internal static class IntegratedStrategyTreeHoleTreasureProceedPatch
 }
 
 [HarmonyPatch(typeof(NMapScreen), "InitMapPrompt")]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleMapPromptPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategyTreeHoleMapPromptPatch
 {
 	private static void Postfix(NMapScreen __instance)
@@ -286,6 +290,7 @@ internal static class IntegratedStrategyTreeHoleMapPromptPatch
 }
 
 [HarmonyPatch(typeof(NActBanner), nameof(NActBanner.Create))]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleActBannerPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategyTreeHoleActBannerPatch
 {
 	private static void Postfix(NActBanner __result)
@@ -295,6 +300,7 @@ internal static class IntegratedStrategyTreeHoleActBannerPatch
 }
 
 [HarmonyPatch(typeof(NActBanner), nameof(NActBanner._Ready))]
+[IntegratedStrategyPatch("IntegratedStrategyTreeHoleActBannerReadyPatch", "map-ui", "本模组地图显示")]
 internal static class IntegratedStrategyTreeHoleActBannerReadyPatch
 {
 	private static void Postfix(NActBanner __instance)
@@ -318,7 +324,7 @@ internal static class IntegratedStrategyTreeHoleActBannerText
 
 	private static void SetMegaLabelField(NActBanner banner, string fieldName, string text)
 	{
-		if (AccessTools.Field(typeof(NActBanner), fieldName)?.GetValue(banner) is MegaLabel label)
+		if (IntegratedStrategyPrivateMembers.Field(typeof(NActBanner), fieldName)?.GetValue(banner) is MegaLabel label)
 		{
 			label.SetTextAutoSize(text);
 		}

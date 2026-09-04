@@ -4,14 +4,14 @@ internal static class TreeHoleFinaleMusicCoordinator
 {
 	public static void StopForRunReset()
 	{
-		IntegratedStrategyEndlessFinaleMusicController.Stop(restoreGameMusic: false);
+		IntegratedStrategyPresentation.Run(() => IntegratedStrategyEndlessFinaleMusicController.Stop(restoreGameMusic: false), "stop finale music");
 	}
 
 	public static void PlayForEnteredRoom(EndlessFinaleSession session)
 	{
 		if (session.Kind == SpecialFinaleKind.EndlessFinale)
 		{
-			IntegratedStrategyEndlessFinaleMusicController.Play();
+			IntegratedStrategyPresentation.Run(IntegratedStrategyEndlessFinaleMusicController.Play, "play finale music");
 		}
 	}
 
@@ -19,7 +19,7 @@ internal static class TreeHoleFinaleMusicCoordinator
 	{
 		if (finaleKind == SpecialFinaleKind.EndlessFinale)
 		{
-			IntegratedStrategyEndlessFinaleMusicController.Play();
+			IntegratedStrategyPresentation.Run(IntegratedStrategyEndlessFinaleMusicController.Play, "play finale music");
 		}
 	}
 
@@ -27,7 +27,7 @@ internal static class TreeHoleFinaleMusicCoordinator
 	{
 		if (session.Kind == SpecialFinaleKind.EndlessFinale)
 		{
-			IntegratedStrategyEndlessFinaleMusicController.Stop(restoreGameMusic: false);
+			IntegratedStrategyPresentation.Run(() => IntegratedStrategyEndlessFinaleMusicController.Stop(restoreGameMusic: false), "stop finale music");
 		}
 	}
 }

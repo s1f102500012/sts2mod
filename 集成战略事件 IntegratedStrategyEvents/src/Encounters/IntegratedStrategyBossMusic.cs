@@ -1,13 +1,12 @@
-using HarmonyLib;
 using MegaCrit.Sts2.Core.Models;
-using MegaCrit.Sts2.Core.Nodes;
 
 namespace IntegratedStrategyEvents.Encounters;
 
 /// <summary>
 /// BOSS 战音乐注册表：每个 BOSS 一行（播放器名 / 音轨 / 音量 / 遭遇匹配），
-/// 替代原先每 BOSS 一个复制粘贴的 *MusicController 文件与两个各自的返回主菜单补丁。
+/// 替代原先每 BOSS 一个复制粘贴的 *MusicController 文件。
 /// 新增 BOSS 音乐 = 加一个 TrackPath 常量 + 一行注册 + 加入 All。
+/// 返回主菜单时的停止由 IntegratedStrategyMusicShutdown 统一负责。
 /// </summary>
 internal static class IntegratedStrategyBossMusic
 {
@@ -41,7 +40,7 @@ internal static class IntegratedStrategyBossMusic
 
 	public static readonly EncounterMusicController CalendarKings = new(
 		"IntegratedStrategyCalendarKingsMusic", CalendarKingsTrackPath, 0.82f, "calendar kings",
-		CalendarKingsPincerCreateBackgroundPatch.IsCalendarKingsPincerEncounter);
+		Matches<CalendarKingsPincerBossEncounter>);
 
 	public static readonly EncounterMusicController SorrowfulLock = new(
 		"IntegratedStrategySorrowfulLockMusic", SorrowfulLockTrackPath, 0.55f, "SorrowfulLock",
@@ -70,23 +69,5 @@ internal static class IntegratedStrategyBossMusic
 		where TEncounter : EncounterModel
 	{
 		return encounter is TEncounter || encounter.CanonicalInstance is TEncounter;
-	}
-}
-
-[HarmonyPatch(typeof(NGame), nameof(NGame.ReturnToMainMenu))]
-internal static class IntegratedStrategyBossMusicReturnToMainMenuPatch
-{
-	private static void Prefix()
-	{
-		IntegratedStrategyBossMusic.StopAll();
-	}
-}
-
-[HarmonyPatch(typeof(NGame), nameof(NGame.ReturnToMainMenuAfterRun))]
-internal static class IntegratedStrategyBossMusicReturnToMainMenuAfterRunPatch
-{
-	private static void Prefix()
-	{
-		IntegratedStrategyBossMusic.StopAll();
 	}
 }

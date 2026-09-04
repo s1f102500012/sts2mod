@@ -12,11 +12,7 @@ internal static partial class IntegratedStrategyEventRewards
 		PotionRarity? preferredRarity = null,
 		string sourceName = "integrated strategy event")
 	{
-#if STS2_109_OR_NEWER
-		List<PotionModel> options = PotionFactory.GetPotionOptions(owner).ToList();
-#else
-		List<PotionModel> options = PotionFactory.GetPotionOptions(owner, []).ToList();
-#endif
+		List<PotionModel> options = GetPotionOptions(owner);
 		if (options.Count == 0)
 		{
 			throw new InvalidOperationException($"No potion options were available for {sourceName}.");

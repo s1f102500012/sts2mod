@@ -1,0 +1,14 @@
+MegaCrit.Sts2.Core.Events.EventOption::AddLocVars(MegaCrit.Sts2.Core.Models.EventModel)=4d6ad0b7dbba60e0d222ef41594d42d7ee618fae25bcb450ffe3adecf9aded92
+MegaCrit.Sts2.Core.Models.ActModel::MarkRoomVisited(MegaCrit.Sts2.Core.Rooms.RoomType)=633e0b41a82167a1d4d29268b9a857e3b90c46646ff6c07900aa3ac31dc326ad
+MegaCrit.Sts2.Core.Models.ActModel::PullNextEncounter(MegaCrit.Sts2.Core.Rooms.RoomType)=267349416a03dffd742abfc4b4e55ee4290815c7c1b4045c5ac96b92b7a7e27a
+MegaCrit.Sts2.Core.Nodes.Rooms.NEventRoom::OptionButtonClicked(MegaCrit.Sts2.Core.Events.EventOption,System.Int32)=8855d25c36b705bcd913afcf0c3895b48d4a222e760efa2d4da33e5db45d6c5a
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapLegendItem::SetLocalizedFields(System.String)=99c9e227bb22efc133c7c7581f227a91f7ca458dd51b8262c9c108885a6688da
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NMapLegendItem::SetMapPointType(System.String)=965f3dc6d44a7182a39489ec03d84942148bbcc9a53e8e529adf01a406445faa
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NNormalMapPoint::AnimHover()=ec9a47c62b4c224f53f9b62787c31018c206a24a4e26568f888176aba7fac8d1
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NNormalMapPoint::AnimUnhover()=14459ba2b932e652860a5ecb5603cf45e11f12f62e21ec1fef2e0618f89b31b0
+MegaCrit.Sts2.Core.Nodes.Screens.Map.NNormalMapPoint::OnHighlightPointType(MegaCrit.Sts2.Core.Map.MapPointType)=2189011a7959c421328560858f115908c01ce4ae50590b81bc727eaa80143155
+MegaCrit.Sts2.Core.Rooms.RoomSet::EnsureNextEventIsValid(MegaCrit.Sts2.Core.Runs.RunState)=0e8f52c9b62165838ae6e9457113c8ec92e1cea7cf7ecdbe0546b0d4252d6c60
+MegaCrit.Sts2.Core.Runs.RunManager::CreateRoom(MegaCrit.Sts2.Core.Rooms.RoomType,MegaCrit.Sts2.Core.Map.MapPointType,MegaCrit.Sts2.Core.Models.AbstractModel)=1213a8c015544d0bef98d394c205db07b1d6d82a4013df7197f825f3c906fe6f
+MegaCrit.Sts2.Core.Runs.RunManager::EnterNextAct()=5a20a04bb062f3915c9f27c02b8778fcd6872cfd4ec630add9fbddaa0734be6c
+MegaCrit.Sts2.Core.Runs.RunManager::RollRoomTypeFor(MegaCrit.Sts2.Core.Map.MapPointType,System.Collections.Generic.IEnumerable`1[[MegaCrit.Sts2.Core.Rooms.RoomType, sts2, Version=0.1.0.0, Culture=neutral, PublicKeyToken=null]])=d0eea1e4a747efcdeeabfa496ffa7d3bb1ea734cd003c236e03303a107e75db5
+MegaCrit.Sts2.Core.Runs.RunState::AppendToMapPointHistory(MegaCrit.Sts2.Core.Map.MapPointType,MegaCrit.Sts2.Core.Rooms.RoomType,MegaCrit.Sts2.Core.Models.ModelId)=9a0dcae15e29da6a8f81fa2e3ed457312b9f0d7cf8f7f928017991d5ea22e715

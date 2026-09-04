@@ -6,6 +6,7 @@ using MegaCrit.Sts2.Core.Nodes.Events;
 namespace IntegratedStrategyEvents.UI;
 
 [HarmonyPatch(typeof(NEventLayout), nameof(NEventLayout.AddOptions))]
+[IntegratedStrategyPatch("IntegratedStrategyEventLayoutPatch", "event-ui", "本模组事件界面")]
 internal static class IntegratedStrategyEventLayoutPatch
 {
 	private static void Prefix(NEventLayout __instance)

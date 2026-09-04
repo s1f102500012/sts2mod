@@ -9,7 +9,7 @@ public sealed partial class ForwardForestEvent
 			CreateLocalization,
 			IntegratedStrategyEventLayoutProfile.LeftWide);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		const string ChineseChopText = "你终于砍开了杂乱的林木和藤条，阳光照入林间，什么东西掉在了地上。\n\n你产生了一种[jitter][purple]奇怪的直觉[/purple][/jitter]——或许你刚刚破坏了什么[sine][gold]精妙的人造物[/gold][/sine]。但造成的损坏已经无法复原，你只好捡起掉落的物件离开。";
 		const string EnglishChopText = "At last, you hack through the tangled [green]trees and vines[/green]. Sunlight spills into the woodland, and something falls to the ground.\n\nA [jitter][purple]strange intuition[/purple][/jitter] comes to you: perhaps you have just damaged some [sine][gold]delicate artifice[/gold][/sine]. The harm cannot be undone, so you pick up what fell and leave.";

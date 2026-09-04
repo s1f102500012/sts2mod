@@ -1,9 +1,7 @@
 using System.Collections;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Security.Cryptography;
 using System.Text.Json;
-using HarmonyLib;
 using MegaCrit.Sts2.Core.Debug;
 using MegaCrit.Sts2.Core.Helpers;
 using MegaCrit.Sts2.Core.Logging;
@@ -21,8 +19,6 @@ public static class LoaderBootstrap
 	private const string CompatTargetMarkerName = "compat-target.txt";
 	private const string CompatTargetMetadataKey = "IntegratedStrategyEventsCompatibilityTarget";
 
-	private static readonly object VariantAssembliesGate = new();
-	private static readonly List<Assembly> VariantAssemblies = [];
 	private static readonly MethodInfo? AssociateAssemblyWithModMethod =
 		typeof(ModManager).GetMethod(
 			"AssociateAssemblyWithMod",
@@ -40,7 +36,6 @@ public static class LoaderBootstrap
 			BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
 
 	private static Assembly? _selectedVariantAssembly;
-	private static bool _reflectionBridgeInstalled;
 	private static bool _legacyAssociationCallbackInstalled;
 
 	public static void Initialize()
@@ -77,13 +72,13 @@ public static class LoaderBootstrap
 				?? AssemblyLoadContext.Default;
 			Assembly implementation = context.LoadFromAssemblyPath(variant.DllPath);
 			ValidateVariantAssembly(implementation, variant);
-			RegisterVariantAssembly(implementation);
-			AssociateVariantAssemblyWithGame(implementation);
-			InvokeRealInitializer(implementation);
+			if (AssociateVariantAssemblyWithGame(implementation))
+				InvokeRealInitializer(implementation);
 		}
 		catch (Exception exception)
 		{
 			Log.Error($"[IntegratedStrategyEvents.Loader] Failed to load implementation: {exception}");
+			throw;
 		}
 	}
 
@@ -108,58 +103,6 @@ public static class LoaderBootstrap
 		}
 	}
 
-	private static void RegisterVariantAssembly(Assembly assembly)
-	{
-		InstallReflectionBridge();
-		lock (VariantAssembliesGate)
-		{
-			if (!VariantAssemblies.Any(candidate =>
-				string.Equals(candidate.Location, assembly.Location, StringComparison.Ordinal)))
-			{
-				VariantAssemblies.Add(assembly);
-			}
-		}
-	}
-
-	private static void InstallReflectionBridge()
-	{
-		if (_reflectionBridgeInstalled)
-		{
-			return;
-		}
-
-		MethodInfo? getter =
-			AccessTools.PropertyGetter(typeof(ReflectionHelper), nameof(ReflectionHelper.ModTypes));
-		if (getter == null)
-		{
-			throw new MissingMethodException("ReflectionHelper.ModTypes getter was not found.");
-		}
-
-		new Harmony("Natsuki.IntegratedStrategyEvents.Loader.ReflectionBridge").Patch(
-			getter,
-			postfix: new HarmonyMethod(
-				typeof(LoaderBootstrap),
-				nameof(ReflectionHelperModTypesPostfix)));
-		_reflectionBridgeInstalled = true;
-	}
-
-	private static void ReflectionHelperModTypesPostfix(ref Type[] __result)
-	{
-		Type[] variantTypes;
-		lock (VariantAssembliesGate)
-		{
-			variantTypes = VariantAssemblies
-				.SelectMany(GetLoadableTypes)
-				.Distinct()
-				.ToArray();
-		}
-
-		if (variantTypes.Length > 0)
-		{
-			__result = (__result ?? []).Concat(variantTypes).Distinct().ToArray();
-		}
-	}
-
 	private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
 	{
 		try
@@ -175,43 +118,28 @@ public static class LoaderBootstrap
 		}
 	}
 
-	private static void AssociateVariantAssemblyWithGame(Assembly assembly)
+	private static bool AssociateVariantAssemblyWithGame(Assembly assembly)
 	{
 		_selectedVariantAssembly = assembly;
-
+		if (IsAssemblyAssociatedWithMod(assembly)) return true;
 		if (AssociateAssemblyWithModMethod != null)
 		{
-			try
+			AssociateAssemblyWithModMethod.Invoke(null, [ModId, assembly]);
+			if (IsAssemblyAssociatedWithMod(assembly))
 			{
-				AssociateAssemblyWithModMethod.Invoke(null, [ModId, assembly]);
-				if (IsAssemblyAssociatedWithMod(assembly))
-				{
-					return;
-				}
+				Log.Info("[IntegratedStrategyEvents.Loader] Official assembly association; no reflection bridge.");
+				return true;
 			}
-			catch (Exception exception)
-			{
-				Log.Warn(
-					$"[IntegratedStrategyEvents.Loader] AssociateAssemblyWithMod failed: " +
-					$"{exception.GetBaseException().Message}");
-			}
+			throw new InvalidOperationException("Official assembly association did not register the implementation.");
 		}
-
-		if (TryAssociateWithAssemblyList(assembly))
-		{
-			return;
-		}
-
+		// STS2 0.107.1 在 initializer 返回后覆盖 Mod.assembly；检测完成后才关联并初始化。
 		if (LegacyModAssemblyField != null && !_legacyAssociationCallbackInstalled)
 		{
 			ModManager.OnModDetected += OnLegacyModDetected;
 			_legacyAssociationCallbackInstalled = true;
-			return;
+			return false;
 		}
-
-		Log.Warn(
-			"[IntegratedStrategyEvents.Loader] Could not associate the selected variant with ModManager; " +
-			"type discovery will rely on the reflection bridge.");
+		throw new MissingMemberException("No supported assembly association API; refusing partial type discovery.");
 	}
 
 	private static void OnLegacyModDetected(Mod mod)
@@ -222,27 +150,19 @@ public static class LoaderBootstrap
 			return;
 		}
 
-		LegacyModAssemblyField?.SetValue(mod, _selectedVariantAssembly);
+		if (mod.state != ModLoadState.Loaded) return;
+		LegacyModAssemblyField!.SetValue(mod, _selectedVariantAssembly);
 		ModManager.OnModDetected -= OnLegacyModDetected;
 		_legacyAssociationCallbackInstalled = false;
 		Log.Info(
 			$"[IntegratedStrategyEvents.Loader] Associated variant " +
 			$"{_selectedVariantAssembly.GetName().Name} with the STS2 0.107.x mod record.");
-	}
-
-	private static bool TryAssociateWithAssemblyList(Assembly assembly)
-	{
-		if (!TryFindMod(out Mod? mod)
-			|| ModAssembliesField?.GetValue(mod) is not IList assemblies)
+		try { InvokeRealInitializer(_selectedVariantAssembly); }
+		catch (Exception ex)
 		{
-			return false;
+			mod.state = ModLoadState.Failed;
+			Log.Error($"[IntegratedStrategyEvents.Loader] Legacy initialization failed: {ex}");
 		}
-
-		if (!assemblies.Cast<object>().Any(item => ReferenceEquals(item, assembly)))
-		{
-			assemblies.Add(assembly);
-		}
-		return true;
 	}
 
 	private static bool IsAssemblyAssociatedWithMod(Assembly assembly)
@@ -390,10 +310,6 @@ public static class LoaderBootstrap
 		{
 			throw new FileNotFoundException("Missing variant assembly.", dllPath);
 		}
-		if (!MatchesExpectedHash(dllPath, entry.Sha256))
-		{
-			throw new InvalidDataException($"SHA-256 mismatch for variant: {dllPath}");
-		}
 
 		return new VariantCandidate(compatTarget, version, dllPath);
 	}
@@ -404,18 +320,6 @@ public static class LoaderBootstrap
 		return !Path.IsPathRooted(relative)
 			&& !string.Equals(relative, "..", StringComparison.Ordinal)
 			&& !relative.StartsWith(".." + Path.DirectorySeparatorChar, StringComparison.Ordinal);
-	}
-
-	private static bool MatchesExpectedHash(string path, string? expected)
-	{
-		if (string.IsNullOrWhiteSpace(expected))
-		{
-			return false;
-		}
-
-		using FileStream stream = File.OpenRead(path);
-		string actual = Convert.ToHexString(SHA256.HashData(stream));
-		return string.Equals(actual, expected.Trim(), StringComparison.OrdinalIgnoreCase);
 	}
 
 	private static HostVersionSnapshot ResolveHostVersion()

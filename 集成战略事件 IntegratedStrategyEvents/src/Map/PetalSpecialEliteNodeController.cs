@@ -47,9 +47,10 @@ internal static class PetalSpecialEliteNodeController
 }
 
 [HarmonyPatch(typeof(ActModel), nameof(ActModel.PullNextEncounter))]
+[IntegratedStrategyPatch("PetalSpecialEliteNodeEncounterPatch", "map-rules", "现有全局地图规则")]
 internal static class PetalSpecialEliteNodeEncounterPatch
 {
-	[HarmonyPriority(Priority.First)]
+	[HarmonyPriority(Priority.Low)]
 	private static bool Prefix(RoomType roomType, ref EncounterModel __result)
 	{
 		if (!PetalSpecialEliteNodeController.TryPullForcedEncounter(roomType, out EncounterModel encounter))

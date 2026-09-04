@@ -9,7 +9,7 @@ public sealed partial class DesperateChoiceEvent
 			CreateLocalization,
 			IntegratedStrategyEventLayoutProfile.LeftMediumSlightlyRaisedForFourOptions);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		return IntegratedStrategyEventLocalization.ForCurrentLanguage(
 			new EventLoc(

@@ -8,6 +8,7 @@ using MegaCrit.Sts2.Core.Nodes.HoverTips;
 namespace IntegratedStrategyEvents.UI;
 
 [HarmonyPatch(typeof(NEventOptionButton), "OnFocus")]
+[IntegratedStrategyPatch("IntegratedStrategyEventOptionHoverTipPatch", "event-ui", "本模组事件界面")]
 internal static class IntegratedStrategyEventOptionHoverTipPatch
 {
 	private static void Postfix(NEventOptionButton __instance)

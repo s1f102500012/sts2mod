@@ -18,7 +18,7 @@ using STS2RitsuLib.Content;
 namespace IntegratedStrategyEvents;
 
 [ModInitializer(nameof(Initialize))]
-public static class ModEntry
+public static partial class ModEntry
 {
 	private static Harmony? HarmonyInstance;
 	private static bool CardPoolsRegistered;
@@ -26,30 +26,22 @@ public static class ModEntry
 	public static void Initialize()
 	{
 		IntegratedStrategyTreeHoleSaveStateStore.Initialize();
-#if !STS2_109_OR_NEWER
 		InjectSavedPropertyCaches();
-#endif
 		RegisterRelics();
 		RegisterCards();
 		RegisterActEvents();
 		EnsureModelsRegisteredIfModelDbAlreadyInitialized();
 		HarmonyInstance ??= new Harmony(ModInfo.HarmonyId);
-		IntegratedStrategyMapReflectionCache.Validate();
-		IntegratedStrategyModelIdSerializationWarningHooks.Install(HarmonyInstance);
-		HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
+		IntegratedStrategyPrivateMembers.Validate();
+		IntegratedStrategyPatcher.ApplyAll(HarmonyInstance, Assembly.GetExecutingAssembly());
 		IntegratedStrategyEncounterLocalization.Install();
 		IntegratedStrategyEventRuntimeCompatibility.Install();
 		IntegratedStrategyPotionTracker.Install();
 		IntegratedStrategyTreeHoleController.Install();
+		IntegratedStrategyPatcher.DumpIfRequested();
 		Log.Info($"{ModInfo.LogPrefix} Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}.");
 	}
 
-#if !STS2_109_OR_NEWER
-	private static void InjectSavedPropertyCaches()
-	{
-		SavedPropertiesTypeCache.InjectTypeIntoCache(typeof(ProphecyProjectionRelic));
-	}
-#endif
 
 	private static void RegisterRelics()
 	{
@@ -84,6 +76,7 @@ public static class ModEntry
 		// 树洞/结局分支/终局专属事件同样在通用池里，由 IsAllowed 门禁阻止自然刷新，
 		// 强制刷新路径不受门禁影响。
 		ModContentRegistry registry = ModContentRegistry.For(ModInfo.ModId);
+		registry.RegisterSingleton<IntegratedStrategyMapLifecycle>();
 		foreach ((Type eventType, Type[] actTypes) in IntegratedStrategyEventSpawnRules.ActRegistrations)
 		{
 			foreach (Type actType in actTypes)
@@ -130,6 +123,7 @@ public static class ModEntry
 }
 
 [HarmonyPatch(typeof(ModelDb), nameof(ModelDb.InitIds))]
+[IntegratedStrategyPatch("IntegratedStrategyModelDbInitIdsPatch", "content", "本模组内容")]
 internal static class IntegratedStrategyModelDbInitIdsPatch
 {
 	private static void Postfix()

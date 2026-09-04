@@ -12,7 +12,7 @@ public sealed partial class SublimationEvent
 			CreateLocalization,
 			InitialPageLayout);
 
-	private static List<(string, string)>? CreateLocalization()
+	internal static List<(string, string)>? CreateLocalization()
 	{
 		return IntegratedStrategyEventLocalization.ForCurrentLanguage(
 			new EventLoc(

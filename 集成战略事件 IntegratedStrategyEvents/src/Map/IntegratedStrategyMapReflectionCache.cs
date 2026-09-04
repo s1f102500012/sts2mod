@@ -35,31 +35,6 @@ internal static class IntegratedStrategyMapReflectionCache
 	private static readonly MethodInfo NormalMapPointAnimUnhoverMethod =
 		RequiredMethod<NNormalMapPoint>("AnimUnhover");
 
-	private static bool _validated;
-
-	public static void Validate()
-	{
-		if (_validated)
-		{
-			return;
-		}
-
-		_ = NormalMapPointIconRef;
-		_ = NormalMapPointOutlineRef;
-		_ = NormalMapPointQuestIconRef;
-		_ = NormalMapPointTweenRef;
-		_ = MapPointOutlineColorRef;
-		_ = LegendItemIconRef;
-		_ = LegendItemHoverTipRef;
-		_ = LegendItemPointTypeRef;
-		_ = LegendItemsField;
-		_ = MapLegendField;
-		_ = NormalMapPointAnimHoverMethod;
-		_ = NormalMapPointAnimUnhoverMethod;
-		_validated = true;
-		Log.Info($"{ModInfo.LogPrefix} Validated map UI reflection cache.");
-	}
-
 	public static TextureRect NormalMapPointIcon(NNormalMapPoint node)
 	{
 		return NormalMapPointIconRef(node);
@@ -114,43 +89,10 @@ internal static class IntegratedStrategyMapReflectionCache
 
 	public static MethodInfo NormalMapPointAnimUnhover => NormalMapPointAnimUnhoverMethod;
 
-	private static AccessTools.FieldRef<TInstance, TField> RequiredFieldRef<TInstance, TField>(string fieldName)
-	{
-		_ = RequiredField<TInstance>(fieldName);
-		try
-		{
-			return AccessTools.FieldRefAccess<TInstance, TField>(fieldName);
-		}
-		catch (Exception ex)
-		{
-			Log.Error($"{ModInfo.LogPrefix} Failed to bind {typeof(TInstance).Name}.{fieldName}: {ex}");
-			throw;
-		}
-	}
-
-	private static FieldInfo RequiredField<TInstance>(string fieldName)
-	{
-		FieldInfo? field = AccessTools.Field(typeof(TInstance), fieldName);
-		if (field != null)
-		{
-			return field;
-		}
-
-		string message = $"{ModInfo.LogPrefix} Missing required map UI field {typeof(TInstance).Name}.{fieldName}.";
-		Log.Error(message);
-		throw new MissingFieldException(typeof(TInstance).FullName, fieldName);
-	}
-
-	private static MethodInfo RequiredMethod<TInstance>(string methodName)
-	{
-		MethodInfo? method = AccessTools.Method(typeof(TInstance), methodName);
-		if (method != null)
-		{
-			return method;
-		}
-
-		string message = $"{ModInfo.LogPrefix} Missing required map UI method {typeof(TInstance).Name}.{methodName}.";
-		Log.Error(message);
-		throw new MissingMethodException(typeof(TInstance).FullName, methodName);
-	}
+	private static AccessTools.FieldRef<TInstance, TField> RequiredFieldRef<TInstance, TField>(string name) where TInstance : class
+		=> IntegratedStrategyPrivateMembers.FieldRef<TInstance, TField>(name);
+	private static FieldInfo RequiredField<TInstance>(string name)
+		=> IntegratedStrategyPrivateMembers.Field(typeof(TInstance), name)!;
+	private static MethodInfo RequiredMethod<TInstance>(string name)
+		=> IntegratedStrategyPrivateMembers.Method(typeof(TInstance), name)!;
 }

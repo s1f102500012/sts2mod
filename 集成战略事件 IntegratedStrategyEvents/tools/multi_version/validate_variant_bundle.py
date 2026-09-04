@@ -61,6 +61,8 @@ def main() -> int:
         raise ValueError("variant manifest contains no variants")
 
     targets = [entry.get("compatTarget") for entry in variants]
+    if targets != ["0.107.1", "0.110.1", "0.111.0"]:
+        raise ValueError("bundle must contain all three maintained STS2 targets")
     if len(set(targets)) != len(targets):
         raise ValueError("duplicate compatibility target")
     parsed_targets = [version_key(target) for target in targets]
@@ -105,12 +107,12 @@ def main() -> int:
 
     dependencies = mod_manifest.get("dependencies") or []
     ritsu = next((item for item in dependencies if item.get("id") == "STS2-RitsuLib"), None)
-    if ritsu is None or ritsu.get("min_version") != "0.5.10":
-        raise ValueError("STS2-RitsuLib dependency must require version 0.5.10")
+    if ritsu is None or ritsu.get("min_version") != "0.5.18":
+        raise ValueError("STS2-RitsuLib dependency must require version 0.5.18")
 
     print(
         f"validated {args.mod_id}: loader + {len(variants)} variants, "
-        f"targets={', '.join(targets)}, RitsuLib=0.5.10"
+        f"targets={', '.join(targets)}, RitsuLib=0.5.18"
     )
     return 0
 

@@ -8,6 +8,7 @@ internal static partial class IntegratedStrategyContentCatalog
 		.. EventRelicTypes,
 		.. CardTypes,
 		.. EncounterTypes,
-		.. PowerTypes
+		.. PowerTypes,
+		typeof(Map.IntegratedStrategyMapLifecycle)
 	];
 }
