@@ -2,6 +2,8 @@ src/bin/
 src/obj/
 loader/bin/
 loader/obj/
+tests/*/bin/
+tests/*/obj/
 dist/
 .build/
 .DS_Store

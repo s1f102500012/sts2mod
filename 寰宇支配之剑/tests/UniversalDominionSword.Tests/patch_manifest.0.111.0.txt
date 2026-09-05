@@ -1,0 +1,6 @@
+# 由 UDS_WRITE_MANIFESTS=1 生成;每行 = 补丁类 id | 目标 | 补丁方法(优先级; before/after)。
+neow.all-possible-options | MegaCrit.Sts2.Core.Models.Events.Neow.AllPossibleOptions(*) [Getter] | postfix(400)
+neow.initial-options | MegaCrit.Sts2.Core.Models.Events.Neow.GenerateInitialOptions(*) | postfix(400)
+visual.relic-event-option | MegaCrit.Sts2.Core.Nodes.Events.NEventOptionButton._Ready(*) | postfix(400)
+visual.relic-inspect | MegaCrit.Sts2.Core.Nodes.Screens.InspectScreens.NInspectRelicScreen.UpdateRelicDisplay(*) | postfix(400)
+visual.relic-node | MegaCrit.Sts2.Core.Nodes.Relics.NRelic.Reload(*) | postfix(400)

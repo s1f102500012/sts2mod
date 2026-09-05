@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>UniversalDominionSword.Tests</AssemblyName>
+    <RootNamespace>UniversalDominionSword.Tests</RootNamespace>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <UniversalDominionSwordSts2Target Condition="'$(UniversalDominionSwordSts2Target)' == ''">0.111.0</UniversalDominionSwordSts2Target>
+    <GameDataDir Condition="'$(GameDataDir)' == ''">$(MSBuildThisFileDirectory)../../../HextechRunes/versioned-dll-backups/$(UniversalDominionSwordSts2Target)/game-refs</GameDataDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../src/UniversalDominionSword.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="saved_property_manifest.txt" Condition="Exists('$(MSBuildThisFileDirectory)saved_property_manifest.txt')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="patch_manifest.$(UniversalDominionSwordSts2Target).txt" Condition="Exists('$(MSBuildThisFileDirectory)patch_manifest.$(UniversalDominionSwordSts2Target).txt')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="sts2">
+      <HintPath>$(GameDataDir)/sts2.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="GodotSharp">
+      <HintPath>$(GameDataDir)/GodotSharp.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(GameDataDir)/0Harmony.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <!-- 0.109 起游戏用 XxHash32 计算 net-id 表哈希;0.110 起 sts2.dll 模块初始化器引用 Sentry.Godot。测试宿主要带齐运行时依赖。 -->
+    <Reference Include="System.IO.Hashing" Condition="Exists('$(GameDataDir)/System.IO.Hashing.dll')">
+      <HintPath>$(GameDataDir)/System.IO.Hashing.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Sentry.Godot" Condition="Exists('$(GameDataDir)/Sentry.Godot.dll')">
+      <HintPath>$(GameDataDir)/Sentry.Godot.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Sentry" Condition="Exists('$(GameDataDir)/Sentry.dll')">
+      <HintPath>$(GameDataDir)/Sentry.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

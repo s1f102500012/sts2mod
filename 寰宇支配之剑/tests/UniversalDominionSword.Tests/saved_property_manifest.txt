@@ -1,0 +1,2 @@
+# 主程序集全部 [SavedProperty] 属性(类型.属性名,Ordinal 排序)。集合变化 = 联机 net-id 布局变化 = 与旧版本不兼容,必须升版本并写进更新日志。
+UniversalDominionSwordCard.PermanentCostIncrease

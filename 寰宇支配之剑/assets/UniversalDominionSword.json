@@ -3,7 +3,7 @@
   "name": "寰宇支配之剑",
   "author": "Natsuki",
   "description": "为涅奥添加固定的第四个先古遗物选项“寰宇支配之剑”，获得时向牌组中加入1张“抹杀”。",
-  "version": "0.2.5",
+  "version": "0.3.0",
   "min_game_version": "0.107.1",
   "has_pck": true,
   "has_dll": true,

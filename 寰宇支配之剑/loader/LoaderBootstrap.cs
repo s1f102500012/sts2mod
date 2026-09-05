@@ -19,6 +19,7 @@ public static class LoaderBootstrap
 	private const string RealDllName = "UniversalDominionSword.dll";
 	private const string VariantManifestName = "universal-dominion-sword-variants.manifest";
 	private const string CompatTargetMarkerName = "compat-target.txt";
+	private const string CompatTargetMetadataKey = "UniversalDominionSwordCompatibilityTarget";
 
 	private static readonly object VariantAssembliesGate = new();
 	private static readonly List<Assembly> VariantAssemblies = [];
@@ -47,6 +48,8 @@ public static class LoaderBootstrap
 
 	public static void Initialize()
 	{
+		LinuxNativeDependencyBootstrap.EnsureHarmonyRuntimeDependenciesVisible();
+
 		string? loaderDirectory = Path.GetDirectoryName(typeof(LoaderBootstrap).Assembly.Location);
 		if (string.IsNullOrWhiteSpace(loaderDirectory))
 		{
@@ -81,14 +84,7 @@ public static class LoaderBootstrap
 				AssemblyLoadContext.GetLoadContext(typeof(LoaderBootstrap).Assembly)
 				?? AssemblyLoadContext.Default;
 			Assembly realAssembly = context.LoadFromAssemblyPath(variant.DllPath);
-			if (!string.Equals(
-				realAssembly.GetName().Name,
-				Path.GetFileNameWithoutExtension(RealDllName),
-				StringComparison.Ordinal))
-			{
-				throw new BadImageFormatException(
-					$"Variant assembly identity is {realAssembly.GetName().Name}, expected UniversalDominionSword.");
-			}
+			ValidateVariantAssembly(realAssembly, variant);
 
 			RegisterVariantAssembly(realAssembly);
 			AssociateVariantAssemblyWithGame(realAssembly);
@@ -102,9 +98,40 @@ public static class LoaderBootstrap
 		}
 	}
 
+	private static void ValidateVariantAssembly(
+		Assembly assembly,
+		VariantCandidate variant)
+	{
+		if (!string.Equals(
+			assembly.GetName().Name,
+			Path.GetFileNameWithoutExtension(RealDllName),
+			StringComparison.Ordinal))
+		{
+			throw new BadImageFormatException(
+				$"Variant assembly identity is {assembly.GetName().Name}, expected UniversalDominionSword.");
+		}
+
+		string? embeddedTarget = assembly
+			.GetCustomAttributes<AssemblyMetadataAttribute>()
+			.FirstOrDefault(attribute =>
+				string.Equals(
+					attribute.Key,
+					CompatTargetMetadataKey,
+					StringComparison.Ordinal))
+			?.Value;
+		if (!string.Equals(
+			embeddedTarget,
+			variant.CompatTarget,
+			StringComparison.Ordinal))
+		{
+			throw new BadImageFormatException(
+				$"Variant compatibility metadata is {embeddedTarget ?? "<missing>"}, " +
+				$"expected {variant.CompatTarget}.");
+		}
+	}
+
 	private static void RegisterVariantAssembly(Assembly assembly)
 	{
-		InstallReflectionBridge();
 		lock (VariantAssembliesGate)
 		{
 			if (!VariantAssemblies.Any(candidate =>
@@ -169,6 +196,13 @@ public static class LoaderBootstrap
 		}
 	}
 
+	// 三级回退,且只走一条:
+	//   ① 0.108+ ModManager.AssociateAssemblyWithMod → 游戏自己把变体程序集并入 Mod.assemblies,类型发现随之生效;
+	//   ② 反射向 Mod.assemblies 追加;
+	//   ③ 0.107.1 只有单个 Mod.assembly 字段,且 ModManager 在初始化器返回后会用 loader 覆盖它,
+	//      只能在 OnModDetected 里替换,并补 ReflectionHelper.ModTypes 后缀让类型发现看到变体。
+	// ①② 成功后绝不再装 ReflectionHelper.ModTypes 后缀:两条路径同时贡献类型会让 ModelDb 把同一个类型
+	// 看成两个,进而触发 "Two AbstractModels X and X share an ID" 的自比较告警。
 	private static void AssociateVariantAssemblyWithGame(Assembly assembly)
 	{
 		_selectedVariantAssembly = assembly;
@@ -180,6 +214,7 @@ public static class LoaderBootstrap
 				AssociateAssemblyWithModMethod.Invoke(null, [ModId, assembly]);
 				if (IsAssemblyAssociatedWithMod(assembly))
 				{
+					Log.Info("[UniversalDominionSword.Loader] Variant associated via ModManager.AssociateAssemblyWithMod.");
 					return;
 				}
 			}
@@ -193,12 +228,11 @@ public static class LoaderBootstrap
 
 		if (TryAssociateWithAssemblyList(assembly))
 		{
+			Log.Info("[UniversalDominionSword.Loader] Variant associated by appending to Mod.assemblies.");
 			return;
 		}
 
-		// STS2 0.107.1 stores one Assembly rather than a list. Its ModManager
-		// overwrites that field with the loader after this initializer returns,
-		// so replace it in OnModDetected, after the host has finished loading.
+		InstallReflectionBridge();
 		if (LegacyModAssemblyField != null && !_legacyAssociationCallbackInstalled)
 		{
 			ModManager.OnModDetected += OnLegacyModDetected;
@@ -315,14 +349,11 @@ public static class LoaderBootstrap
 			Log.Warn(
 				"[UniversalDominionSword.Loader] Host version is unknown; " +
 				"using the newest bundled variant.");
+			return variants[^1];
 		}
 
-		Version? selected = VariantSelectionPolicy.PickCompatibleVersion(
-			variants.Select(candidate => candidate.Version),
-			host);
-		return selected == null
-			? null
-			: variants.Last(candidate => candidate.Version == selected);
+		return variants.LastOrDefault(candidate => candidate.Version <= host)
+			?? variants[^1];
 	}
 
 	private static List<VariantCandidate> LoadVariantManifest(
@@ -350,42 +381,21 @@ public static class LoaderBootstrap
 			return [];
 		}
 
-		if (manifest?.Schema != 1
-			|| manifest.Variants == null
-			|| manifest.Variants.Count == 0)
+		if (manifest?.Variants == null || manifest.Variants.Count == 0)
 		{
 			Log.Error(
-				$"[UniversalDominionSword.Loader] Variant manifest has an " +
-				$"unsupported schema or contains no variants: {path}");
+				$"[UniversalDominionSword.Loader] Variant manifest contains no variants: {path}");
 			return [];
 		}
 
 		string fullLibRoot = Path.GetFullPath(libRoot);
-		List<VariantCandidate> candidates = [];
-		HashSet<string> targets = new(StringComparer.Ordinal);
-		foreach (BundleVariantEntry entry in manifest.Variants)
-		{
-			VariantCandidate? candidate = TryCreateVariantCandidate(
+		return manifest.Variants
+			.Select(entry => TryCreateVariantCandidate(
 				loaderDirectory,
 				fullLibRoot,
-				entry);
-			if (candidate == null)
-			{
-				Log.Error(
-					"[UniversalDominionSword.Loader] Rejecting the entire " +
-					"variant manifest because one entry is invalid.");
-				return [];
-			}
-			if (!targets.Add(candidate.CompatTarget))
-			{
-				Log.Error(
-					$"[UniversalDominionSword.Loader] Duplicate compatibility " +
-					$"target '{candidate.CompatTarget}'.");
-				return [];
-			}
-			candidates.Add(candidate);
-		}
-		return candidates;
+				entry))
+			.OfType<VariantCandidate>()
+			.ToList();
 	}
 
 	private static VariantCandidate? TryCreateVariantCandidate(
@@ -646,8 +656,6 @@ public static class LoaderBootstrap
 
 	private sealed class BundleVariantManifest
 	{
-		public int Schema { get; set; }
-
 		public List<BundleVariantEntry>? Variants { get; set; }
 	}
 

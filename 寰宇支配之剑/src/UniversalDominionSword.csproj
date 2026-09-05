@@ -5,12 +5,10 @@
     <RootNamespace>UniversalDominionSword</RootNamespace>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <GameRoot Condition="'$(GameRoot)' == ''">$(HOME)/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app</GameRoot>
-    <UniversalDominionSwordSts2Target Condition="'$(UniversalDominionSwordSts2Target)' == ''">0.110.0</UniversalDominionSwordSts2Target>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <UniversalDominionSwordSts2Target Condition="'$(UniversalDominionSwordSts2Target)' == ''">0.111.0</UniversalDominionSwordSts2Target>
     <VersionedRefsRoot>$(MSBuildThisFileDirectory)../../HextechRunes/versioned-dll-backups</VersionedRefsRoot>
-    <OfficialGameDataDir>$(VersionedRefsRoot)/$(UniversalDominionSwordSts2Target)/game-refs</OfficialGameDataDir>
-    <GameDataDir Condition="'$(GameDataDir)' == '' and Exists('$(OfficialGameDataDir)/sts2.dll')">$(OfficialGameDataDir)</GameDataDir>
-    <GameDataDir Condition="'$(GameDataDir)' == ''">$(GameRoot)/Contents/Resources/data_sts2_macos_arm64</GameDataDir>
+    <GameDataDir Condition="'$(GameDataDir)' == ''">$(VersionedRefsRoot)/$(UniversalDominionSwordSts2Target)/game-refs</GameDataDir>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)' == 'Release'">
@@ -21,13 +19,23 @@
     <PathMap>$(MSBuildProjectDirectory)=/_/src</PathMap>
   </PropertyGroup>
 
+  <!-- 只发布真正维护的游戏版本;共享代码不写 #if,版本差异收在整文件分部文件里(*.Legacy.cs / *.Official.cs)。 -->
   <PropertyGroup Condition="'$(UniversalDominionSwordSts2Target)' == '0.107.1'">
     <DefineConstants>$(DefineConstants);STS2_107_1</DefineConstants>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(UniversalDominionSwordSts2Target)' == '0.110.0'">
-    <DefineConstants>$(DefineConstants);STS2_110_0</DefineConstants>
+  <PropertyGroup Condition="'$(UniversalDominionSwordSts2Target)' == '0.110.0' or '$(UniversalDominionSwordSts2Target)' == '0.111.0'">
+    <DefineConstants>$(DefineConstants);STS2_108_OR_NEWER</DefineConstants>
   </PropertyGroup>
+
+  <Target Name="UniversalDominionSwordValidateTarget" BeforeTargets="CoreCompile" Condition="'$(UniversalDominionSwordSts2Target)' != '0.107.1' and '$(UniversalDominionSwordSts2Target)' != '0.110.0' and '$(UniversalDominionSwordSts2Target)' != '0.111.0'">
+    <Error Text="UniversalDominionSwordSts2Target '$(UniversalDominionSwordSts2Target)' is not a shipped variant (0.107.1 / 0.110.0 / 0.111.0)." />
+  </Target>
+
+  <ItemGroup>
+    <AssemblyMetadata Include="UniversalDominionSwordCompatibilityTarget" Value="$(UniversalDominionSwordSts2Target)" />
+    <InternalsVisibleTo Include="UniversalDominionSword.Tests" />
+  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="sts2">
@@ -42,10 +50,5 @@
       <HintPath>$(GameDataDir)/0Harmony.dll</HintPath>
       <Private>false</Private>
     </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="../assets/images/relics/*.png" LogicalName="UniversalDominionSword.images.relics.%(Filename)%(Extension)" />
-    <EmbeddedResource Include="../assets/images/cards/*.png" LogicalName="UniversalDominionSword.images.cards.%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>

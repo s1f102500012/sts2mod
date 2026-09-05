@@ -4,22 +4,31 @@ set -euo pipefail
 SCRIPT_DIR="${0:A:h}"
 ROOT="${SCRIPT_DIR:h}"
 FILE_STEM="UniversalDominionSword"
-MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
 VARIANT_MANIFEST_NAME="universal-dominion-sword-variants.manifest"
-GAME_APP="${STS2_GAME_APP:-$HOME/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app}"
-GAME_BIN="$GAME_APP/Contents/MacOS/Slay the Spire 2"
-MOD_DIR="$GAME_APP/Contents/MacOS/mods/$FILE_STEM"
-WORKSHOP_CONTENT="$ROOT/workshop/content"
+TARGETS=(0.107.1 0.110.0 0.111.0)
+
+MANIFEST_SRC="$ROOT/assets/$FILE_STEM.json"
+VARIANT_PROJECT="$ROOT/src/$FILE_STEM.csproj"
+LOADER_PROJECT="$ROOT/loader/$FILE_STEM.Loader.csproj"
 REFS_ROOT="${UDS_REFS_ROOT:-$ROOT/../HextechRunes/versioned-dll-backups}"
 BUILD_ROOT="$ROOT/.build"
 DIST="$ROOT/dist"
-VARIANT_PROJECT="$ROOT/src/$FILE_STEM.csproj"
-LOADER_PROJECT="$ROOT/loader/$FILE_STEM.Loader.csproj"
+IMPORT_PROJECT="$BUILD_ROOT/import_project"
+WORKSHOP_CONTENT="$ROOT/workshop/content"
 UDS_DEPLOY="${UDS_DEPLOY:-1}"
-TARGETS=(0.107.1 0.110.0)
-MULTI_VERSION_SKILL_ROOT="${UDS_MULTI_VERSION_SKILL_ROOT:-$HOME/.codex/skills/sts2-build-multi-version-bundle}"
-VARIANT_MANIFEST_GENERATOR="$MULTI_VERSION_SKILL_ROOT/scripts/generate_variant_manifest.py"
-VARIANT_BUNDLE_VALIDATOR="$MULTI_VERSION_SKILL_ROOT/scripts/validate_variant_bundle.py"
+
+GAME_APP="${STS2_GAME_APP:-$HOME/Library/Application Support/Steam/steamapps/common/Slay the Spire 2/SlayTheSpire2.app}"
+GAME_BIN="$GAME_APP/Contents/MacOS/Slay the Spire 2"
+MOD_DIR="$GAME_APP/Contents/MacOS/mods/$FILE_STEM"
+
+# 资源导入用工作区的 Godot 4.5.x 编辑器;PNG 经 --import 生成 .import/.ctex 后,
+# 原版 ResourceLoader.Load / PreloadManager.Cache 才能按 PackedIconPath / PortraitPath 直接取图。
+DEFAULT_GODOT_EDITOR="$ROOT/../.tools/godot-4.5.1/Godot_mono.app/Contents/MacOS/Godot"
+if [[ -z "${GODOT_EDITOR:-}" && -x "$DEFAULT_GODOT_EDITOR" ]]; then
+	GODOT_EDITOR="$DEFAULT_GODOT_EDITOR"
+else
+	GODOT_EDITOR="${GODOT_EDITOR:-/opt/homebrew/bin/godot}"
+fi
 
 if (( ${+commands[dotnet]} )); then
 	DOTNET_BIN="${commands[dotnet]}"
@@ -36,6 +45,14 @@ clean_directory() {
 	find "$directory" -mindepth 1 -depth -delete
 }
 
+clean_macos_metadata() {
+	local target="$1"
+	[[ -d "$target" ]] || return 0
+	find "$target" -name "__MACOSX" -type d -prune -exec rm -rf {} +
+	find "$target" -name ".DS_Store" -type f -delete
+	find "$target" -name "._*" -type f -delete
+}
+
 for target in "${TARGETS[@]}"; do
 	refs="$REFS_ROOT/$target/game-refs"
 	for reference in sts2.dll GodotSharp.dll 0Harmony.dll; do
@@ -45,23 +62,26 @@ for target in "${TARGETS[@]}"; do
 		fi
 	done
 done
-for helper in "$VARIANT_MANIFEST_GENERATOR" "$VARIANT_BUNDLE_VALIDATOR"; do
-	if [[ ! -f "$helper" ]]; then
-		print -u2 "Missing multi-version bundle helper: $helper"
-		exit 1
-	fi
-done
+if [[ ! -x "$GODOT_EDITOR" ]]; then
+	print -u2 "Missing Godot editor for asset import: $GODOT_EDITOR (set GODOT_EDITOR)."
+	exit 1
+fi
+if [[ ! -x "$GAME_BIN" ]]; then
+	print -u2 "Missing game binary for PCK packing: $GAME_BIN (set STS2_GAME_APP)."
+	exit 1
+fi
 
 clean_directory "$BUILD_ROOT"
 clean_directory "$DIST"
+rm -rf "$ROOT/src/bin" "$ROOT/src/obj" "$ROOT/loader/bin" "$ROOT/loader/obj"
 
 for target in "${TARGETS[@]}"; do
 	refs="$REFS_ROOT/$target/game-refs"
 	output="$BUILD_ROOT/variants/$target"
 	mkdir -p "$output"
 
-	"$DOTNET_BIN" clean "$VARIANT_PROJECT" -c Release >/dev/null
-	"$DOTNET_BIN" build "$VARIANT_PROJECT" -c Release \
+	print "Building $FILE_STEM implementation for STS2 $target using $refs"
+	"$DOTNET_BIN" build "$VARIANT_PROJECT" -c Release --nologo \
 		-p:UniversalDominionSwordSts2Target="$target" \
 		-p:GameDataDir="$refs" \
 		-o "$output"
@@ -74,8 +94,8 @@ done
 loader_refs="$REFS_ROOT/0.107.1/game-refs"
 loader_output="$BUILD_ROOT/loader"
 mkdir -p "$loader_output"
-"$DOTNET_BIN" clean "$LOADER_PROJECT" -c Release >/dev/null
-"$DOTNET_BIN" build "$LOADER_PROJECT" -c Release \
+print "Building stable $FILE_STEM loader against STS2 0.107.1 references"
+"$DOTNET_BIN" build "$LOADER_PROJECT" -c Release --nologo \
 	-p:GameDataDir="$loader_refs" \
 	-o "$loader_output"
 cp "$loader_output/$FILE_STEM.Loader.dll" "$DIST/$FILE_STEM.dll"
@@ -85,26 +105,33 @@ variant_manifest_target_args=()
 for target in "${TARGETS[@]}"; do
 	variant_manifest_target_args+=(--target "$target")
 done
-
-python3 "$VARIANT_MANIFEST_GENERATOR" \
+python3 "$ROOT/tools/multi_version/generate_variant_manifest.py" \
 	--dist "$DIST" \
 	--mod-id "$FILE_STEM" \
 	--manifest-name "$VARIANT_MANIFEST_NAME" \
 	"${variant_manifest_target_args[@]}" \
 	--assembly "$FILE_STEM.dll"
 
+mkdir -p "$IMPORT_PROJECT/$FILE_STEM"
+cp "$ROOT/tools/project.godot" "$IMPORT_PROJECT/project.godot"
+rsync -a --exclude "$FILE_STEM.json" --exclude "third_party" "$ROOT/assets/" "$IMPORT_PROJECT/$FILE_STEM/"
+clean_macos_metadata "$IMPORT_PROJECT"
+
+print "Importing assets with $GODOT_EDITOR"
+"$GODOT_EDITOR" --headless --path "$IMPORT_PROJECT" --import
+
 cp "$MANIFEST_SRC" "$DIST/$FILE_STEM.json"
 "$GAME_BIN" --headless \
 	--path "$ROOT/tools" \
 	-s res://pack_mod.gd -- \
 	"$MANIFEST_SRC" \
-	"$DIST/$FILE_STEM.pck"
+	"$DIST/$FILE_STEM.pck" \
+	"$IMPORT_PROJECT"
 
-find "$DIST" -name ".DS_Store" -type f -delete
-find "$DIST" -name "._*" -type f -delete
+clean_macos_metadata "$DIST"
 find "$DIST" -name "*.pdb" -type f -delete
 
-python3 "$VARIANT_BUNDLE_VALIDATOR" \
+python3 "$ROOT/tools/multi_version/validate_variant_bundle.py" \
 	--dist "$DIST" \
 	--mod-id "$FILE_STEM" \
 	--manifest-name "$VARIANT_MANIFEST_NAME" \

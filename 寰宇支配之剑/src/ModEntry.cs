@@ -9,8 +9,6 @@ namespace UniversalDominionSword;
 [ModInitializer(nameof(Initialize))]
 public static class ModEntry
 {
-	private const string HarmonyId = "Natsuki.UniversalDominionSword";
-
 	private static Harmony? _harmony;
 
 	private static bool _initialized;
@@ -25,16 +23,12 @@ public static class ModEntry
 		ModHelper.AddModelToPool<EventRelicPool, UniversalDominionSwordRelic>();
 		ModHelper.AddModelToPool<TokenCardPool, UniversalDominionSwordCard>();
 
-		Harmony harmony = _harmony ??= new Harmony(HarmonyId);
-		NeowFourthOption.Install(harmony);
-		DynamicRelicIcon.Install(harmony);
-		ErasureTargeting.Install(harmony);
-		ErasureKill.Install(harmony);
+		Harmony harmony = _harmony ??= new Harmony(ModInfo.HarmonyId);
+		SwordPatcher.ApplyAll(harmony, typeof(ModEntry).Assembly);
+		SwordPatcher.LogSummary();
+		SwordPatcher.LogSharedPatchTargets(harmony);
 
 		_initialized = true;
-		Log.Info($"[{ModInfo.Id}] Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}. Neow fourth option, dynamic cosmic relic icon, and Erasure enabled.");
-		Log.Info(
-			$"[{ModInfo.Id}] Patch contract: " +
-			ErasurePatchContract.RuntimeSummary);
+		Log.Info($"[{ModInfo.Id}] Loaded for Slay the Spire 2 {ModInfo.TargetGameVersion}.");
 	}
 }
