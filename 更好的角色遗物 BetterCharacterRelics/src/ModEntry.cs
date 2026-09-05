@@ -14,6 +14,6 @@ public static class ModEntry
 	public static void Initialize()
 	{
 		Patching.ApplyAll();
-        Log.Info($"[BetterCharacterRelics] Loaded 1.1.3; compatibility target {CompatibilityTarget}.");
+        Log.Info($"[BetterCharacterRelics] Loaded 1.1.4; compatibility target {CompatibilityTarget}.");
 	}
 }

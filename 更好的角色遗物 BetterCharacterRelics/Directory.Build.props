@@ -3,9 +3,9 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <Version>1.1.3</Version>
-    <AssemblyVersion>1.1.3.0</AssemblyVersion>
-    <FileVersion>1.1.3.0</FileVersion>
+    <Version>1.1.4</Version>
+    <AssemblyVersion>1.1.4.0</AssemblyVersion>
+    <FileVersion>1.1.4.0</FileVersion>
     <Authors>Natsuki</Authors>
     <GameVersion Condition="'$(GameVersion)' == ''">0.107.1</GameVersion>
     <GameDataDir Condition="'$(GameDataDir)' == ''">$(MSBuildThisFileDirectory)../HextechRunes/versioned-dll-backups/$(GameVersion)/game-refs</GameDataDir>

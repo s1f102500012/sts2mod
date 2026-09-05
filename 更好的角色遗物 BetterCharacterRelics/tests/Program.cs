@@ -41,6 +41,12 @@ internal static class Program
             string directory = Path.Combine(root, "tests", "snapshots", ModEntry.CompatibilityTarget);
             bool freeze = args.Contains("--accept-snapshots");
             var declarations = Patching.DeclaredTypes.Select(Patching.Describe).ToArray();
+            var frozen = VanillaGuard.ReadFrozen();
+            Check(frozen.Count == declarations.Length, "Embedded guard entry count differs from patch count");
+            foreach (var declaration in declarations)
+                Check(frozen.TryGetValue(VanillaGuard.Key(declaration.Target), out var fingerprint)
+                    && fingerprint == VanillaGuard.Fingerprint(declaration.Target),
+                    "Embedded guard cannot resolve actual patch target: " + declaration.Metadata.Id);
             Check(declarations.Length == 21, "Unexpected patch count");
             Check(declarations.Select(item => item.Metadata.Id).Distinct().Count() == declarations.Length, "Duplicate patch IDs");
             Check(declarations.Count(item => item.Handler.ReturnType == typeof(bool)) == 6, "Expected six skipping prefixes");
@@ -171,6 +177,7 @@ internal static class Program
                 foreach (var declaration in declarations)
                     Check(harmony.CreateClassProcessor(declaration.Type).Patch()?.Count == 1, $"Patch failed: {declaration.Metadata.Id}");
                 File.WriteAllLines(Path.Combine(root, "tests", "current-runtime-" + ModEntry.CompatibilityTarget + ".txt"), RuntimeSnapshot());
+                CoreFocusTests.Run(Check);
             }
             Console.WriteLine($"PASS {_checks} checks; target={ModEntry.CompatibilityTarget}; models=0; saved properties=0.");
             return 0;

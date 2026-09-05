@@ -156,8 +156,8 @@ internal static class PhylacteryUnboundAfterSideTurnStartPatch
 internal static class CrackedCoreBeforeSideTurnStartPatch
 {
 	[HarmonyPostfix, HarmonyPriority(Priority.Normal)]
-	internal static void Postfix(CrackedCore __instance, CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState, ref Task __result)
-		=> RelicEffects.CrackedCoreBeforeSideTurnStartPostfix(__instance, side, participants, combatState, ref __result);
+	internal static void Postfix(CrackedCore __instance, PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState, ref Task __result)
+		=> RelicEffects.CrackedCoreBeforeSideTurnStartPostfix(__instance, choiceContext, side, participants, combatState, ref __result);
 }
 
 [RelicPatch("core.infused", "注能核心", "InfusedCore")]

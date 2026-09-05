@@ -241,21 +241,21 @@ internal static class RelicEffects
 		Flash(self);
 	}
 
-	internal static void CrackedCoreBeforeSideTurnStartPostfix(CrackedCore __instance, CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState, ref Task __result)
+	internal static void CrackedCoreBeforeSideTurnStartPostfix(CrackedCore __instance, PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState, ref Task __result)
 	{
-		__result = CrackedCoreBeforeSideTurnStartAfterOriginal(__result, __instance, side, participants, combatState);
+		__result = CrackedCoreBeforeSideTurnStartAfterOriginal(__result, __instance, choiceContext, side, participants, combatState);
 	}
 
-	internal static async Task CrackedCoreBeforeSideTurnStartAfterOriginal(Task original, CrackedCore self, CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState)
+	internal static async Task CrackedCoreBeforeSideTurnStartAfterOriginal(Task original, CrackedCore self, PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState)
 	{
 		await original;
 
-		if (self.Owner == null || side != self.Owner.Creature.Side || !participants.Contains(self.Owner.Creature) || combatState.RoundNumber != 3)
+		if (!ShouldGainCoreFocus(self, side, participants, combatState, 3))
 		{
 			return;
 		}
 
-		await GainFocus(self.Owner, 1m);
+		await GainFocus(choiceContext, self, 1m);
 		Flash(self);
 	}
 
@@ -268,12 +268,12 @@ internal static class RelicEffects
 	{
 		await original;
 
-		if (self.Owner == null || side != self.Owner.Creature.Side || !participants.Contains(self.Owner.Creature) || combatState.RoundNumber > 1)
+		if (!ShouldGainCoreFocus(self, side, participants, combatState, 1))
 		{
 			return;
 		}
 
-		await GainFocus(self.Owner, 1m);
+		await GainFocus(new ThrowingPlayerChoiceContext(), self, 1m);
 		Flash(self);
 	}
 
@@ -282,9 +282,31 @@ internal static class RelicEffects
 		return creature.CurrentHp * 2 <= creature.MaxHp;
 	}
 
-	internal static async Task GainFocus(Player owner, decimal amount)
+	private static bool ShouldGainCoreFocus(RelicModel relic, CombatSide side, IReadOnlyList<Creature> participants, ICombatState combatState, int targetTurn)
 	{
-		await PowerCmd.Apply<FocusPower>(new ThrowingPlayerChoiceContext(), owner.Creature, amount, owner.Creature, null);
+		Player? owner = relic.Owner;
+		if (owner?.PlayerCombatState == null || side != owner.Creature.Side || !participants.Contains(owner.Creature)) return false;
+		int turn = owner.PlayerCombatState.TurnNumber;
+		// 额外回合只推进个人 TurnNumber；全局 RoundNumber 可能不变，不能用于一次性的个人回合奖励。
+		if (turn <= targetTurn)
+			ReportCoreFocus($"{relic.GetType().Name}: player={owner.NetId}; turn={turn}; round={combatState.RoundNumber}; due={turn == targetTurn}.");
+		return turn == targetTurn;
+	}
+
+	internal static async Task GainFocus(PlayerChoiceContext choiceContext, RelicModel source, decimal amount)
+	{
+		Player owner = source.Owner;
+		FocusPower? power = await PowerCmd.Apply<FocusPower>(choiceContext, owner.Creature, amount, owner.Creature, null);
+		if (power == null)
+			ReportCoreFocus($"{source.GetType().Name}: Focus application returned no power; player={owner.NetId}; turn={owner.PlayerCombatState?.TurnNumber}.", true);
+		else
+			ReportCoreFocus($"{source.GetType().Name}: player={owner.NetId}; requested={amount}; resulting Focus={power.Amount}.");
+	}
+
+	internal static void ReportCoreFocus(string message, bool warning = false)
+	{
+		if (warning) Log.Warn("[BetterCharacterRelics][Focus] " + message);
+		else Log.Info("[BetterCharacterRelics][Focus] " + message);
 	}
 
 	internal static async Task SelectAndDiscardOne(PlayerChoiceContext choiceContext, Player? owner, RelicModel source)

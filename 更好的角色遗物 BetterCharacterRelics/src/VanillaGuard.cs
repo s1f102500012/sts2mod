@@ -26,7 +26,14 @@ internal static class VanillaGuard
             ?? throw new InvalidOperationException("Missing embedded vanilla IL snapshot");
         using var reader = new StreamReader(stream);
         return reader.ReadToEnd().Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => line.Split('=', 2)).ToDictionary(parts => parts[0], parts => parts[1], StringComparer.Ordinal);
+            .Select(line =>
+            {
+                // 泛型参数的 FullName 包含 Version=、Culture= 等程序集标识；只有末尾的等号分隔 IL 哈希。
+                int separator = line.LastIndexOf('=');
+                if (separator <= 0 || separator == line.Length - 1)
+                    throw new InvalidDataException("Malformed vanilla IL snapshot entry");
+                return new KeyValuePair<string, string>(line[..separator], line[(separator + 1)..]);
+            }).ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
     }
 
     internal static void Verify(MethodInfo target)

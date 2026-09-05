@@ -29,7 +29,7 @@ This is a collection of Slay the Spire 2 mods made by Natsuki. Each mod director
 | `心之钢 Heartsteel` | `Heartsteel` | `0.1.0` | - | 心之钢主题机制。 |
 | `奖励附魔 RewardEnchants` | `RewardEnchants` | `0.2.1` | - | 为奖励流程加入附魔相关变化。 |
 | `手牌上限解除 RemoveHandLimit` | `RemoveHandLimit` | `0.3.1` | `0.107.1` | 调整或解除手牌数量上限。 |
-| `更好的角色遗物 BetterCharacterRelics` | `BetterCharacterRelics` | `1.1.3` | `0.107.1` | 支持 0.107.1 / 0.111.0，强化初始与升级遗物，可选适配两种观者，支持中英日文。 |
+| `更好的角色遗物 BetterCharacterRelics` | `BetterCharacterRelics` | `1.1.4` | `0.107.1` | 支持 0.107.1 / 0.111.0，强化初始与升级遗物，可选适配两种观者，支持中英日文。 |
 | `PRTS动态光标 PRTSCursor` | `PRTSCursor` | `1.0.3` | `0.107.1` | P.R.T.S 动态光标：替换游戏内光标为明日方舟风格动态光标。 |
 
 ## 已归档 / Archived
