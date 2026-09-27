@@ -18,7 +18,13 @@ public abstract class TransformBasicCardOnPlayRuneBase<TReplacement> : HextechRe
 {
 	protected abstract bool ShouldTransform(CardModel card);
 
-	public override async Task AfterCardChangedPilesLate(CardModel card, PileType oldPileType, AbstractModel? clonedBy)
+	// 泛型模型类的钩子只转发,不直接用类型参数(第三方批量补丁会把它写死,见 AutoPlayFormsAtCombatStartRuneBase)。
+	public override Task AfterCardChangedPilesLate(CardModel card, PileType oldPileType, AbstractModel? clonedBy)
+	{
+		return TransformPlayedCardAsync(card, oldPileType);
+	}
+
+	private async Task TransformPlayedCardAsync(CardModel card, PileType oldPileType)
 	{
 		if (Owner == null
 			|| card.Owner != Owner

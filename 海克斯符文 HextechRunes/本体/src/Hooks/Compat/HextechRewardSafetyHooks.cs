@@ -307,6 +307,26 @@ internal static class HextechRewardSafetyHooks
 		}
 	}
 
+	// 巨口储蓄罐的每层收入不是奖励,不该被复视翻倍。它在进房钩子里发钱,钩子在所有端执行,
+	// 而复视只在持有端复制再走奖励同步;进战斗房时远端把同步消息缓存到战斗结束,首回合校验金币分叉。
+	// 原版在调用 GainGold 前没有 await,前缀设置的抑制深度能覆盖到这次发钱。
+	[HarmonyPatch(typeof(MawBank), nameof(MawBank.AfterRoomEntered), typeof(AbstractRoom))]
+	[HextechPatch("reward.maw-bank-income", "复视奖励事务")]
+	private static class MawBankIncomePatch
+	{
+		[HarmonyPrefix]
+		private static void Prefix(out object? __state)
+		{
+			__state = DoubleVisionRune.BeginRewardCommandSuppression();
+		}
+
+		[HarmonyPostfix]
+		private static void Postfix(object? __state)
+		{
+			DoubleVisionRune.CompleteRewardCommandSuppression(__state);
+		}
+	}
+
 	[HarmonyPatch(typeof(EventOption), nameof(EventOption.Chosen), new Type[0])]
 	[HextechPatch("reward.event-option", "复视奖励事务")]
 	private static class EventOptionChosenPatch

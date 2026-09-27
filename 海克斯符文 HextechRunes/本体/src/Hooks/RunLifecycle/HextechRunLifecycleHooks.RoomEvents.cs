@@ -76,9 +76,20 @@ internal static partial class HextechRunLifecycleHooks
 			modifier = GetOrRecoverMayhemModifier(runState, $"OnRoomEntered recovered missing modifier room={runState.CurrentRoom?.GetType().Name ?? "null"} actIndex={runState.CurrentActIndex}");
 		}
 
+		string? extraStageId = null;
 		int stageIndex = modifier == null
 			? -1
-			: ResolveCurrentStageIndex(runState, modifier, out _);
+			: ResolveCurrentStageIndex(runState, modifier, out extraStageId);
+		if (modifier != null
+			&& extraStageId == null
+			&& IsUnannouncedEndlessLoopRewind(runState, modifier, stageIndex))
+		{
+			// 其他无尽模组(如 Limitless)换章时只把幕序号拨回 0,不调用 ResetForEndlessLoop;
+			// 不补这一步,新一章的每幕都对上旧阶段而被当作已发放,整章不再发海克斯。
+			modifier.ResetForEndlessLoop("act index rewound to 0");
+			RefreshEnemyUiSafely(modifier);
+			return;
+		}
 		if (modifier != null && !modifier.IsStageResolved(stageIndex) && modifier.TryRecoverResolvedActsFromPlayerRelics(nameof(OnRoomEntered), stageIndex))
 		{
 			RefreshEnemyUiSafely(modifier);

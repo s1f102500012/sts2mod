@@ -85,6 +85,7 @@ reward.dusty-tome | MegaCrit.Sts2.Core.Models.Relics.DustyTome.AfterObtained() |
 reward.event-option | MegaCrit.Sts2.Core.Events.EventOption.Chosen() | postfix(400) prefix(400)
 reward.from-serializable | MegaCrit.Sts2.Core.Rewards.Reward.FromSerializable(SerializableReward,Player) | postfix(400)
 reward.gain-gold | MegaCrit.Sts2.Core.Commands.PlayerCmd.GainGold(Decimal,Player,Boolean) | postfix(400) prefix(400)
+reward.maw-bank-income | MegaCrit.Sts2.Core.Models.Relics.MawBank.AfterRoomEntered(AbstractRoom) | postfix(400) prefix(400)
 reward.potion-procure | MegaCrit.Sts2.Core.Commands.PotionCmd.TryToProcure(PotionModel,Player,Int32) | postfix(400) prefix(400)
 reward.relic-obtain | MegaCrit.Sts2.Core.Commands.RelicCmd.Obtain(RelicModel,Player,Int32) | postfix(400) prefix(600)
 reward.relic-select | MegaCrit.Sts2.Core.Rewards.RelicReward.OnSelect(*) | postfix(400) prefix(400)

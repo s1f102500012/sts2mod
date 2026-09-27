@@ -8,6 +8,24 @@ internal static partial class HextechRunLifecycleHooks
 	private const int EndlessLoopActTransitionTimeoutFrames = 3600;
 	private const int EndlessLoopRoomReadyTimeoutFrames = 600;
 
+	private static bool IsUnannouncedEndlessLoopRewind(RunState runState, HextechMayhemModifier modifier, int stageIndex)
+	{
+		return IsUnannouncedEndlessLoopRewind(runState.CurrentActIndex, stageIndex, modifier.IsStageResolved);
+	}
+
+	/// <summary>
+	/// 幕序号回到 0,且本幕与下一幕对应的阶段都已发放过 = 进入了未通知海克斯的新无尽循环。
+	/// 正常流程里进入某幕时下一阶段尚未发放;幕开局存档读档同理,因此不会误判。
+	/// 自带通知的 EndlessMode 在进入新循环第 0 幕前已重置,此时本阶段未发放,不会重复重置。
+	/// </summary>
+	internal static bool IsUnannouncedEndlessLoopRewind(int currentActIndex, int stageIndex, Func<int, bool> isStageResolved)
+	{
+		return currentActIndex == 0
+			&& stageIndex >= 0
+			&& isStageResolved(stageIndex)
+			&& isStageResolved(stageIndex + 1);
+	}
+
 	internal static void HandleEndlessLoopReset(HextechMayhemModifier modifier, string reason)
 	{
 		SubscribeRoomEnteredIfNeeded(force: true);

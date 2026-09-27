@@ -25,7 +25,16 @@ public abstract class AutoPlayFormsAtCombatStartRuneBase<TCard> : CardUpgradeRun
 		return Task.CompletedTask;
 	}
 
-	public override async Task AfterPlayerTurnStartLate(PlayerChoiceContext choiceContext, Player player)
+	// 泛型模型类的钩子重写只转发，不直接用 TCard:第三方模组(如 WhoCarried)会批量给所有模型的
+	// 回合钩子打 Harmony 补丁,而引用类型实参的泛型实例共享同一份机器码,补丁生成的替换体会把
+	// 首个被补实例的 TCard 写死给全部实例——五个形态符文因此只认同一种形态牌,装了该模组的一端
+	// 开局不打出、联机首回合分叉。实例方法从 this 取泛型上下文,不受影响。
+	public override Task AfterPlayerTurnStartLate(PlayerChoiceContext choiceContext, Player player)
+	{
+		return PlayFormsOnFirstPlayerTurnAsync(choiceContext, player);
+	}
+
+	private async Task PlayFormsOnFirstPlayerTurnAsync(PlayerChoiceContext choiceContext, Player player)
 	{
 		if (_startedThisCombat
 			|| _autoPlaying

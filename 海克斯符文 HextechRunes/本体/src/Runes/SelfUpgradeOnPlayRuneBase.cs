@@ -30,7 +30,13 @@ public abstract class SelfUpgradeOnPlayRuneBase<TCard> : CardUpgradeRuneBase<TCa
 	/// <summary>每次打出本卡后,这张卡永久增加的格挡白值(默认 0,不加格挡)。</summary>
 	protected virtual int BlockPerPlay => 0;
 
+	// 泛型模型类的钩子只转发,不直接用类型参数(第三方批量补丁会把它写死,见 AutoPlayFormsAtCombatStartRuneBase)。
 	public sealed override Task AfterCardPlayed(PlayerChoiceContext context, CardPlay cardPlay)
+	{
+		return RecordSelfUpgradeOnPlay(cardPlay);
+	}
+
+	private Task RecordSelfUpgradeOnPlay(CardPlay cardPlay)
 	{
 		if (Owner == null || cardPlay.Card.Owner != Owner || cardPlay.Card is not TCard)
 		{

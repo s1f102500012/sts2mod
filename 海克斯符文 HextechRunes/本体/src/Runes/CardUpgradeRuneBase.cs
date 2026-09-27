@@ -33,7 +33,13 @@ public abstract class CardUpgradeRuneBase<TCard> : HextechRelicBase, IHextechSel
 		return true;
 	}
 
+	// 泛型模型类的钩子只转发,不直接用类型参数(第三方批量补丁会把它写死,见 AutoPlayFormsAtCombatStartRuneBase)。
 	public override Task AfterObtained()
+	{
+		return GrantPickupCardAsync();
+	}
+
+	private Task GrantPickupCardAsync()
 	{
 		return GrantsCardOnPickup
 			? AddCardCopiesToDeckOrHand<TCard>(1)

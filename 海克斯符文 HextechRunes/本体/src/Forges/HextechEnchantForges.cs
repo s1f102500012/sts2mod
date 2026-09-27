@@ -18,7 +18,13 @@ public abstract class EnchantmentForgeBase<TEnchantment> : HextechForgeBase
 		.. HoverTipFactory.FromEnchantment<TEnchantment>(EnchantmentAmount)
 	];
 
-	public override async Task AfterObtained()
+	// 泛型模型类的钩子只转发,不直接用类型参数(第三方批量补丁会把它写死,见 AutoPlayFormsAtCombatStartRuneBase)。
+	public override Task AfterObtained()
+	{
+		return EnchantSelectedCardsAsync();
+	}
+
+	private async Task EnchantSelectedCardsAsync()
 	{
 		if (Owner == null)
 		{
