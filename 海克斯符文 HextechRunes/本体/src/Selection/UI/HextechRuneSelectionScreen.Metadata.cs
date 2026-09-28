@@ -21,13 +21,13 @@ internal sealed partial class HextechRuneSelectionScreen
 	private static Control CreatePlayerPoolPill(RelicModel relic, Color accent)
 	{
 		string poolKey = HextechCatalog.GetPlayerRunePoolKey(relic);
-		return CreateTextPill(new LocString(LocTable, "HEXTECH_POOL." + poolKey).GetRawText(), accent);
+		return CreateTextPill(HextechRuneLabels.GetPoolText(poolKey), accent);
 	}
 
 	private static Control CreatePlayerTagPill(RelicModel relic, Color accent)
 	{
 		string tagKey = HextechCatalog.GetPlayerRuneTagKey(relic);
-		return CreateTextPill(new LocString(LocTable, "HEXTECH_TAG." + tagKey).GetRawText(), accent);
+		return CreateTextPill(HextechRuneLabels.GetTagText(tagKey), accent);
 	}
 
 	private Control CreatePlayerMetadataPills(RelicModel relic, string rarityKey)

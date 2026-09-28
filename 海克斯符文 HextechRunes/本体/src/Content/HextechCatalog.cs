@@ -1,4 +1,5 @@
 using System.Collections;
+using MegaCrit.Sts2.Core.Entities.Relics;
 using MegaCrit.Sts2.Core.Modding;
 
 namespace HextechRunes;
@@ -108,9 +109,16 @@ internal static partial class HextechCatalog
 			.ToArray();
 	}
 
+	// 只决定界面上的来源标签（HEXTECH_POOL.<key>）与配置菜单排序，不参与发放。
 	public static string GetPlayerRunePoolKey(RelicModel relic)
 	{
 		ModelId id = relic.CanonicalInstance?.Id ?? relic.Id;
+		string? externalPoolKey = HextechExternalContentRegistry.GetPlayerRunePoolLabel(id);
+		if (externalPoolKey != null)
+		{
+			return externalPoolKey;
+		}
+
 		foreach (CharacterRunePool pool in CharacterRunePools)
 		{
 			foreach (Type runeType in pool.RuneTypes)
@@ -122,8 +130,11 @@ internal static partial class HextechCatalog
 			}
 		}
 
-		// 外部模组(拓展包)经 HextechRunesApi 注册的符文,池标签显示"拓展包"而非"通用"。
-		if (HextechExternalContentRegistry.GetAssetModId(id) != null)
+		// 额外拓展包沿用内置的"拓展包"标签，免得它为此单独发版；其他外部模组未指定时归为"通用"。
+		if (string.Equals(
+			HextechExternalContentRegistry.GetAssetModId(id),
+			HextechExternalContentRegistry.SponsorPackModId,
+			StringComparison.Ordinal))
 		{
 			return "SPONSOR_PACK";
 		}
@@ -313,9 +324,50 @@ internal static partial class HextechCatalog
 		};
 	}
 
+	// 所有发放路径（选择池、奖励、锻造、宝箱替换）共用的唯一过滤口。
+	// 经 HextechRunesInterop 注册的符文可以不继承 HextechRelicBase：它们没有虚方法可覆写，
+	// 改由登记时附带的委托表达限制；稀有度不是 Starter 的外部符文不发放，因为原版多处按稀有度
+	// 取遗物，只有 Starter 能保证符文不经由自然池以外的原版路径漏出。
 	public static bool IsAvailableForPlayer(RelicModel relic, Player player)
 	{
-		return relic is not HextechRelicBase hextechRelic || hextechRelic.IsAvailableForPlayer(player);
+		if (relic is HextechRelicBase hextechRelic)
+		{
+			if (!hextechRelic.IsAvailableForPlayer(player))
+			{
+				return false;
+			}
+		}
+		else if (IsHextechRelic(relic) && relic.Rarity != RelicRarity.Starter)
+		{
+			if (HextechRunLogBudget.TryConsume("external-content.non-starter-rune", 12))
+			{
+				Log.Warn($"[{ModInfo.Id}][ExternalContent] External player rune {relic.GetType().FullName} has rarity {relic.Rarity}; only Starter runes are granted.");
+			}
+
+			return false;
+		}
+
+		ModelId id = relic.CanonicalInstance?.Id ?? relic.Id;
+		Func<Player, bool>? availability = HextechExternalContentRegistry.GetPlayerRuneAvailability(id);
+		if (availability == null)
+		{
+			return true;
+		}
+
+		// 外部委托在两端同样执行；抛异常按不可用处理，保证两端候选池仍然一致。
+		try
+		{
+			return availability(player);
+		}
+		catch (Exception ex)
+		{
+			if (HextechRunLogBudget.TryConsume("external-content.availability-failed", 12))
+			{
+				Log.Warn($"[{ModInfo.Id}][ExternalContent] Availability predicate for {relic.GetType().FullName} threw and the rune was excluded: {ex.GetType().Name}: {ex.Message}");
+			}
+
+			return false;
+		}
 	}
 
 	public static bool IsPlayerRuneAllowedInAct(Type runeType, int actIndex)

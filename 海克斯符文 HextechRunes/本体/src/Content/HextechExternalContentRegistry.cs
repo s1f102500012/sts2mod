@@ -2,12 +2,18 @@ namespace HextechRunes;
 
 internal static class HextechExternalContentRegistry
 {
+	internal const string SponsorPackModId = "HextechRunesSponsorPack";
+
 	private static readonly object SyncRoot = new();
 	private static readonly List<PlayerRuneRegistration> PlayerRuneRegistrations = new();
 	private static readonly List<ForgeRegistration> ForgeRegistrations = new();
 	private static readonly List<Type> EventRelicTypes = new();
 	private static readonly Dictionary<ModelId, string> AssetModIdsByModelId = new();
 	private static readonly Dictionary<ModelId, string> EnchantmentIconPathsByModelId = new();
+	private static readonly Dictionary<ModelId, Func<Player, bool>> PlayerRuneAvailabilityByModelId = new();
+	// 以下两项只影响界面文字，不进候选池计算，改动不递增 _version。
+	private static readonly Dictionary<ModelId, string> PlayerRunePoolLabelKeysByModelId = new();
+	private static readonly Dictionary<string, string> ConfigSectionTitleKeysByAssetModId = new(StringComparer.Ordinal);
 	private static int _version;
 
 	internal static int Version
@@ -21,7 +27,10 @@ internal static class HextechExternalContentRegistry
 		}
 	}
 
-	internal static void RegisterPlayerRune(PlayerRuneRegistration registration, string? assetModId)
+	internal static void RegisterPlayerRune(
+		PlayerRuneRegistration registration,
+		string? assetModId,
+		Func<Player, bool>? availability = null)
 	{
 		lock (SyncRoot)
 		{
@@ -31,6 +40,7 @@ internal static class HextechExternalContentRegistry
 			{
 				PlayerRuneRegistrations.Add(registration);
 				TryStoreAssetModId(registration.Type, assetModId);
+				TryStorePlayerRuneAvailability(registration.Type, availability);
 				_version++;
 				return;
 			}
@@ -46,7 +56,9 @@ internal static class HextechExternalContentRegistry
 					+ $"callerAssembly={registration.Type.Assembly.GetName().Name ?? "<unknown>"}");
 			}
 
-			if (TryStoreAssetModId(registration.Type, assetModId))
+			bool assetOwnerStored = TryStoreAssetModId(registration.Type, assetModId);
+			bool availabilityStored = TryStorePlayerRuneAvailability(registration.Type, availability);
+			if (assetOwnerStored || availabilityStored)
 			{
 				_version++;
 			}
@@ -162,6 +174,62 @@ internal static class HextechExternalContentRegistry
 		}
 	}
 
+	internal static void SetPlayerRunePoolLabel(Type runeType, string poolKey)
+	{
+		lock (SyncRoot)
+		{
+			TryStoreFirstWriter(
+				PlayerRunePoolLabelKeysByModelId,
+				ModelDb.GetId(runeType),
+				poolKey,
+				"external-content.pool-label-conflict",
+				$"pool label for {runeType.FullName}");
+		}
+	}
+
+	internal static void RegisterConfigSectionTitle(string assetModId, string titleKey)
+	{
+		lock (SyncRoot)
+		{
+			TryStoreFirstWriter(
+				ConfigSectionTitleKeysByAssetModId,
+				assetModId,
+				titleKey,
+				"external-content.config-section-conflict",
+				$"config section title for {assetModId}");
+		}
+	}
+
+	internal static string? GetPlayerRunePoolLabel(ModelId id)
+	{
+		lock (SyncRoot)
+		{
+			return PlayerRunePoolLabelKeysByModelId.TryGetValue(id, out string? poolKey)
+				? poolKey
+				: null;
+		}
+	}
+
+	internal static string? GetConfigSectionTitleKey(string assetModId)
+	{
+		lock (SyncRoot)
+		{
+			return ConfigSectionTitleKeysByAssetModId.TryGetValue(assetModId, out string? titleKey)
+				? titleKey
+				: null;
+		}
+	}
+
+	internal static Func<Player, bool>? GetPlayerRuneAvailability(ModelId id)
+	{
+		lock (SyncRoot)
+		{
+			return PlayerRuneAvailabilityByModelId.TryGetValue(id, out Func<Player, bool>? availability)
+				? availability
+				: null;
+		}
+	}
+
 	internal static string? GetEnchantmentIconPath(ModelId id)
 	{
 		lock (SyncRoot)
@@ -197,6 +265,56 @@ internal static class HextechExternalContentRegistry
 
 		AssetModIdsByModelId.Add(id, assetModId);
 		return true;
+	}
+
+	// 与资源归属同一口径：首个登记者生效，重复登记只告警，发放池不随模组加载顺序变化。
+	private static bool TryStorePlayerRuneAvailability(Type runeType, Func<Player, bool>? availability)
+	{
+		if (availability == null)
+		{
+			return false;
+		}
+
+		ModelId id = ModelDb.GetId(runeType);
+		if (PlayerRuneAvailabilityByModelId.TryGetValue(id, out Func<Player, bool>? existing))
+		{
+			if (existing != availability
+				&& HextechRunLogBudget.TryConsume("external-content.availability-conflict", 12))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate availability predicate for {runeType.FullName}; first predicate retained: "
+					+ $"callerAssembly={runeType.Assembly.GetName().Name ?? "<unknown>"}");
+			}
+
+			return false;
+		}
+
+		PlayerRuneAvailabilityByModelId.Add(id, availability);
+		return true;
+	}
+
+	private static void TryStoreFirstWriter<TKey>(
+		Dictionary<TKey, string> store,
+		TKey key,
+		string value,
+		string logBudgetKey,
+		string description)
+		where TKey : notnull
+	{
+		if (store.TryGetValue(key, out string? existing))
+		{
+			if (!string.Equals(existing, value, StringComparison.Ordinal)
+				&& HextechRunLogBudget.TryConsume(logBudgetKey, 12))
+			{
+				Log.Warn(
+					$"[{ModInfo.Id}][ExternalContent] Conflicting duplicate {description}; first value retained: "
+					+ $"existing={DescribeValue(existing)} incoming={DescribeValue(value)}");
+			}
+
+			return;
+		}
+
+		store.Add(key, value);
 	}
 
 	private static string? GetStoredAssetModId(Type modelType)

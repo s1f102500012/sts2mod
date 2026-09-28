@@ -9,9 +9,11 @@ internal static class HextechNaturalRelicPoolHooks
 	// 海克斯自己的选择入口发放，不应进入原版自然生成候选。尤其共享 GrabBag 的
 	// Populate(IEnumerable, Rng) 不过滤 Starter，会先打乱这些条目并推进 Boss 共用的
 	// UpFront RNG；生成后再 Remove 已经太晚。此过滤不依赖尚未同步的本地配置。
+	// 归属按注册表判定：经 HextechRunesInterop 注册的外部符文可以不继承 HextechRelicBase；
+	// 类型判定保留作兜底，覆盖注册表之外的本体载体。
 	internal static IEnumerable<RelicModel> FilterNaturalRelics(IEnumerable<RelicModel> relics)
 	{
-		return relics.Where(static relic => relic is not HextechRelicBase);
+		return relics.Where(static relic => relic is not HextechRelicBase && !HextechCatalog.IsHextechCustomRelic(relic));
 	}
 
 	[HarmonyPatch(typeof(SharedRelicPool), nameof(SharedRelicPool.GetUnlockedRelics), typeof(UnlockState))]

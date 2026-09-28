@@ -32,8 +32,8 @@ internal static partial class HextechRuneConfigMenuHooks
 				relic,
 				relic.Title.GetFormattedText(),
 				new LocString(LocTable, "HEXTECH_SERIES." + rarityKey).GetRawText(),
-				new LocString(LocTable, "HEXTECH_POOL." + poolKey).GetRawText(),
-				new LocString(LocTable, "HEXTECH_TAG." + tagKey).GetRawText(),
+				HextechRuneLabels.GetPoolText(poolKey),
+				HextechRuneLabels.GetTagText(tagKey),
 				(int)rarity,
 				poolKey,
 				tagKey,
@@ -129,7 +129,14 @@ internal static partial class HextechRuneConfigMenuHooks
 			return L("HEXTECH_CONFIG_SOURCE_BASE");
 		}
 
-		if (string.Equals(assetModId, SponsorPackModId, StringComparison.Ordinal))
+		string? titleKey = HextechExternalContentRegistry.GetConfigSectionTitleKey(assetModId);
+		string? customTitle = titleKey == null ? null : HextechRuneLabels.TryGetText(titleKey);
+		if (!string.IsNullOrWhiteSpace(customTitle))
+		{
+			return customTitle;
+		}
+
+		if (string.Equals(assetModId, HextechExternalContentRegistry.SponsorPackModId, StringComparison.Ordinal))
 		{
 			return L("HEXTECH_CONFIG_SOURCE_EXTRA_PACK");
 		}

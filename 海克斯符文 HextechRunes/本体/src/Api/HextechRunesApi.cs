@@ -39,7 +39,32 @@ public static class HextechRunesApi
 		string tagKey = "COMPREHENSIVE",
 		string? assetModId = null)
 	{
-		ValidateConcreteModelType(runeType, typeof(HextechRelicBase), nameof(runeType), "Player rune");
+		RegisterPlayerRuneCore(
+			runeType,
+			typeof(HextechRelicBase),
+			rarity,
+			flags,
+			characterPool,
+			characterOrder,
+			tagKey,
+			assetModId,
+			availability: null);
+	}
+
+	// 两个公开入口共用：强类型 API 要求 HextechRelicBase，HextechRunesInterop 为不引用本程序集的
+	// 模组放宽到 RelicModel。所有校验先于任何副作用，失败的调用不能留下半登记状态。
+	internal static void RegisterPlayerRuneCore(
+		Type runeType,
+		Type requiredBaseType,
+		HextechRarityTier rarity,
+		PlayerRuneFlags flags,
+		PlayerRuneCharacterPool? characterPool,
+		int characterOrder,
+		string tagKey,
+		string? assetModId,
+		Func<Player, bool>? availability)
+	{
+		ValidateConcreteModelType(runeType, requiredBaseType, nameof(runeType), "Player rune");
 		ValidateRarity(rarity);
 		ValidatePlayerRuneFlags(flags);
 		if (characterPool.HasValue && !Enum.IsDefined(characterPool.Value))
@@ -60,7 +85,7 @@ public static class HextechRunesApi
 		HextechCatalog.EnsureConfigurablePlayerRuneIdEntryAvailable(runeType);
 		HextechModelPoolRegistrar.RegisterPlayerRuneModels([ runeType ]);
 		HextechSavedPropertyBootstrap.InjectModelType(runeType);
-		HextechExternalContentRegistry.RegisterPlayerRune(registration, assetModId);
+		HextechExternalContentRegistry.RegisterPlayerRune(registration, assetModId, availability);
 	}
 
 	/// <summary>
@@ -213,7 +238,7 @@ public static class HextechRunesApi
 		CosplayInnateKeywordPersistence.Restore(card);
 	}
 
-	private static void ValidateConcreteModelType(
+	internal static void ValidateConcreteModelType(
 		Type modelType,
 		Type requiredBaseType,
 		string parameterName,

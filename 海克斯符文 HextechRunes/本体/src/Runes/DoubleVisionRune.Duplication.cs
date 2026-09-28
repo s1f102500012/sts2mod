@@ -109,9 +109,11 @@ public sealed partial class DoubleVisionRune
 		// 复杂且对多人敏感,重复获得易引发分叉/卡死(玩家实测黑屏的一类来源)。按需求收窄复视作用域为原版遗物。
 		// 判据取并,覆盖本体 + 拓展包(HextechRunesSponsorPack)且不硬引用拓展包程序集:
 		//   ① 继承 HextechRelicBase 的——本体+拓展包的符文、以及 HextechForgeBase 锻造;
-		//   ② 程序集名以 "HextechRunes" 开头的——覆盖拓展包里直接继承 RelicModel 的事件遗物(如 GoldStarRelic)。
-		// 原版遗物程序集名为 "sts2" 且非 HextechRelicBase,故不受影响,复视照常复制。
+		//   ② 注册表里的符文/锻造/商店/敌方图标载体——覆盖经 HextechRunesInterop 注册、只继承 RelicModel 的外部符文;
+		//   ③ 程序集名以 "HextechRunes" 开头的——覆盖拓展包里直接继承 RelicModel 的事件遗物(如 GoldStarRelic)。
+		// 原版遗物程序集名为 "sts2" 且不在注册表中,故不受影响,复视照常复制;其他模组注册的事件遗物也照常复制。
 		if (sourceRelic is HextechRelicBase
+			|| HextechCatalog.IsHextechCustomRelic(sourceRelic)
 			|| sourceRelic.GetType().Assembly.GetName().Name?.StartsWith("HextechRunes", StringComparison.Ordinal) == true)
 		{
 			return;

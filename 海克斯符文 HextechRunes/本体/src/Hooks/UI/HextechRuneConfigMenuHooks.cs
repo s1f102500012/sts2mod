@@ -22,7 +22,6 @@ internal static partial class HextechRuneConfigMenuHooks
 	private const int RuneConfigColumns = 8;
 	private const string BaseConfigSourceKey = "0:HextechRunes";
 	private const string ExternalConfigSourcePrefix = "1:";
-	private const string SponsorPackModId = "HextechRunesSponsorPack";
 	private const float ConfigRuneHolderScale = 1.3f;
 	private const float RuneConfigCellWidth = 108f;
 	private const float RuneConfigCellHeight = 136f;
