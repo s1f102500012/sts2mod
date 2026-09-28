@@ -108,6 +108,12 @@ public abstract partial class HextechRelicBase : RelicModel
 
 	public sealed override Task BeforeSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
 	{
+		// 只有参与本回合的持有者结算自己的回合结束效果；异阵营回调保留原有语义。
+		if (Owner is { } owner && side == owner.Creature.Side && !participants.Contains(owner.Creature))
+		{
+			return Task.CompletedTask;
+		}
+
 		return BeforeTurnEnd(choiceContext, side);
 	}
 

@@ -80,9 +80,15 @@ public abstract class HextechPowerBase : PowerModel
 		return Task.CompletedTask;
 	}
 
-	public sealed override Task BeforeSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
+	// 按持有者回合结算的能力在此检查参与者；默认保留阵营级能力的既有转发语义。
+	public virtual Task BeforeTurnEndForParticipants(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
 	{
 		return BeforeTurnEnd(choiceContext, side);
+	}
+
+	public sealed override Task BeforeSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
+	{
+		return BeforeTurnEndForParticipants(choiceContext, side, participants);
 	}
 
 	public virtual Task AfterTurnEnd(PlayerChoiceContext choiceContext, CombatSide side)
