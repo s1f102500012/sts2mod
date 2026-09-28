@@ -52,6 +52,7 @@ public sealed class MyRune : RelicModel
 - **`Rarity` 必须是 `RelicRarity.Starter`。** 海克斯只把注册表里的符文从原版的自然遗物池中过滤掉，而原版还有别的路径会按稀有度抽取遗物，只有 Starter 能保证它们抽不到你的符文。稀有度不是 Starter 的外部符文，海克斯一律不发放，并在日志中给出警告。
 - 标题、描述、风味文本按原版遗物的规则，写在你模组的 `relics.json` 里。
 - `HextechRelicBase` 提供的扩展（如阵营回合钩子、`*Compat` 伤害修正、生成卡牌辅助）不对外部符文开放。外部符文请直接使用原版 `RelicModel` 的钩子。
+- 使用原版回合钩子（`BeforeSideTurnStart`、`AfterSideTurnEnd` 等）时，先检查 `participants` 里有没有持有者。联机中，队友的额外回合（例如佩尔之眼）只会带那名玩家重新进入这些钩子，此时阵营仍是玩家侧，回合号也不会增加，只看阵营的判断会在别人的回合里多触发一次。原版玩家侧回合结束的 `participants` 只包含玩家本人，不包含宠物。"战斗第一回合"类效果请看持有者的 `PlayerCombatState.TurnNumber`，不要看 `RoundNumber`。
 
 ### RegisterPlayerRune
 

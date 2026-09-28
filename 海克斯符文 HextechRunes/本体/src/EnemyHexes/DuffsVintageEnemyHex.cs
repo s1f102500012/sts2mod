@@ -16,7 +16,7 @@ internal sealed class DuffsVintageEnemyHex : HextechEnemyHexEffect
 			return Task.CompletedTask;
 		}
 
-		foreach (Creature playerCreature in context.GetAlivePlayerSideCreatures(combatRoom.CombatState))
+		foreach (Creature playerCreature in context.GetAlivePlayerSideCreaturesTakingTurn(combatRoom.CombatState))
 		{
 			Player? player = playerCreature.Player;
 			if (player == null)

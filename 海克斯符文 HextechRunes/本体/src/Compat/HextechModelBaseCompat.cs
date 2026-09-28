@@ -121,11 +121,13 @@ public abstract class HextechPowerBase : PowerModel
 		return AfterTurnEnd(choiceContext, side);
 	}
 
+	// 原版回合开始的 participants 在普通回合含宠物、额外回合不含，玩家侧回合结束则永远只含玩家本人；
+	// 宠物身上的 Power 按其主人是否参与本次回合判定，否则奥斯提身上的灼烧在回合结束永远不会结算。
 	private bool ShouldSkipOwnerTurn(CombatSide side, IEnumerable<Creature> participants)
 	{
 		return Owner is { } owner
 			&& side == owner.Side
-			&& !participants.Contains(owner);
+			&& !HextechTurnParticipants.Includes(participants, owner);
 	}
 }
 
@@ -174,9 +176,16 @@ internal abstract class HextechModifierBase : ModifierModel
 		return Task.CompletedTask;
 	}
 
-	public sealed override Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, HextechCombatState combatState)
+	// Modifier 没有持有者，不能像 Relic/Power 那样统一跳过；需要区分"谁在这次回合里"的实现覆盖
+	// 带 participants 的入口自己筛（队友额外回合只带那名玩家重入回合钩子）。
+	public virtual Task BeforeSideTurnStartForParticipants(PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, HextechCombatState combatState)
 	{
 		return BeforeSideTurnStart(choiceContext, side, combatState);
+	}
+
+	public sealed override Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, HextechCombatState combatState)
+	{
+		return BeforeSideTurnStartForParticipants(choiceContext, side, participants, combatState);
 	}
 
 	public virtual Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
@@ -194,9 +203,14 @@ internal abstract class HextechModifierBase : ModifierModel
 		return Task.CompletedTask;
 	}
 
-	public sealed override Task BeforeSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
+	public virtual Task BeforeTurnEndForParticipants(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
 	{
 		return BeforeTurnEnd(choiceContext, side);
+	}
+
+	public sealed override Task BeforeSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
+	{
+		return BeforeTurnEndForParticipants(choiceContext, side, participants);
 	}
 
 	public virtual Task AfterTurnEnd(PlayerChoiceContext choiceContext, CombatSide side)

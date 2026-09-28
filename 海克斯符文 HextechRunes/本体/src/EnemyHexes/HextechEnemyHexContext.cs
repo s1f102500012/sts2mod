@@ -1,6 +1,7 @@
 namespace HextechRunes;
 
-internal readonly struct HextechEnemyHexContext(HextechMayhemModifier modifier)
+// turnParticipants 只在回合开始/结束钩子里有值：队友的额外回合只带那名玩家重入这些钩子。
+internal readonly struct HextechEnemyHexContext(HextechMayhemModifier modifier, IEnumerable<Creature>? turnParticipants = null)
 {
 	internal HextechMayhemModifier Modifier => modifier;
 
@@ -83,6 +84,19 @@ internal readonly struct HextechEnemyHexContext(HextechMayhemModifier modifier)
 	internal IReadOnlyList<Creature> GetAlivePlayerSideCreatures(HextechCombatState combatState)
 	{
 		return HextechCombatCreatureHelper.GetAlivePlayerSideCreatures(combatState);
+	}
+
+	// 玩家侧回合钩子里作用于"每名玩家"的效果用这个：只取本次真正开始/结束回合的玩家（宠物随主人）。
+	internal IReadOnlyList<Creature> GetAlivePlayerSideCreaturesTakingTurn(HextechCombatState combatState)
+	{
+		return FilterTakingTurn(GetAlivePlayerSideCreatures(combatState), turnParticipants);
+	}
+
+	internal static IReadOnlyList<Creature> FilterTakingTurn(IReadOnlyList<Creature> creatures, IEnumerable<Creature>? participants)
+	{
+		return participants == null
+			? creatures
+			: creatures.Where(creature => HextechTurnParticipants.Includes(participants, creature)).ToList();
 	}
 
 	internal Task RunGroupedPlayerDebuffBurst(Func<Task> action)

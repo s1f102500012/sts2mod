@@ -379,7 +379,7 @@ public sealed class OrbSlotForge : HextechForgeBase
 
 	public override async Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
 	{
-		if (Owner == null || side != Owner.Creature.Side || combatState.RoundNumber > 1 || !IsDefectOwner)
+		if (Owner == null || side != Owner.Creature.Side || !IsOwnersFirstTurn || !IsDefectOwner)
 		{
 			return;
 		}

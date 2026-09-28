@@ -15,7 +15,7 @@ public sealed class BrutalForceRune : HextechRelicBase
 
 	public override decimal ModifyHandDraw(Player player, decimal count)
 	{
-		return player == Owner && player.Creature.CombatState?.RoundNumber == 1
+		return player == Owner && IsOwnersFirstTurn
 			? count + DynamicVars.Cards.BaseValue
 			: count;
 	}

@@ -298,7 +298,7 @@ public sealed class PreparedForge : HextechForgeBase
 
 	public override decimal ModifyHandDraw(Player player, decimal count)
 	{
-		if (player != Owner || player.Creature.CombatState?.RoundNumber > 1)
+		if (player != Owner || !IsOwnersFirstTurn)
 		{
 			return count;
 		}
@@ -397,7 +397,7 @@ public sealed class NecrobinderForge : HextechForgeBase
 		if (player != Owner
 			|| Owner == null
 			|| Owner.Creature.IsDead
-			|| Owner.Creature.CombatState?.RoundNumber > 1
+			|| !IsOwnersFirstTurn
 			|| !IsNecrobinderPlayer(player))
 		{
 			return;
@@ -422,7 +422,7 @@ public sealed class SilverStarsForge : HextechForgeBase
 
 	public override Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
 	{
-		if (Owner == null || side != Owner.Creature.Side || combatState.RoundNumber > 1 || !IsRegentOwner)
+		if (Owner == null || side != Owner.Creature.Side || !IsOwnersFirstTurn || !IsRegentOwner)
 		{
 			return Task.CompletedTask;
 		}
@@ -446,7 +446,7 @@ public sealed class SilverOrbForge : HextechForgeBase
 
 	public override async Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
 	{
-		if (Owner == null || side != Owner.Creature.Side || combatState.RoundNumber > 1 || !IsDefectOwner)
+		if (Owner == null || side != Owner.Creature.Side || !IsOwnersFirstTurn || !IsDefectOwner)
 		{
 			return;
 		}
@@ -475,7 +475,7 @@ public sealed class ForgingForge : HextechForgeBase
 
 	public override async Task AfterSideTurnStart(CombatSide side, HextechCombatState combatState)
 	{
-		if (Owner == null || side != Owner.Creature.Side || combatState.RoundNumber > 1 || !IsRegentOwner)
+		if (Owner == null || side != Owner.Creature.Side || !IsOwnersFirstTurn || !IsRegentOwner)
 		{
 			return;
 		}

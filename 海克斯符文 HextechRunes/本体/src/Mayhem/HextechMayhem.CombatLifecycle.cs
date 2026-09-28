@@ -106,19 +106,20 @@ internal sealed partial class HextechMayhemModifier
 		HextechEnemyUi.Refresh(this);
 	}
 
-	public override async Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, HextechCombatState combatState)
+	public override async Task BeforeSideTurnStartForParticipants(PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, HextechCombatState combatState)
 	{
 		HextechCombatHooks.ClearPendingManualPlayState();
 		await ApplyDeferredBossStartHexes(combatState);
 		await HextechEnemyHexDispatcher.ForEachActive(
 			this,
+			participants,
 			(effect, context) => effect.BeforeSideTurnStart(context, choiceContext, side, combatState));
 
 		IReadOnlyList<Creature> players = HextechCombatCreatureHelper.GetAlivePlayerSideCreatures(combatState);
 
 		if (side == CombatSide.Player)
 		{
-			await BeforePlayerSideTurnStart(combatState, players);
+			await BeforePlayerSideTurnStart(combatState, players, HextechEnemyHexContext.FilterTakingTurn(players, participants), participants);
 			return;
 		}
 

@@ -146,7 +146,7 @@ public abstract partial class HextechRelicBase : RelicModel
 	{
 		return Owner is { } owner
 			&& side == owner.Creature.Side
-			&& !participants.Contains(owner.Creature);
+			&& !HextechTurnParticipants.Includes(participants, owner);
 	}
 
 	public sealed override RelicRarity Rarity => RelicRarity.Starter;

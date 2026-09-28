@@ -2,11 +2,19 @@ namespace HextechRunes;
 
 internal static class HextechEnemyHexDispatcher
 {
-	internal static async Task ForEachActive(
+	internal static Task ForEachActive(
 		HextechMayhemModifier modifier,
 		Func<HextechEnemyHexEffect, HextechEnemyHexContext, Task> handler)
 	{
-		HextechEnemyHexContext context = new(modifier);
+		return ForEachActive(modifier, turnParticipants: null, handler);
+	}
+
+	internal static async Task ForEachActive(
+		HextechMayhemModifier modifier,
+		IEnumerable<Creature>? turnParticipants,
+		Func<HextechEnemyHexEffect, HextechEnemyHexContext, Task> handler)
+	{
+		HextechEnemyHexContext context = new(modifier, turnParticipants);
 		foreach (HextechEnemyHexEffect effect in HextechEnemyHexEffects.GetActive(modifier))
 		{
 			await handler(effect, context);

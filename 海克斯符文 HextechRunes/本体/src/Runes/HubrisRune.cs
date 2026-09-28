@@ -66,7 +66,7 @@ public sealed class HubrisRune : HextechRelicBase, IHextechSharedCombatVictoryRu
 
 	public override decimal ModifyHandDraw(Player player, decimal count)
 	{
-		if (player != Owner || player.Creature.CombatState?.RoundNumber > 1)
+		if (player != Owner || !IsOwnersFirstTurn)
 		{
 			return count;
 		}
