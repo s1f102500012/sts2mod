@@ -18,7 +18,7 @@ public sealed class CrashLandingUpgradeRune : CardUpgradeRuneBase<CrashLanding>
 		return card is CrashLanding && card.Owner?.GetRelic<CrashLandingUpgradeRune>() != null;
 	}
 
-	internal static async Task PlayUpgraded(PlayerChoiceContext choiceContext, CrashLanding card)
+	internal static async Task PlayUpgraded(PlayerChoiceContext choiceContext, CrashLanding card, CardPlay cardPlay)
 	{
 		var combatState = card.CombatState;
 		if (combatState == null)
@@ -29,7 +29,7 @@ public sealed class CrashLandingUpgradeRune : CardUpgradeRuneBase<CrashLanding>
 		card.Owner.GetRelic<CrashLandingUpgradeRune>()?.Flash();
 		HextechLog.Info($"[{ModInfo.Id}][CrashLanding] Upgraded play for {card.Owner.NetId}: hand={CardPile.GetCards(card.Owner, PileType.Hand).Count()}/{CardPile.MaxCardsInHand}");
 		await DamageCmd.Attack(card.DynamicVars.Damage.BaseValue)
-			.FromCardCompat(card)
+			.FromCardCompat(card, cardPlay)
 			.TargetingAllOpponents(combatState)
 			.WithHitFx("vfx/vfx_heavy_blunt", null, "heavy_attack.mp3")
 			.WithHitVfxSpawnedAtBase()
@@ -56,14 +56,14 @@ public sealed class CrashLandingUpgradeRune : CardUpgradeRuneBase<CrashLanding>
 	{
 		[HarmonyPrefix]
 		[HarmonyPriority(Priority.Low)]
-		private static bool Prefix(CrashLanding __instance, PlayerChoiceContext choiceContext, ref Task __result)
+		private static bool Prefix(CrashLanding __instance, PlayerChoiceContext choiceContext, CardPlay cardPlay, ref Task __result)
 		{
 			if (!CrashLandingUpgradeRune.ShouldUseUpgradedPlay(__instance))
 			{
 				return true;
 			}
 
-			__result = CrashLandingUpgradeRune.PlayUpgraded(choiceContext, __instance);
+			__result = CrashLandingUpgradeRune.PlayUpgraded(choiceContext, __instance, cardPlay);
 			return false;
 		}
 	}

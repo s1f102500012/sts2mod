@@ -53,6 +53,11 @@ public abstract class HextechPowerBase : PowerModel
 
 	public sealed override Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, HextechCombatState combatState)
 	{
+		if (ShouldSkipOwnerTurn(side, participants))
+		{
+			return Task.CompletedTask;
+		}
+
 		return BeforeSideTurnStart(choiceContext, side, combatState);
 	}
 
@@ -62,11 +67,16 @@ public abstract class HextechPowerBase : PowerModel
 	}
 
 	/// <summary>
-	/// 需要按 participants 判定"持有者是否参与本次回合开始"的能力(额外回合只带单个玩家重入回合开始 Hook 时)
-	/// 覆盖此方法;默认转发到不带参与者的版本,不改变其它能力的既有语义。
+	/// 默认按持有者的回合参与状态过滤后转发；需要自定义参与者语义的能力可覆盖此入口。
+	/// 异阵营触发保留，例如敌人身上的下回合伤害在玩家回合开始时结算。
 	/// </summary>
 	public virtual Task AfterSideTurnStartForParticipants(CombatSide side, IReadOnlyList<Creature> participants, HextechCombatState combatState)
 	{
+		if (ShouldSkipOwnerTurn(side, participants))
+		{
+			return Task.CompletedTask;
+		}
+
 		return AfterSideTurnStart(side, combatState);
 	}
 
@@ -80,9 +90,20 @@ public abstract class HextechPowerBase : PowerModel
 		return Task.CompletedTask;
 	}
 
+	// 与回合开始相同：默认过滤同阵营缺席的持有者，覆盖此入口可自定义参与者语义。
+	public virtual Task BeforeTurnEndForParticipants(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
+	{
+		if (ShouldSkipOwnerTurn(side, participants))
+		{
+			return Task.CompletedTask;
+		}
+
+		return BeforeTurnEnd(choiceContext, side);
+	}
+
 	public sealed override Task BeforeSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
 	{
-		return BeforeTurnEnd(choiceContext, side);
+		return BeforeTurnEndForParticipants(choiceContext, side, participants);
 	}
 
 	public virtual Task AfterTurnEnd(PlayerChoiceContext choiceContext, CombatSide side)
@@ -92,7 +113,19 @@ public abstract class HextechPowerBase : PowerModel
 
 	public sealed override Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
 	{
+		if (ShouldSkipOwnerTurn(side, participants))
+		{
+			return Task.CompletedTask;
+		}
+
 		return AfterTurnEnd(choiceContext, side);
+	}
+
+	private bool ShouldSkipOwnerTurn(CombatSide side, IEnumerable<Creature> participants)
+	{
+		return Owner is { } owner
+			&& side == owner.Side
+			&& !participants.Contains(owner);
 	}
 }
 

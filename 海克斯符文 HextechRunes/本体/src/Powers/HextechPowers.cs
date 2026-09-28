@@ -23,6 +23,13 @@ public sealed class HextechBurnPower : HextechPowerBase
 		await ResolveBurn(new ThrowingPlayerChoiceContext(), blockable: false);
 	}
 
+	public override Task BeforeTurnEndForParticipants(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
+	{
+		return participants.Contains(Owner)
+			? BeforeTurnEnd(choiceContext, side)
+			: Task.CompletedTask;
+	}
+
 	public override async Task BeforeTurnEnd(PlayerChoiceContext choiceContext, CombatSide side)
 	{
 		if (Owner.Side != CombatSide.Player || side != Owner.Side)
