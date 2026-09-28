@@ -88,6 +88,11 @@ public abstract partial class HextechRelicBase : RelicModel
 
 	public sealed override Task BeforeSideTurnStart(PlayerChoiceContext choiceContext, CombatSide side, IReadOnlyList<Creature> participants, HextechCombatState combatState)
 	{
+		if (ShouldSkipOwnerTurn(side, participants))
+		{
+			return Task.CompletedTask;
+		}
+
 		return BeforeSideTurnStart(choiceContext, side, combatState);
 	}
 
@@ -98,6 +103,11 @@ public abstract partial class HextechRelicBase : RelicModel
 
 	public sealed override Task AfterSideTurnStart(CombatSide side, IReadOnlyList<Creature> participants, HextechCombatState combatState)
 	{
+		if (ShouldSkipOwnerTurn(side, participants))
+		{
+			return Task.CompletedTask;
+		}
+
 		return AfterSideTurnStart(side, combatState);
 	}
 
@@ -108,8 +118,7 @@ public abstract partial class HextechRelicBase : RelicModel
 
 	public sealed override Task BeforeSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
 	{
-		// 只有参与本回合的持有者结算自己的回合结束效果；异阵营回调保留原有语义。
-		if (Owner is { } owner && side == owner.Creature.Side && !participants.Contains(owner.Creature))
+		if (ShouldSkipOwnerTurn(side, participants))
 		{
 			return Task.CompletedTask;
 		}
@@ -124,7 +133,20 @@ public abstract partial class HextechRelicBase : RelicModel
 
 	public sealed override Task AfterSideTurnEnd(PlayerChoiceContext choiceContext, CombatSide side, IEnumerable<Creature> participants)
 	{
+		if (ShouldSkipOwnerTurn(side, participants))
+		{
+			return Task.CompletedTask;
+		}
+
 		return AfterTurnEnd(choiceContext, side);
+	}
+
+	// 持有者所属阵营的四个回合入口统一检查参与者；异阵营触发交给具体效果处理。
+	private bool ShouldSkipOwnerTurn(CombatSide side, IEnumerable<Creature> participants)
+	{
+		return Owner is { } owner
+			&& side == owner.Creature.Side
+			&& !participants.Contains(owner.Creature);
 	}
 
 	public sealed override RelicRarity Rarity => RelicRarity.Starter;
