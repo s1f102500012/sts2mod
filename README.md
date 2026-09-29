@@ -1,5 +1,13 @@
 # Slay the Spire 2 Mods
 
+## 海克斯已迁移 / Hextech has moved
+
+海克斯大乱斗本体与拓展包现已迁移到独立仓库 **[HextechRunes](https://github.com/s1f102500012/HextechRunes)**。后续开发、Issue 和 PR 请前往新仓库，不再向本合集同步海克斯源码。
+
+新仓库保留了本合集的 104 笔相关提交，并合并了 661 笔原开发历史；原贡献者署名与提交记录保留。本仓库的旧源码、PR 和讨论继续作为历史入口。详见[迁移记录与提交对应表](https://github.com/s1f102500012/HextechRunes/tree/main/docs/migration)。其他模组不受影响。
+
+HextechRunes and HextechRunesSponsorPack are now maintained in [their standalone repository](https://github.com/s1f102500012/HextechRunes), with both public contributions and development history preserved. Please submit future Hextech issues and pull requests there. Existing PRs and discussions remain here for reference.
+
 这里是 Natsuki 制作的《杀戮尖塔 2》模组源码合集。每个模组目录对应一个独立模组，目录名为「中文名 + 英文名」。停止维护的项目收录于[已归档](已归档/)。
 
 This is a collection of Slay the Spire 2 mods made by Natsuki. Each mod directory is named as "Chinese name + English name". Discontinued projects are kept in [已归档 (Archived)](已归档/).
