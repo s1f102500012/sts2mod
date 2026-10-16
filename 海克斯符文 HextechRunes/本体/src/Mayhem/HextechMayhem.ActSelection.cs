@@ -32,29 +32,44 @@ internal sealed partial class HextechMayhemModifier
 		int actIndex = string.IsNullOrWhiteSpace(extraStageId)
 			? GetCurrentActSelectionIndex()
 			: ActivateExtraStage(extraStageId);
-		if (!IsStageResolved(actIndex) && TryRecoverResolvedActsFromPlayerRelics(nameof(BeforeRoomEntered), actIndex))
+
+		if (!IsStageResolved(actIndex) &&
+			TryRecoverResolvedActsFromPlayerRelics(nameof(BeforeRoomEntered), actIndex))
 		{
 			HextechEnemyUi.Refresh(this);
 		}
 
-		if (actIndex < 0 || IsStageResolved(actIndex) || room is EventRoom or MapRoom)
+		if (actIndex < 0 ||
+			IsStageResolved(actIndex) ||
+			room is EventRoom or MapRoom ||
+			ShouldDeferImmediateActSelection(room))
 		{
 			return;
 		}
 
-		if (RunState.CurrentActIndex == 0 && string.IsNullOrWhiteSpace(extraStageId))
+		if (RunState.CurrentActIndex == 0 &&
+			string.IsNullOrWhiteSpace(extraStageId))
 		{
-			Log.Warn($"[{ModInfo.Id}][Mayhem] BeforeRoomEntered: skipping unsafe act0 selection before room={room.GetType().Name}; waiting for post-Neow or map path");
+			Log.Warn(
+				$"[{ModInfo.Id}][Mayhem] BeforeRoomEntered: skipping unsafe act0 selection before room={room.GetType().Name}; waiting for post-Neow or map path");
 			return;
 		}
 
-		HextechLog.Info($"[{ModInfo.Id}][Mayhem] BeforeRoomEntered: resolving pending act selection before room={room.GetType().Name} actIndex={actIndex}");
-		await HextechRuneSelectionCoordinator.HandleStageSelection(RunState, this, actIndex);
+		HextechLog.Info(
+			$"[{ModInfo.Id}][Mayhem] BeforeRoomEntered: resolving pending act selection before room={room.GetType().Name} actIndex={actIndex}");
+
+		await HextechRuneSelectionCoordinator.HandleStageSelection(
+			RunState, this, actIndex);
 	}
 
 	private static bool ShouldDeferImmediateActSelection(AbstractRoom? currentRoom)
 	{
 		return currentRoom == null
-			|| currentRoom is EventRoom { CanonicalEvent: AncientEventModel };
+			|| currentRoom is EventRoom { CanonicalEvent: AncientEventModel }
+			|| IsChooseTheAncientStartingRoom(currentRoom);
+	}
+	private static bool IsChooseTheAncientStartingRoom(AbstractRoom? room)
+	{
+		return room?.GetType().Name == "ChooseTheAncientStartRoom";
 	}
 }
